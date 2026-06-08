@@ -13,16 +13,15 @@ pub const blas = @import("linalg/blas.zig");
 
 // cross
 
-const _norm = @import("linalg/norm.zig");
-// pub const Norm = _norm.Norm;
-pub const NormType = _norm.NormType;
-// pub const norm =_norm.norm;
-// pub const normInto =_norm.normInto;
+pub const Norm = @import("linalg/norm.zig").Norm;
+pub const NormOrder = @import("linalg/norm.zig").NormOrder;
+pub const norm = @import("linalg/norm.zig").norm;
+pub const normAlloc = @import("linalg/norm.zig").normAlloc;
+// pub const normInto = @import("linalg/norm.zig").normInto;
 
-// const _normalize = @import("linalg/normalize.zig");
-// pub const normalize =_norm.normalize;
-// pub const normalizeAlloc =_norm.normalizeAlloc;
-// pub const normalizeInto =_norm.normalizeInto;
+// pub const normalize = @import("linalg/normalize.zig").normalize;
+// pub const normalizeAlloc = @import("linalg/normalize.zig").normalizeAlloc;
+// pub const normalizeInto = @import("linalg/normalize.zig").normalizeInto;
 
 // pub fn dot(x: anytype, y: anytype, ctx: anytype) !Coerce(Numeric(@TypeOf(x)), Numeric(@TypeOf(y))) {
 //     // Dot(X, Y) = begin

@@ -9,7 +9,7 @@ const numeric = @import("../../numeric.zig");
 
 pub fn Min(X: type, Y: type) type {
     comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y))
-        @compileError("zsl.numeric.min: x and y must be numerics, got \n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+        @compileError("zsl.numeric.Min: X and Y must be numeric types, got \n\tX = " ++ @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n");
 
     if (comptime meta.isCustomNumeric(X)) {
         if (comptime meta.isCustomNumeric(Y)) { // X and Y both custom
@@ -19,18 +19,18 @@ pub fn Min(X: type, Y: type) type {
                 fn (type, type) type,
                 &.{ X, Y },
             ) orelse
-                @compileError("zsl.numeric.min: " ++ @typeName(X) ++ " or " ++ @typeName(Y) ++ " must implement `fn Min(type, type) type`");
+                @compileError("zsl.numeric.Min: " ++ @typeName(X) ++ " or " ++ @typeName(Y) ++ " must implement `fn Min(type, type) type`");
 
             return Impl.Min(X, Y);
         } else { // only X custom
             comptime if (!meta.hasMethod(X, "Min", fn (type, type) type, &.{ X, Y }))
-                @compileError("zsl.numeric.min: " ++ @typeName(X) ++ " must implement `fn Min(type, type) type`");
+                @compileError("zsl.numeric.Min: " ++ @typeName(X) ++ " must implement `fn Min(type, type) type`");
 
             return X.Min(X, Y);
         }
     } else if (comptime meta.isCustomNumeric(Y)) { // only Y custom
         comptime if (!meta.hasMethod(Y, "Min", fn (type, type) type, &.{ X, Y }))
-            @compileError("zsl.numeric.min: " ++ @typeName(Y) ++ " must implement `fn Min(type, type) type`");
+            @compileError("zsl.numeric.Min: " ++ @typeName(Y) ++ " must implement `fn Min(type, type) type`");
 
         return Y.Min(X, Y);
     }

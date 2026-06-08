@@ -11,7 +11,7 @@ const linalg = @import("../../../linalg.zig");
 
 pub fn Nrm2(X: type) type {
     comptime if (!meta.isManyItemPointer(X) or !meta.isNumeric(meta.Child(X)))
-        @compileError("zsl.linalg.blas.nrm2: x must be a many-item pointer to numerics, got \n\tx: " ++ @typeName(X) ++ "\n");
+        @compileError("zsl.linalg.blas.Nrm2: X must be a many-item pointer type to numerics, got \n\tX = " ++ @typeName(X) ++ "\n");
 
     return numeric.Sqrt(numeric.Abs2(meta.Child(X)));
 }

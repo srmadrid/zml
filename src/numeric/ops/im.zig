@@ -9,7 +9,7 @@ const numeric = @import("../../numeric.zig");
 
 pub fn Im(X: type) type {
     comptime if (!meta.isNumeric(X))
-        @compileError("zsl.numeric.im: x must be a numeric, got \n\tx: " ++ @typeName(X) ++ "\n");
+        @compileError("zsl.numeric.Im: X must be a numeric type, got \n\tX = " ++ @typeName(X) ++ "\n");
 
     switch (comptime meta.numericType(X)) {
         .bool => return X,
@@ -19,7 +19,7 @@ pub fn Im(X: type) type {
         .complex => return meta.Scalar(X),
         .custom => {
             if (comptime !meta.hasMethod(X, "Im", fn (type) type, &.{X}))
-                @compileError("zsl.numeric.im: " ++ @typeName(X) ++ " must implement `fn Im(type) type`");
+                @compileError("zsl.numeric.Im: " ++ @typeName(X) ++ " must implement `fn Im(type) type`");
 
             return X.Im(X);
         },

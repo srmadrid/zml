@@ -11,7 +11,7 @@ const linalg = @import("../../../linalg.zig");
 
 pub fn Asum(X: type) type {
     comptime if (!meta.isManyItemPointer(X) or !meta.isNumeric(meta.Child(X)))
-        @compileError("zsl.linalg.blas.asum: x must be a many-item pointer to numerics, got \n\tx: " ++ @typeName(X) ++ "\n");
+        @compileError("zsl.linalg.blas.Asum: X must be a many-item pointer type to numerics, got \n\tX = " ++ @typeName(X) ++ "\n");
 
     return numeric.Abs1(meta.Child(X));
 }

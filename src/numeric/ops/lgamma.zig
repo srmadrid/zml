@@ -9,17 +9,17 @@ const numeric = @import("../../numeric.zig");
 
 pub fn Lgamma(X: type) type {
     comptime if (!meta.isNumeric(X))
-        @compileError("zsl.numeric.lgamma: x must be a numeric, got \n\tx: " ++ @typeName(X) ++ "\n");
+        @compileError("zsl.numeric.Lgamma: X must be a numeric type, got \n\tX = " ++ @typeName(X) ++ "\n");
 
     switch (comptime meta.numericType(X)) {
-        .bool => @compileError("zsl.numeric.lgamma: not defined for " ++ @typeName(X) ++ "."),
-        .int => @compileError("zsl.numeric.lgamma: not defined for " ++ @typeName(X) ++ "."),
+        .bool => @compileError("zsl.numeric.Lgamma: not defined for " ++ @typeName(X) ++ "."),
+        .int => @compileError("zsl.numeric.Lgamma: not defined for " ++ @typeName(X) ++ "."),
         .float => return X,
         .dyadic => return X,
         .complex => return X,
         .custom => {
             if (comptime !meta.hasMethod(X, "Lgamma", fn (type) type, &.{X}))
-                @compileError("zsl.numeric.lgamma: " ++ @typeName(X) ++ " must implement `fn Lgamma(type) type`");
+                @compileError("zsl.numeric.Lgamma: " ++ @typeName(X) ++ " must implement `fn Lgamma(type) type`");
 
             return X.Lgamma(X);
         },

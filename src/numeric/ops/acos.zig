@@ -9,17 +9,17 @@ const numeric = @import("../../numeric.zig");
 
 pub fn Acos(X: type) type {
     comptime if (!meta.isNumeric(X))
-        @compileError("zsl.numeric.acos: x must be a numeric, got \n\tx: " ++ @typeName(X) ++ "\n");
+        @compileError("zsl.numeric.Acos: X must be a numeric type, got \n\tX = " ++ @typeName(X) ++ "\n");
 
     switch (comptime meta.numericType(X)) {
-        .bool => @compileError("zsl.numeric.acos: not defined for " ++ @typeName(X) ++ "."),
-        .int => @compileError("zsl.numeric.acos: not defined for " ++ @typeName(X) ++ "."),
+        .bool => @compileError("zsl.numeric.Acos: not defined for " ++ @typeName(X) ++ "."),
+        .int => @compileError("zsl.numeric.Acos: not defined for " ++ @typeName(X) ++ "."),
         .float => return X,
         .dyadic => return X,
         .complex => return X,
         .custom => {
             if (comptime !meta.hasMethod(X, "Acos", fn (type) type, &.{X}))
-                @compileError("zsl.numeric.acos: " ++ @typeName(X) ++ " must implement `fn Acos(type) type`");
+                @compileError("zsl.numeric.Acos: " ++ @typeName(X) ++ " must implement `fn Acos(type) type`");
 
             return X.Acos(X);
         },

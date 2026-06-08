@@ -7,8 +7,8 @@ pub fn Fma(comptime X: type, comptime Y: type, comptime Z: type) type {
     comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or !meta.isNumeric(Z) or
         !meta.numericType(X).le(.complex) or !meta.numericType(Y).le(.complex) or !meta.numericType(Z).le(.complex) or
         (meta.numericType(X) != .complex and meta.numericType(Y) != .complex and meta.numericType(Z) != .complex))
-        @compileError("zsl.complex.fma: at least one of x, y or z must be a complex, the others must be bool, int, float, dyadic or complex, got\n\tx: " ++
-            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\tz: " ++ @typeName(Z) ++ "\n");
+        @compileError("zsl.complex.Fma: at least one of X, Y or Z must be a complex type, the others must be bool, int, float, dyadic or complex types, got\n\tX = " ++
+            @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n\tZ = " ++ @typeName(Z) ++ "\n");
 
     return complex.Coerce(X, numeric.Coerce(Y, Z));
 }

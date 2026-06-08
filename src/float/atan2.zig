@@ -10,8 +10,8 @@ pub fn Atan2(comptime X: type, comptime Y: type) type {
     comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or
         !meta.numericType(X).le(.float) or !meta.numericType(Y).le(.float) or
         (meta.numericType(X) != .float and meta.numericType(Y) != .float))
-        @compileError("zsl.float.atan2: at least one of x or y must be a float, the other must be a bool, an int or a float, got\n\tx: " ++
-            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+        @compileError("zsl.float.Atan2: at least one of X or Y must be a float type, the other must be a bool, an int or a float type, got\n\tX = " ++
+            @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n");
 
     return float.Coerce(X, Y);
 }

@@ -9,7 +9,7 @@ const numeric = @import("../../numeric.zig");
 
 pub fn Abs(X: type) type {
     comptime if (!meta.isNumeric(X))
-        @compileError("zsl.numeric.abs: x must be a numeric, got \n\tx: " ++ @typeName(X) ++ "\n");
+        @compileError("zsl.numeric.Abs: X must be a numeric type, got \n\tX = " ++ @typeName(X) ++ "\n");
 
     switch (comptime meta.numericType(X)) {
         .bool => return X,
@@ -19,7 +19,7 @@ pub fn Abs(X: type) type {
         .complex => return complex.Abs(X),
         .custom => {
             if (comptime !meta.hasMethod(X, "Abs", fn (type) type, &.{X}))
-                @compileError("zsl.numeric.abs: " ++ @typeName(X) ++ " must implement `fn Abs(type) type`");
+                @compileError("zsl.numeric.Abs: " ++ @typeName(X) ++ " must implement `fn Abs(type) type`");
 
             return X.Abs(X);
         },

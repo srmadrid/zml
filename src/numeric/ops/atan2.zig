@@ -9,7 +9,7 @@ const numeric = @import("../../numeric.zig");
 
 pub fn Atan2(Y: type, X: type) type {
     comptime if (!meta.isNumeric(Y) or !meta.isNumeric(X))
-        @compileError("zsl.numeric.atan2: x and y must be numerics, got \n\ty: " ++ @typeName(Y) ++ "\n\tx: " ++ @typeName(X) ++ "\n");
+        @compileError("zsl.numeric.Atan2: Y and X must be numeric types, got \n\tY = " ++ @typeName(Y) ++ "\n\tX = " ++ @typeName(X) ++ "\n");
 
     if (comptime meta.isCustomNumeric(Y)) {
         if (comptime meta.isCustomNumeric(X)) { // X and Y both custom
@@ -19,33 +19,33 @@ pub fn Atan2(Y: type, X: type) type {
                 fn (type, type) type,
                 &.{ Y, X },
             ) orelse
-                @compileError("zsl.numeric.atan2: " ++ @typeName(Y) ++ " or " ++ @typeName(X) ++ " must implement `fn Atan2(type, type) type`");
+                @compileError("zsl.numeric.Atan2: " ++ @typeName(Y) ++ " or " ++ @typeName(X) ++ " must implement `fn Atan2(type, type) type`");
 
             return Impl.Atan2(Y, X);
         } else { // only Y custom
             comptime if (!meta.hasMethod(Y, "Atan2", fn (type, type) type, &.{ Y, X }))
-                @compileError("zsl.numeric.atan2: " ++ @typeName(Y) ++ " must implement `fn Atan2(type, type) type`");
+                @compileError("zsl.numeric.Atan2: " ++ @typeName(Y) ++ " must implement `fn Atan2(type, type) type`");
 
             return Y.Atan2(Y, X);
         }
     } else if (comptime meta.isCustomNumeric(X)) { // only Y custom
         comptime if (!meta.hasMethod(Y, "Atan2", fn (type, type) type, &.{ Y, X }))
-            @compileError("zsl.numeric.atan2: " ++ @typeName(X) ++ " must implement `fn Atan2(type, type) type`");
+            @compileError("zsl.numeric.Atan2: " ++ @typeName(X) ++ " must implement `fn Atan2(type, type) type`");
 
         return X.Atan2(Y, X);
     }
 
     switch (comptime meta.numericType(Y)) {
         .bool => switch (comptime meta.numericType(X)) {
-            .bool => @compileError("zsl.numeric.atan2: not defined for " ++ @typeName(Y) ++ " and " ++ @typeName(X) ++ "."),
-            .int => @compileError("zsl.numeric.atan2: not defined for " ++ @typeName(Y) ++ " and " ++ @typeName(X) ++ "."),
+            .bool => @compileError("zsl.numeric.Atan2: not defined for " ++ @typeName(Y) ++ " and " ++ @typeName(X) ++ "."),
+            .int => @compileError("zsl.numeric.Atan2: not defined for " ++ @typeName(Y) ++ " and " ++ @typeName(X) ++ "."),
             .float => return float.Atan2(Y, X),
             .dyadic => return dyadic.Atan2(Y, X),
             .complex => return complex.Atan2(Y, X),
             .custom => unreachable,
         },
         .int => switch (comptime meta.numericType(X)) {
-            .bool, .int => @compileError("zsl.numeric.atan2: not defined for " ++ @typeName(Y) ++ " and " ++ @typeName(X) ++ "."),
+            .bool, .int => @compileError("zsl.numeric.Atan2: not defined for " ++ @typeName(Y) ++ " and " ++ @typeName(X) ++ "."),
             .float => return float.Atan2(Y, X),
             .dyadic => return dyadic.Atan2(Y, X),
             .complex => return complex.Atan2(Y, X),

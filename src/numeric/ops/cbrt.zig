@@ -9,17 +9,17 @@ const numeric = @import("../../numeric.zig");
 
 pub fn Cbrt(X: type) type {
     comptime if (!meta.isNumeric(X))
-        @compileError("zsl.numeric.cbrt: x must be a numeric, got \n\tx: " ++ @typeName(X) ++ "\n");
+        @compileError("zsl.numeric.Cbrt: X must be a numeric type, got \n\tX = " ++ @typeName(X) ++ "\n");
 
     switch (comptime meta.numericType(X)) {
-        .bool => @compileError("zsl.numeric.cbrt: not defined for " ++ @typeName(X) ++ "."),
-        .int => @compileError("zsl.numeric.cbrt: not defined for " ++ @typeName(X) ++ "."),
+        .bool => @compileError("zsl.numeric.Cbrt: not defined for " ++ @typeName(X) ++ "."),
+        .int => @compileError("zsl.numeric.Cbrt: not defined for " ++ @typeName(X) ++ "."),
         .float => return X,
         .dyadic => return X,
         .complex => return X,
         .custom => {
             if (comptime !meta.hasMethod(X, "Cbrt", fn (type) type, &.{X}))
-                @compileError("zsl.numeric.cbrt: " ++ @typeName(X) ++ " must implement `fn Cbrt(type) type`");
+                @compileError("zsl.numeric.Cbrt: " ++ @typeName(X) ++ " must implement `fn Cbrt(type) type`");
 
             return X.Cbrt(X);
         },

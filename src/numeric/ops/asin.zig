@@ -9,17 +9,17 @@ const numeric = @import("../../numeric.zig");
 
 pub fn Asin(X: type) type {
     comptime if (!meta.isNumeric(X))
-        @compileError("zsl.numeric.asin: x must be a numeric, got \n\tx: " ++ @typeName(X) ++ "\n");
+        @compileError("zsl.numeric.Asin: X must be a numeric type, got \n\tX = " ++ @typeName(X) ++ "\n");
 
     switch (comptime meta.numericType(X)) {
-        .bool => @compileError("zsl.numeric.asin: not defined for " ++ @typeName(X) ++ "."),
-        .int => @compileError("zsl.numeric.asin: not defined for " ++ @typeName(X) ++ "."),
+        .bool => @compileError("zsl.numeric.Asin: not defined for " ++ @typeName(X) ++ "."),
+        .int => @compileError("zsl.numeric.Asin: not defined for " ++ @typeName(X) ++ "."),
         .float => return X,
         .dyadic => return X,
         .complex => return X,
         .custom => {
             if (comptime !meta.hasMethod(X, "Asin", fn (type) type, &.{X}))
-                @compileError("zsl.numeric.asin: " ++ @typeName(X) ++ " must implement `fn Asin(type) type`");
+                @compileError("zsl.numeric.Asin: " ++ @typeName(X) ++ " must implement `fn Asin(type) type`");
 
             return X.Asin(X);
         },

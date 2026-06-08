@@ -9,7 +9,7 @@ const numeric = @import("../../numeric.zig");
 
 pub fn Re(X: type) type {
     comptime if (!meta.isNumeric(X))
-        @compileError("zsl.numeric.re: x must be a numeric, got \n\tx: " ++ @typeName(X) ++ "\n");
+        @compileError("zsl.numeric.Re: X must be a numeric type, got \n\tX = " ++ @typeName(X) ++ "\n");
 
     switch (comptime meta.numericType(X)) {
         .bool => return X,
@@ -19,7 +19,7 @@ pub fn Re(X: type) type {
         .complex => return meta.Scalar(X),
         .custom => {
             if (comptime !meta.hasMethod(X, "Re", fn (type) type, &.{X}))
-                @compileError("zsl.numeric.re: " ++ @typeName(X) ++ " must implement `fn Re(type) type`");
+                @compileError("zsl.numeric.Re: " ++ @typeName(X) ++ " must implement `fn Re(type) type`");
 
             return X.Re(X);
         },

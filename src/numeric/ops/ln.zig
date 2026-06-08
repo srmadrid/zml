@@ -9,17 +9,17 @@ const numeric = @import("../../numeric.zig");
 
 pub fn Ln(X: type) type {
     comptime if (!meta.isNumeric(X))
-        @compileError("zsl.numeric.ln: x must be a numeric, got \n\tx: " ++ @typeName(X) ++ "\n");
+        @compileError("zsl.numeric.Ln: X must be a numeric type, got \n\tX = " ++ @typeName(X) ++ "\n");
 
     switch (comptime meta.numericType(X)) {
-        .bool => @compileError("zsl.numeric.ln: not defined for " ++ @typeName(X) ++ "."),
-        .int => @compileError("zsl.numeric.ln: not defined for " ++ @typeName(X) ++ "."),
+        .bool => @compileError("zsl.numeric.Ln: not defined for " ++ @typeName(X) ++ "."),
+        .int => @compileError("zsl.numeric.Ln: not defined for " ++ @typeName(X) ++ "."),
         .float => return X,
         .dyadic => return X,
         .complex => return X,
         .custom => {
             if (comptime !meta.hasMethod(X, "Ln", fn (type) type, &.{X}))
-                @compileError("zsl.numeric.ln: " ++ @typeName(X) ++ " must implement `fn Ln(type) type`");
+                @compileError("zsl.numeric.Ln: " ++ @typeName(X) ++ " must implement `fn Ln(type) type`");
 
             return X.Ln(X);
         },

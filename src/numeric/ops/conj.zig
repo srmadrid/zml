@@ -9,7 +9,7 @@ const numeric = @import("../../numeric.zig");
 
 pub fn Conj(X: type) type {
     comptime if (!meta.isNumeric(X))
-        @compileError("zsl.numeric.conj: x must be a numeric, got \n\tx: " ++ @typeName(X) ++ "\n");
+        @compileError("zsl.numeric.Conj: X must be a numeric type, got \n\tX = " ++ @typeName(X) ++ "\n");
 
     switch (comptime meta.numericType(X)) {
         .bool => return X,
@@ -19,7 +19,7 @@ pub fn Conj(X: type) type {
         .complex => return X,
         .custom => {
             if (comptime !meta.hasMethod(X, "Conj", fn (type) type, &.{X}))
-                @compileError("zsl.numeric.conj: " ++ @typeName(X) ++ " must implement `fn Conj(type) type`");
+                @compileError("zsl.numeric.Conj: " ++ @typeName(X) ++ " must implement `fn Conj(type) type`");
 
             return X.Conj(X);
         },

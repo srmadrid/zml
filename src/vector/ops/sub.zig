@@ -39,7 +39,7 @@ pub fn sub(x: anytype, y: anytype) vector.Sub(@TypeOf(x), @TypeOf(y)) {
     if (comptime meta.isDenseVector(X) or meta.isSparseVector(X) or
         meta.isDenseVector(Y) or meta.isSparseVector(Y))
         @compileError("zsl.vector.sub: the result cannot be a heap-allocated vector type, i.e., both inputs must be static vectors, got\n\tx: " ++
-            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\tresult: " ++ @typeName(R) ++ "\n");
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\tresult: " ++ @typeName(R) ++ "\nFor these inputs use zsl.vector.subAlloc instead.");
 
     return vecops.apply2(x, y, numeric.sub);
 }

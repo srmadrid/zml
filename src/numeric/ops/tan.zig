@@ -9,17 +9,17 @@ const numeric = @import("../../numeric.zig");
 
 pub fn Tan(X: type) type {
     comptime if (!meta.isNumeric(X))
-        @compileError("zsl.numeric.tan: x must be a numeric, got \n\tx: " ++ @typeName(X) ++ "\n");
+        @compileError("zsl.numeric.Tan: X must be a numeric type, got \n\tX = " ++ @typeName(X) ++ "\n");
 
     switch (comptime meta.numericType(X)) {
-        .bool => @compileError("zsl.numeric.tan: not defined for " ++ @typeName(X) ++ "."),
-        .int => @compileError("zsl.numeric.tan: not defined for " ++ @typeName(X) ++ "."),
+        .bool => @compileError("zsl.numeric.Tan: not defined for " ++ @typeName(X) ++ "."),
+        .int => @compileError("zsl.numeric.Tan: not defined for " ++ @typeName(X) ++ "."),
         .float => return X,
         .dyadic => return X,
         .complex => return X,
         .custom => {
             if (comptime !meta.hasMethod(X, "Tan", fn (type) type, &.{X}))
-                @compileError("zsl.numeric.tan: " ++ @typeName(X) ++ " must implement `fn Tan(type) type`");
+                @compileError("zsl.numeric.Tan: " ++ @typeName(X) ++ " must implement `fn Tan(type) type`");
 
             return X.Tan(X);
         },

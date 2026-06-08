@@ -12,7 +12,7 @@ const linalg = @import("../../../linalg.zig");
 pub fn Dotc(X: type, Y: type) type {
     comptime if (!meta.isManyItemPointer(X) or !meta.isNumeric(meta.Child(X)) or
         !meta.isManyItemPointer(Y) or !meta.isNumeric(meta.Child(Y)))
-        @compileError("zsl.linalg.blas.dotc: x and y must be many-item pointers to numerics, got \n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+        @compileError("zsl.linalg.blas.Dotc: X and Y must be many-item pointer types to numerics, got \n\tX = " ++ @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n");
 
     return numeric.Mul(numeric.Conj(meta.Child(X)), meta.Child(Y));
 }

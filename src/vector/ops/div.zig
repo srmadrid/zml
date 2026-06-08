@@ -38,7 +38,7 @@ pub fn div(x: anytype, y: anytype) vector.Div(@TypeOf(x), @TypeOf(y)) {
 
     if (comptime meta.isDenseVector(X) or meta.isSparseVector(X))
         @compileError("zsl.vector.div: the result cannot be a heap-allocated vector type, i.e., x must be a static vector, got\n\tx: " ++
-            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\tresult: " ++ @typeName(R) ++ "\n");
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\tresult: " ++ @typeName(R) ++ "\nFor these inputs use zsl.vector.divAlloc instead.");
 
     return vecops.apply2(x, y, numeric.div);
 }

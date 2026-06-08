@@ -9,7 +9,7 @@ const numeric = @import("../../numeric.zig");
 
 pub fn Pow(X: type, Y: type) type {
     comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y))
-        @compileError("zsl.numeric.pow: x and y must be numerics, got \n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+        @compileError("zsl.numeric.Pow: X and Y must be numeric types, got \n\tX = " ++ @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n");
 
     if (comptime meta.isCustomNumeric(X)) {
         if (comptime meta.isCustomNumeric(Y)) { // X and Y both custom
@@ -19,25 +19,25 @@ pub fn Pow(X: type, Y: type) type {
                 fn (type, type) type,
                 &.{ X, Y },
             ) orelse
-                @compileError("zsl.numeric.pow: " ++ @typeName(X) ++ " or " ++ @typeName(Y) ++ " must implement `fn Pow(type, type) type`");
+                @compileError("zsl.numeric.Pow: " ++ @typeName(X) ++ " or " ++ @typeName(Y) ++ " must implement `fn Pow(type, type) type`");
 
             return Impl.Pow(X, Y);
         } else { // only X custom
             comptime if (!meta.hasMethod(X, "Pow", fn (type, type) type, &.{ X, Y }))
-                @compileError("zsl.numeric.pow: " ++ @typeName(X) ++ " must implement `fn Pow(type, type) type`");
+                @compileError("zsl.numeric.Pow: " ++ @typeName(X) ++ " must implement `fn Pow(type, type) type`");
 
             return X.Pow(X, Y);
         }
     } else if (comptime meta.isCustomNumeric(Y)) { // only Y custom
         comptime if (!meta.hasMethod(Y, "Pow", fn (type, type) type, &.{ X, Y }))
-            @compileError("zsl.numeric.pow: " ++ @typeName(Y) ++ " must implement `fn Pow(type, type) type`");
+            @compileError("zsl.numeric.Pow: " ++ @typeName(Y) ++ " must implement `fn Pow(type, type) type`");
 
         return Y.Pow(X, Y);
     }
 
     switch (comptime meta.numericType(X)) {
         .bool => switch (comptime meta.numericType(Y)) {
-            .bool => @compileError("zsl.numeric.pow: not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ "."),
+            .bool => @compileError("zsl.numeric.Pow: not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ "."),
             .int => return int.Pow(X, Y),
             .float => return float.Pow(X, Y),
             .dyadic => return dyadic.Pow(X, Y),

@@ -9,17 +9,17 @@ const numeric = @import("../../numeric.zig");
 
 pub fn Cosh(X: type) type {
     comptime if (!meta.isNumeric(X))
-        @compileError("zsl.numeric.cosh: x must be a numeric, got \n\tx: " ++ @typeName(X) ++ "\n");
+        @compileError("zsl.numeric.Cosh: X must be a numeric type, got \n\tX = " ++ @typeName(X) ++ "\n");
 
     switch (comptime meta.numericType(X)) {
-        .bool => @compileError("zsl.numeric.cosh: not defined for " ++ @typeName(X) ++ "."),
-        .int => @compileError("zsl.numeric.cosh: not defined for " ++ @typeName(X) ++ "."),
+        .bool => @compileError("zsl.numeric.Cosh: not defined for " ++ @typeName(X) ++ "."),
+        .int => @compileError("zsl.numeric.Cosh: not defined for " ++ @typeName(X) ++ "."),
         .float => return X,
         .dyadic => return X,
         .complex => return X,
         .custom => {
             if (comptime !meta.hasMethod(X, "Cosh", fn (type) type, &.{X}))
-                @compileError("zsl.numeric.cosh: " ++ @typeName(X) ++ " must implement `fn Cosh(type) type`");
+                @compileError("zsl.numeric.Cosh: " ++ @typeName(X) ++ " must implement `fn Cosh(type) type`");
 
             return X.Cosh(X);
         },

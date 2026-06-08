@@ -9,7 +9,7 @@ const numeric = @import("../../numeric.zig");
 
 pub fn Fma(X: type, Y: type, Z: type) type {
     comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or !meta.isNumeric(Z))
-        @compileError("zsl.numeric.fma: x, y and z must be numerics, got \n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\tz: " ++ @typeName(Z) ++ "\n");
+        @compileError("zsl.numeric.Fma: X, Y and Z must be numeric types, got \n\tX = " ++ @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n\tZ = " ++ @typeName(Z) ++ "\n");
 
     if (comptime meta.isCustomNumeric(X)) {
         if (comptime meta.isCustomNumeric(Y)) {
@@ -20,7 +20,7 @@ pub fn Fma(X: type, Y: type, Z: type) type {
                     fn (type, type, type) type,
                     &.{ X, Y, Z },
                 ) orelse
-                    @compileError("zsl.numeric.fma: " ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ " or " ++ @typeName(Z) ++ " must implement `fn Fma(type, type, type) type`");
+                    @compileError("zsl.numeric.Fma: " ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ " or " ++ @typeName(Z) ++ " must implement `fn Fma(type, type, type) type`");
 
                 return Impl.Fma(X, Y, Z);
             } else { // only X and Y custom
@@ -30,7 +30,7 @@ pub fn Fma(X: type, Y: type, Z: type) type {
                     fn (type, type, type) type,
                     &.{ X, Y, Z },
                 ) orelse
-                    @compileError("zsl.numeric.fma: " ++ @typeName(X) ++ " or " ++ @typeName(Y) ++ " must implement `fn Fma(type, type, type) type`");
+                    @compileError("zsl.numeric.Fma: " ++ @typeName(X) ++ " or " ++ @typeName(Y) ++ " must implement `fn Fma(type, type, type) type`");
 
                 return Impl.Fma(X, Y, Z);
             }
@@ -42,12 +42,12 @@ pub fn Fma(X: type, Y: type, Z: type) type {
                     fn (type, type, type) type,
                     &.{ X, Y, Z },
                 ) orelse
-                    @compileError("zsl.numeric.fma: " ++ @typeName(X) ++ " or " ++ @typeName(Z) ++ " must implement `fn Fma(type, type, type) type`");
+                    @compileError("zsl.numeric.Fma: " ++ @typeName(X) ++ " or " ++ @typeName(Z) ++ " must implement `fn Fma(type, type, type) type`");
 
                 return Impl.Fma(X, Y, Z);
             } else { // only X custom
                 comptime if (!meta.hasMethod(X, "Fma", fn (type, type, type) type, &.{ X, Y, Z }))
-                    @compileError("zsl.numeric.fma: " ++ @typeName(X) ++ " must implement `fn Fma(type, type, type) type`");
+                    @compileError("zsl.numeric.Fma: " ++ @typeName(X) ++ " must implement `fn Fma(type, type, type) type`");
 
                 return X.Fma(X, Y, Z);
             }
@@ -60,18 +60,18 @@ pub fn Fma(X: type, Y: type, Z: type) type {
                 fn (type, type, type) type,
                 &.{ X, Y, Z },
             ) orelse
-                @compileError("zsl.numeric.fma: " ++ @typeName(Y) ++ " or " ++ @typeName(Z) ++ " must implement `fn Fma(type, type, type) type`");
+                @compileError("zsl.numeric.Fma: " ++ @typeName(Y) ++ " or " ++ @typeName(Z) ++ " must implement `fn Fma(type, type, type) type`");
 
             return Impl.Fma(X, Y, Z);
         } else { // only Y custom
             comptime if (!meta.hasMethod(Y, "Fma", fn (type, type, type) type, &.{ X, Y, Z }))
-                @compileError("zsl.numeric.fma: " ++ @typeName(Y) ++ " must implement `fn Fma(type, type, type) type`");
+                @compileError("zsl.numeric.Fma: " ++ @typeName(Y) ++ " must implement `fn Fma(type, type, type) type`");
 
             return Y.Fma(X, Y, Z);
         }
     } else if (comptime meta.isCustomNumeric(Z)) { // only Z custom
         comptime if (!meta.hasMethod(Z, "Fma", fn (type, type, type) type, &.{ X, Y, Z }))
-            @compileError("zsl.numeric.fma: " ++ @typeName(Z) ++ " must implement `fn Fma(type, type, type) type`");
+            @compileError("zsl.numeric.Fma: " ++ @typeName(Z) ++ " must implement `fn Fma(type, type, type) type`");
 
         return Z.Fma(X, Y, Z);
     }
@@ -79,7 +79,7 @@ pub fn Fma(X: type, Y: type, Z: type) type {
     switch (comptime meta.numericType(X)) {
         .bool => switch (comptime meta.numericType(Y)) {
             .bool => switch (comptime meta.numericType(Z)) {
-                .bool => @compileError("zsl.numeric.fma: not defined for " ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ " and " ++ @typeName(Z) ++ "."),
+                .bool => @compileError("zsl.numeric.Fma: not defined for " ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ " and " ++ @typeName(Z) ++ "."),
                 .int => return int.Fma(X, Y, Z),
                 .float => return float.Fma(X, Y, Z),
                 .dyadic => return dyadic.Fma(X, Y, Z),

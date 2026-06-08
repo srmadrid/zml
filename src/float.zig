@@ -12,14 +12,14 @@ pub const Coerce = @import("float/coerce.zig").Coerce;
 // Constant functions
 pub fn pi(comptime Float: type) Float {
     comptime if (!meta.isNumeric(Float) or meta.numericType(Float) != .float)
-        @compileError("zsl.float.pi: Float must be a float type, got \n\nFloat: " ++ @typeName(Float) ++ "\n");
+        @compileError("zsl.float.pi: Float must be a float type, got \n\nFloat = " ++ @typeName(Float) ++ "\n");
 
     return 3.1415926535897932384626433832795028841971;
 }
 
 pub fn e(comptime Float: type) Float {
     comptime if (!meta.isNumeric(Float) or meta.numericType(Float) != .float)
-        @compileError("zsl.float.e: Float must be a float type, got \n\tFloat: " ++ @typeName(Float) ++ "\n");
+        @compileError("zsl.float.e: Float must be a float type, got \n\tFloat = " ++ @typeName(Float) ++ "\n");
 
     return 2.7182818284590452353602874713526624977572;
 }
@@ -29,8 +29,8 @@ pub fn Add(comptime X: type, comptime Y: type) type {
     comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or
         !meta.numericType(X).le(.float) or !meta.numericType(Y).le(.float) or
         (meta.numericType(X) != .float and meta.numericType(Y) != .float))
-        @compileError("zsl.float.add: at least one of x or y must be a float, the other must be a bool, an int or a float, got\n\tx: " ++
-            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+        @compileError("zsl.float.Add: at least one of X or Y must be a float type, the other must be a bool, an int or a float type, got\n\tX = " ++
+            @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n");
 
     return float.Coerce(X, Y);
 }
@@ -61,8 +61,8 @@ pub fn Sub(comptime X: type, comptime Y: type) type {
     comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or
         !meta.numericType(X).le(.float) or !meta.numericType(Y).le(.float) or
         (meta.numericType(X) != .float and meta.numericType(Y) != .float))
-        @compileError("zsl.float.sub: at least one of x or y must be a float, the other must be a bool, an int or a float, got\n\tx: " ++
-            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+        @compileError("zsl.float.Sub: at least one of X or Y must be a float type, the other must be a bool, an int or a float type, got\n\tX = " ++
+            @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n");
 
     return float.Coerce(X, Y);
 }
@@ -93,8 +93,8 @@ pub fn Mul(comptime X: type, comptime Y: type) type {
     comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or
         !meta.numericType(X).le(.float) or !meta.numericType(Y).le(.float) or
         (meta.numericType(X) != .float and meta.numericType(Y) != .float))
-        @compileError("zsl.float.mul: at least one of x or y must be a float, the other must be a bool, an int or a float, got\n\tx: " ++
-            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+        @compileError("zsl.float.Mul: at least one of X or Y must be a float type, the other must be a bool, an int or a float type, got\n\tX = " ++
+            @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n");
 
     return float.Coerce(X, Y);
 }
@@ -125,8 +125,8 @@ pub fn Fma(comptime X: type, comptime Y: type, comptime Z: type) type {
     comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or !meta.isNumeric(Z) or
         !meta.numericType(X).le(.float) or !meta.numericType(Y).le(.float) or !meta.numericType(Z).le(.float) or
         (meta.numericType(X) != .float and meta.numericType(Y) != .float and meta.numericType(Z) != .float))
-        @compileError("zsl.float.fma: at least one of x, y or z must be a float, the others must be bool, int or float, got\n\tx: " ++
-            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\tz: " ++ @typeName(Z) ++ "\n");
+        @compileError("zsl.float.Fma: at least one of X, Y or Z must be a float type, the others must be bool, int or float types, got\n\tX = " ++
+            @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n\tZ = " ++ @typeName(Z) ++ "\n");
 
     return float.Coerce(X, numeric.Coerce(Y, Z));
 }
@@ -160,8 +160,8 @@ pub fn Div(comptime X: type, comptime Y: type) type {
     comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or
         !meta.numericType(X).le(.float) or !meta.numericType(Y).le(.float) or
         (meta.numericType(X) != .float and meta.numericType(Y) != .float))
-        @compileError("zsl.float.div: at least one of x or y must be a float, the other must be a bool, an int or a float, got\n\tx: " ++
-            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+        @compileError("zsl.float.Div: at least one of X or Y must be a float type, the other must be a bool, an int or a float type, got\n\tX = " ++
+            @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n");
 
     return float.Coerce(X, Y);
 }
@@ -407,8 +407,8 @@ pub fn Max(comptime X: type, comptime Y: type) type {
     comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or
         !meta.numericType(X).le(.float) or !meta.numericType(Y).le(.float) or
         (meta.numericType(X) != .float and meta.numericType(Y) != .float))
-        @compileError("zsl.float.max: at least one of x or y must be a float, the other must be a bool, an int or a float, got\n\tx: " ++
-            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+        @compileError("zsl.float.Max: at least one of X or Y must be a float type, the other must be a bool, an int or a float type, got\n\tX = " ++
+            @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n");
 
     return float.Coerce(X, Y);
 }
@@ -439,8 +439,8 @@ pub fn Min(comptime X: type, comptime Y: type) type {
     comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or
         !meta.numericType(X).le(.float) or !meta.numericType(Y).le(.float) or
         (meta.numericType(X) != .float and meta.numericType(Y) != .float))
-        @compileError("zsl.float.min: at least one of x or y must be a float, the other must be a bool, an int or a float, got\n\tx: " ++
-            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+        @compileError("zsl.float.Min: at least one of X or Y must be a float type, the other must be a bool, an int or a float type, got\n\tX = " ++
+            @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n");
 
     return float.Coerce(X, Y);
 }

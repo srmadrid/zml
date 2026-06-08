@@ -9,17 +9,17 @@ const numeric = @import("../../numeric.zig");
 
 pub fn Cos(X: type) type {
     comptime if (!meta.isNumeric(X))
-        @compileError("zsl.numeric.cos: x must be a numeric, got \n\tx: " ++ @typeName(X) ++ "\n");
+        @compileError("zsl.numeric.Cos: X must be a numeric type, got \n\tX = " ++ @typeName(X) ++ "\n");
 
     switch (comptime meta.numericType(X)) {
-        .bool => @compileError("zsl.numeric.cos: not defined for " ++ @typeName(X) ++ "."),
-        .int => @compileError("zsl.numeric.cos: not defined for " ++ @typeName(X) ++ "."),
+        .bool => @compileError("zsl.numeric.Cos: not defined for " ++ @typeName(X) ++ "."),
+        .int => @compileError("zsl.numeric.Cos: not defined for " ++ @typeName(X) ++ "."),
         .float => return X,
         .dyadic => return X,
         .complex => return X,
         .custom => {
             if (comptime !meta.hasMethod(X, "Cos", fn (type) type, &.{X}))
-                @compileError("zsl.numeric.cos: " ++ @typeName(X) ++ " must implement `fn Cos(type) type`");
+                @compileError("zsl.numeric.Cos: " ++ @typeName(X) ++ " must implement `fn Cos(type) type`");
 
             return X.Cos(X);
         },

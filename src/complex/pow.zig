@@ -7,8 +7,8 @@ pub fn Pow(comptime X: type, comptime Y: type) type {
     comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or
         !meta.numericType(X).le(.complex) or !meta.numericType(Y).le(.complex) or
         (meta.numericType(X) != .complex and meta.numericType(Y) != .complex))
-        @compileError("zsl.complex.pow: at least one of x or y must be a complex, the other must be a bool, an int, a float, a dyadic or a complex, got\n\tx: " ++
-            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+        @compileError("zsl.complex.Pow: at least one of X or Y must be a complex type, the other must be a bool, an int, a float, a dyadic or a complex type, got\n\tX = " ++
+            @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n");
 
     return complex.Coerce(X, Y);
 }

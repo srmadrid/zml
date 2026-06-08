@@ -9,17 +9,17 @@ const numeric = @import("../../numeric.zig");
 
 pub fn Acosh(X: type) type {
     comptime if (!meta.isNumeric(X))
-        @compileError("zsl.numeric.acosh: x must be a numeric, got \n\tx: " ++ @typeName(X) ++ "\n");
+        @compileError("zsl.numeric.Acosh: X must be a numeric type, got \n\tX = " ++ @typeName(X) ++ "\n");
 
     switch (comptime meta.numericType(X)) {
-        .bool => @compileError("zsl.numeric.acosh: not defined for " ++ @typeName(X) ++ "."),
-        .int => @compileError("zsl.numeric.acosh: not defined for " ++ @typeName(X) ++ "."),
+        .bool => @compileError("zsl.numeric.Acosh: not defined for " ++ @typeName(X) ++ "."),
+        .int => @compileError("zsl.numeric.Acosh: not defined for " ++ @typeName(X) ++ "."),
         .float => return X,
         .dyadic => return X,
         .complex => return X,
         .custom => {
             if (comptime !meta.hasMethod(X, "Acosh", fn (type) type, &.{X}))
-                @compileError("zsl.numeric.acosh: " ++ @typeName(X) ++ " must implement `fn Acosh(type) type`");
+                @compileError("zsl.numeric.Acosh: " ++ @typeName(X) ++ " must implement `fn Acosh(type) type`");
 
             return X.Acosh(X);
         },

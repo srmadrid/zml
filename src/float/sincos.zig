@@ -13,7 +13,7 @@ const dbl64 = @import("dbl64.zig");
 
 pub fn Sincos(comptime X: type) type {
     comptime if (!meta.isNumeric(X) or meta.numericType(X) != .float)
-        @compileError("zsl.float.sincos: x must be a float, got \n\tx: " ++ @typeName(X) ++ "\n");
+        @compileError("zsl.float.Sincos: X must be a float type, got \n\tX = " ++ @typeName(X) ++ "\n");
 
     return struct {
         sinx: X,

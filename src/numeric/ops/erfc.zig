@@ -9,17 +9,17 @@ const numeric = @import("../../numeric.zig");
 
 pub fn Erfc(X: type) type {
     comptime if (!meta.isNumeric(X))
-        @compileError("zsl.numeric.erfc: x must be a numeric, got \n\tx: " ++ @typeName(X) ++ "\n");
+        @compileError("zsl.numeric.Erfc: X must be a numeric type, got \n\tX = " ++ @typeName(X) ++ "\n");
 
     switch (comptime meta.numericType(X)) {
-        .bool => @compileError("zsl.numeric.erfc: not defined for " ++ @typeName(X) ++ "."),
-        .int => @compileError("zsl.numeric.erfc: not defined for " ++ @typeName(X) ++ "."),
+        .bool => @compileError("zsl.numeric.Erfc: not defined for " ++ @typeName(X) ++ "."),
+        .int => @compileError("zsl.numeric.Erfc: not defined for " ++ @typeName(X) ++ "."),
         .float => return X,
         .dyadic => return X,
         .complex => return X,
         .custom => {
             if (comptime !meta.hasMethod(X, "Erfc", fn (type) type, &.{X}))
-                @compileError("zsl.numeric.erfc: " ++ @typeName(X) ++ " must implement `fn Erfc(type) type`");
+                @compileError("zsl.numeric.Erfc: " ++ @typeName(X) ++ " must implement `fn Erfc(type) type`");
 
             return X.Erfc(X);
         },

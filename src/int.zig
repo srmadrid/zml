@@ -15,8 +15,8 @@ pub fn Add(comptime X: type, comptime Y: type) type {
     comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or
         !meta.numericType(X).le(.int) or !meta.numericType(Y).le(.int) or
         (meta.numericType(X) != .int and meta.numericType(Y) != .int))
-        @compileError("zsl.int.add: at least one of x or y must be an int, the other must be a bool or an int, got\n\tx: " ++
-            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+        @compileError("zsl.int.Add: at least one of X or Y must be an int type, the other must be a bool or an int type, got\n\tX = " ++
+            @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n");
 
     return int.Coerce(X, Y);
 }
@@ -57,8 +57,8 @@ pub fn Sub(comptime X: type, comptime Y: type) type {
     comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or
         !meta.numericType(X).le(.int) or !meta.numericType(Y).le(.int) or
         (meta.numericType(X) != .int and meta.numericType(Y) != .int))
-        @compileError("zsl.int.sub: at least one of x or y must be an int, the other must be a bool or an int, got\n\tx: " ++
-            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+        @compileError("zsl.int.Sub: at least one of X or Y must be an int type, the other must be a bool or an int type, got\n\tX = " ++
+            @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n");
 
     return int.Coerce(X, Y);
 }
@@ -99,8 +99,8 @@ pub fn Mul(comptime X: type, comptime Y: type) type {
     comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or
         !meta.numericType(X).le(.int) or !meta.numericType(Y).le(.int) or
         (meta.numericType(X) != .int and meta.numericType(Y) != .int))
-        @compileError("zsl.int.mul: at least one of x or y must be an int, the other must be a bool or an int, got\n\tx: " ++
-            @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
+        @compileError("zsl.int.Mul: at least one of X or Y must be an int type, the other must be a bool or an int type, got\n\tX = " ++
+            @typeName(X) ++ "\n\tY = " ++ @typeName(Y));
 
     return int.Coerce(X, Y);
 }
@@ -141,8 +141,8 @@ pub fn Div(comptime X: type, comptime Y: type) type {
     comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or
         !meta.numericType(X).le(.int) or !meta.numericType(Y).le(.int) or
         (meta.numericType(X) != .int and meta.numericType(Y) != .int))
-        @compileError("zsl.int.div: at least one of x or y must be an int, the other must be a bool or an int, got\n\tx: " ++
-            @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
+        @compileError("zsl.int.Div: at least one of X or Y must be an int type, the other must be a bool or an int type, got\n\tX = " ++
+            @typeName(X) ++ "\n\tY = " ++ @typeName(Y));
 
     return int.Coerce(X, Y);
 }
@@ -386,8 +386,8 @@ pub fn Max(comptime X: type, comptime Y: type) type {
     comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or
         !meta.numericType(X).le(.int) or !meta.numericType(Y).le(.int) or
         (meta.numericType(X) != .int and meta.numericType(Y) != .int))
-        @compileError("zsl.int.max: at least one of x or y must be an int, the other must be a bool or an int, got\n\tx: " ++
-            @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
+        @compileError("zsl.int.Max: at least one of X or Y must be an int type, the other must be a bool or an int type, got\n\tX = " ++
+            @typeName(X) ++ "\n\tY = " ++ @typeName(Y));
 
     return int.Coerce(X, Y);
 }
@@ -418,8 +418,8 @@ pub fn Min(comptime X: type, comptime Y: type) type {
     comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or
         !meta.numericType(X).le(.int) or !meta.numericType(Y).le(.int) or
         (meta.numericType(X) != .int and meta.numericType(Y) != .int))
-        @compileError("zsl.int.min: at least one of x or y must be an int, the other must be a bool or an int, got\n\tx: " ++
-            @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
+        @compileError("zsl.int.Min: at least one of X or Y must be an int type, the other must be a bool or an int type, got\n\tX = " ++
+            @typeName(X) ++ "\n\tY = " ++ @typeName(Y));
 
     return int.Coerce(X, Y);
 }

@@ -5,7 +5,7 @@ const complex = @import("../complex.zig");
 
 pub fn Abs1(comptime Z: type) type {
     comptime if (!meta.isNumeric(Z) or meta.numericType(Z) != .complex)
-        @compileError("zsl.complex.abs1: z must be a complex, got \n\tz: " ++ @typeName(Z) ++ "\n");
+        @compileError("zsl.complex.Abs1: Z must be a complex type, got \n\tZ = " ++ @typeName(Z) ++ "\n");
 
     return meta.Scalar(Z);
 }

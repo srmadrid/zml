@@ -9,17 +9,17 @@ const numeric = @import("../../numeric.zig");
 
 pub fn Sinh(X: type) type {
     comptime if (!meta.isNumeric(X))
-        @compileError("zsl.numeric.sinh: x must be a numeric, got \n\tx: " ++ @typeName(X) ++ "\n");
+        @compileError("zsl.numeric.Sinh: X must be a numeric type, got \n\tX = " ++ @typeName(X) ++ "\n");
 
     switch (comptime meta.numericType(X)) {
-        .bool => @compileError("zsl.numeric.sinh: not defined for " ++ @typeName(X) ++ "."),
-        .int => @compileError("zsl.numeric.sinh: not defined for " ++ @typeName(X) ++ "."),
+        .bool => @compileError("zsl.numeric.Sinh: not defined for " ++ @typeName(X) ++ "."),
+        .int => @compileError("zsl.numeric.Sinh: not defined for " ++ @typeName(X) ++ "."),
         .float => return X,
         .dyadic => return X,
         .complex => return X,
         .custom => {
             if (comptime !meta.hasMethod(X, "Sinh", fn (type) type, &.{X}))
-                @compileError("zsl.numeric.sinh: " ++ @typeName(X) ++ " must implement `fn Sinh(type) type`");
+                @compileError("zsl.numeric.Sinh: " ++ @typeName(X) ++ " must implement `fn Sinh(type) type`");
 
             return X.Sinh(X);
         },

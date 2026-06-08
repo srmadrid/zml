@@ -9,7 +9,7 @@ const numeric = @import("../../numeric.zig");
 
 pub fn Sign(X: type) type {
     comptime if (!meta.isNumeric(X))
-        @compileError("zsl.numeric.sign: x must be a numeric, got \n\tx: " ++ @typeName(X) ++ "\n");
+        @compileError("zsl.numeric.Sign: X must be a numeric type, got \n\tX = " ++ @typeName(X) ++ "\n");
 
     switch (comptime meta.numericType(X)) {
         .bool => return X,
@@ -19,7 +19,7 @@ pub fn Sign(X: type) type {
         .complex => return X,
         .custom => {
             if (comptime !meta.hasMethod(X, "Sign", fn (type) type, &.{X}))
-                @compileError("zsl.numeric.sign: " ++ @typeName(X) ++ " must implement `fn Sign(type) type`");
+                @compileError("zsl.numeric.Sign: " ++ @typeName(X) ++ " must implement `fn Sign(type) type`");
 
             return X.Sign(X);
         },

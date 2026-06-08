@@ -9,7 +9,7 @@ const numeric = @import("../../numeric.zig");
 
 pub fn Add(X: type, Y: type) type {
     comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y))
-        @compileError("zsl.numeric.add: x and y must be numerics, got \n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+        @compileError("zsl.numeric.Add: X and Y must be numeric types, got \n\tX = " ++ @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n");
 
     if (comptime meta.isCustomNumeric(X)) {
         if (comptime meta.isCustomNumeric(Y)) { // X and Y both custom
@@ -19,25 +19,25 @@ pub fn Add(X: type, Y: type) type {
                 fn (type, type) type,
                 &.{ X, Y },
             ) orelse
-                @compileError("zsl.numeric.add: " ++ @typeName(X) ++ " or " ++ @typeName(Y) ++ " must implement `fn Add(type, type) type`");
+                @compileError("zsl.numeric.Add: " ++ @typeName(X) ++ " or " ++ @typeName(Y) ++ " must implement `fn Add(type, type) type`");
 
             return Impl.Add(X, Y);
         } else { // only X custom
             comptime if (!meta.hasMethod(X, "Add", fn (type, type) type, &.{ X, Y }))
-                @compileError("zsl.numeric.add: " ++ @typeName(X) ++ " must implement `fn Add(type, type) type`");
+                @compileError("zsl.numeric.Add: " ++ @typeName(X) ++ " must implement `fn Add(type, type) type`");
 
             return X.Add(X, Y);
         }
     } else if (comptime meta.isCustomNumeric(Y)) { // only Y custom
         comptime if (!meta.hasMethod(Y, "Add", fn (type, type) type, &.{ X, Y }))
-            @compileError("zsl.numeric.add: " ++ @typeName(Y) ++ " must implement `fn Add(type, type) type`");
+            @compileError("zsl.numeric.Add: " ++ @typeName(Y) ++ " must implement `fn Add(type, type) type`");
 
         return Y.Add(X, Y);
     }
 
     switch (comptime meta.numericType(X)) {
         .bool => switch (comptime meta.numericType(Y)) {
-            .bool => @compileError("zsl.numeric.add: not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ "."),
+            .bool => @compileError("zsl.numeric.Add: not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ "."),
             .int => return int.Add(X, Y),
             .float => return float.Add(X, Y),
             .dyadic => return dyadic.Add(X, Y),

@@ -9,7 +9,7 @@ const numeric = @import("../../numeric.zig");
 
 pub fn Neg(X: type) type {
     comptime if (!meta.isNumeric(X))
-        @compileError("zsl.numeric.neg: x must be a numeric, got \n\tx: " ++ @typeName(X) ++ "\n");
+        @compileError("zsl.numeric.Neg: X must be a numeric type, got \n\tX = " ++ @typeName(X) ++ "\n");
 
     switch (comptime meta.numericType(X)) {
         .bool => return X,
@@ -19,7 +19,7 @@ pub fn Neg(X: type) type {
         .complex => return X,
         .custom => {
             if (comptime !meta.hasMethod(X, "Neg", fn (type) type, &.{X}))
-                @compileError("zsl.numeric.neg: " ++ @typeName(X) ++ " must implement `fn Neg(type) type`");
+                @compileError("zsl.numeric.Neg: " ++ @typeName(X) ++ " must implement `fn Neg(type) type`");
 
             return X.Neg(X);
         },

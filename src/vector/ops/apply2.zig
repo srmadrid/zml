@@ -87,7 +87,7 @@ pub fn apply2(x: anytype, y: anytype, comptime op: anytype) vecops.Apply2(@TypeO
     if (comptime meta.isDenseVector(X) or meta.isSparseVector(X) or
         meta.isDenseVector(Y) or meta.isSparseVector(Y))
         @compileError("zsl.vector.apply2: the result cannot be a heap-allocated vector type, i.e., both inputs must be static vectors, or a static vector and a numeric, got\n\tx: " ++
-            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\top: " ++ @typeName(Op) ++ "\n\tresult: " ++ @typeName(R) ++ "\n");
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\top: " ++ @typeName(Op) ++ "\n\tresult: " ++ @typeName(R) ++ "\nFor these inputs use zsl.vector.apply2Alloc instead.");
 
     var result = R.init;
 
