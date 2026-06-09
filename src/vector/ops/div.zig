@@ -40,7 +40,7 @@ pub fn div(x: anytype, y: anytype) vector.Div(@TypeOf(x), @TypeOf(y)) {
         @compileError("zsl.vector.div: the result cannot be a heap-allocated vector type, i.e., x must be a static vector, got\n\tx: " ++
             @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\tresult: " ++ @typeName(R) ++ "\nFor these inputs use zsl.vector.divAlloc instead.");
 
-    return vecops.apply2(x, y, numeric.div) catch unreachable;
+    return vecops.apply2(x, y, numeric.div);
 }
 
 /// Performs division of vector by a numeric, dynamically allocating memory for

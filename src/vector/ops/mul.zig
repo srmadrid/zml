@@ -42,7 +42,7 @@ pub fn mul(x: anytype, y: anytype) vector.Mul(@TypeOf(x), @TypeOf(y)) {
         @compileError("zsl.vector.mul: the result cannot be a heap-allocated vector type, i.e., the vector input must be a static vector, got\n\tx: " ++
             @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\tresult: " ++ @typeName(R) ++ "\nFor these inputs use zsl.vector.mulAlloc instead.");
 
-    return vecops.apply2(x, y, numeric.mul) catch unreachable;
+    return vecops.apply2(x, y, numeric.mul);
 }
 
 /// Performs multiplication between a vector and a numeric, dynamically
