@@ -11,7 +11,8 @@ pub const blas = @import("linalg/blas.zig");
 
 // outer
 
-// cross
+pub const Cross = @import("linalg/cross.zig").Cross;
+pub const cross = @import("linalg/cross.zig").cross;
 
 pub const Norm = @import("linalg/norm.zig").Norm;
 pub const NormOrder = @import("linalg/norm.zig").NormOrder;
@@ -19,9 +20,10 @@ pub const norm = @import("linalg/norm.zig").norm;
 pub const normAlloc = @import("linalg/norm.zig").normAlloc;
 // pub const normInto = @import("linalg/norm.zig").normInto;
 
-// pub const normalize = @import("linalg/normalize.zig").normalize;
-// pub const normalizeAlloc = @import("linalg/normalize.zig").normalizeAlloc;
-// pub const normalizeInto = @import("linalg/normalize.zig").normalizeInto;
+pub const Normalize = @import("linalg/normalize.zig").Normalize;
+pub const normalize = @import("linalg/normalize.zig").normalize;
+pub const normalizeAlloc = @import("linalg/normalize.zig").normalizeAlloc;
+pub const normalizeInto = @import("linalg/normalize.zig").normalizeInto;
 
 // pub fn dot(x: anytype, y: anytype, ctx: anytype) !Coerce(Numeric(@TypeOf(x)), Numeric(@TypeOf(y))) {
 //     // Dot(X, Y) = begin

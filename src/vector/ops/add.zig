@@ -31,7 +31,7 @@ pub fn Add(comptime X: type, comptime Y: type) type {
 ///
 /// ## Returns
 /// `vector.Add(@TypeOf(x), @TypeOf(y))`: The result of the addition.
-pub fn add(x: anytype, y: anytype) vector.Add(@TypeOf(x), @TypeOf(y)) {
+pub fn add(x: anytype, y: anytype) !vector.Add(@TypeOf(x), @TypeOf(y)) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
     const R: type = vecops.Add(X, Y);

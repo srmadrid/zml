@@ -13,14 +13,12 @@ pub fn main(init: std.process.Init) !void {
     const random = rng.random();
     const normal = zsl.stats.Normal(f64).init(0.0, 1.0);
 
-    const x: zsl.vector.Static(10, f64) = try .initFn(zsl.stats.Normal(f64).sample, .{ normal, random });
+    const x: zsl.vector.Static(7, f64) = try .initFn(zsl.stats.Normal(f64).sample, .{ normal, random });
+    const y: zsl.vector.Static(7, f64) = try .initFn(zsl.stats.Normal(f64).sample, .{ normal, random });
 
     std.debug.print("x: {any}\n", .{x});
-    std.debug.print("||x||₁: {d}\n", .{zsl.linalg.norm(x, .l1)});
-    std.debug.print("||x||₂: {d}\n", .{zsl.linalg.norm(x, .l2)});
-    std.debug.print("||x||_F: {d}\n", .{zsl.linalg.norm(x, .frobenius)});
-    std.debug.print("||x||_∞: {d}\n", .{zsl.linalg.norm(x, .inf)});
-    std.debug.print("||x||ₚ: {d}, p = 1000\n", .{zsl.linalg.norm(x, .{ .p = 1000.0 })});
+    std.debug.print("y: {any}\n", .{y});
+    std.debug.print("x × y: {any}\n", .{zsl.linalg.cross(x, y)});
 }
 
 pub fn blas_lv1_threshold_calibration(init: std.process.Init) !void {
