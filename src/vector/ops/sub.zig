@@ -31,7 +31,7 @@ pub fn Sub(comptime X: type, comptime Y: type) type {
 ///
 /// ## Returns
 /// `vector.Sub(@TypeOf(x), @TypeOf(y))`: The result of the subtraction.
-pub fn sub(x: anytype, y: anytype) !vector.Sub(@TypeOf(x), @TypeOf(y)) {
+pub fn sub(x: anytype, y: anytype) vector.Sub(@TypeOf(x), @TypeOf(y)) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
     const R: type = vecops.Sub(X, Y);

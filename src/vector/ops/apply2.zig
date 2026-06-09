@@ -78,7 +78,7 @@ pub fn Apply2(comptime X: type, comptime Y: type, comptime op: anytype) type {
 ///
 /// ## Returns
 /// `vector.Apply2(@TypeOf(x), @TypeOf(y), op)`: The result of the operation.
-pub fn apply2(x: anytype, y: anytype, comptime op: anytype) !vecops.Apply2(@TypeOf(x), @TypeOf(y), op) {
+pub fn apply2(x: anytype, y: anytype, comptime op: anytype) vecops.Apply2(@TypeOf(x), @TypeOf(y), op) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
     const Op: type = @TypeOf(op);
@@ -91,7 +91,7 @@ pub fn apply2(x: anytype, y: anytype, comptime op: anytype) !vecops.Apply2(@Type
 
     var result = R.init;
 
-    try vecops.apply2Into(
+    vecops.apply2Into(
         &result,
         x,
         y,
@@ -102,7 +102,7 @@ pub fn apply2(x: anytype, y: anytype, comptime op: anytype) !vecops.Apply2(@Type
             numeric.div => numeric.divInto,
             else => unreachable,
         },
-    );
+    ) catch unreachable;
 
     return result;
 }
