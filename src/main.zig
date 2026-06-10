@@ -11,10 +11,10 @@ pub fn main(init: std.process.Init) !void {
 
     var rng = std.Random.DefaultPrng.init(@bitCast(std.Io.Clock.real.now(io).toMicroseconds()));
     const random = rng.random();
-    const normal = zsl.stats.Normal(f64).init(0.0, 1.0);
+    const normal = zsl.stats.Normal(zsl.autodiff.Dual(f64)).init(.{ .val = 0.0, .eps = 0.0 }, .{ .val = 1.0, .eps = 0.0 });
 
-    const x: zsl.vector.Static(3, f64) = try .initFn(zsl.stats.Normal(f64).sample, .{ normal, random });
-    const y: zsl.vector.Static(3, f64) = try .initFn(zsl.stats.Normal(f64).sample, .{ normal, random });
+    const x: zsl.vector.Static(3, zsl.autodiff.Dual(f64)) = try .initFn(zsl.stats.Normal(zsl.autodiff.Dual(f64)).sample, .{ normal, random });
+    const y: zsl.vector.Static(3, zsl.autodiff.Dual(f64)) = try .initFn(zsl.stats.Normal(zsl.autodiff.Dual(f64)).sample, .{ normal, random });
 
     std.debug.print("x: {any}\n", .{x});
     std.debug.print("y: {any}\n", .{y});

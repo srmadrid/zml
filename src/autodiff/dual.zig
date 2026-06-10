@@ -4,6 +4,7 @@ const meta = @import("../meta.zig");
 const numeric = @import("../numeric.zig");
 
 const autodiff = @import("../autodiff.zig");
+const stats = @import("../stats.zig");
 
 pub fn isDual(comptime T: type) bool {
     switch (comptime @typeInfo(T)) {
@@ -25,6 +26,7 @@ pub fn Dual(comptime N: type) type {
         pub const is_custom = true;
         pub const is_numeric = true;
         pub const is_dual = true;
+        pub const is_real = meta.isReal(N);
         pub const is_complex = meta.isComplex(N);
 
         pub const Accumulator = Dual(meta.Accumulator(N));
@@ -39,6 +41,16 @@ pub fn Dual(comptime N: type) type {
         // Constants
         pub const zero: autodiff.Dual(N) = .{
             .val = numeric.zero(N),
+            .eps = numeric.zero(N),
+        };
+
+        pub const one: autodiff.Dual(N) = .{
+            .val = numeric.one(N),
+            .eps = numeric.zero(N),
+        };
+
+        pub const two: autodiff.Dual(N) = .{
+            .val = numeric.two(N),
             .eps = numeric.zero(N),
         };
 
@@ -67,6 +79,8 @@ pub fn Dual(comptime N: type) type {
         pub const sub = autodiff.dual.sub;
         pub const Mul = autodiff.dual.Mul;
         pub const mul = autodiff.dual.mul;
+        pub const Fma = autodiff.dual.Fma;
+        pub const fma = autodiff.dual.fma;
         pub const Div = autodiff.dual.Div;
         pub const div = autodiff.dual.div;
 
@@ -128,6 +142,13 @@ pub fn Dual(comptime N: type) type {
         pub const acosh = autodiff.dual.acosh;
         pub const Atanh = autodiff.dual.Atanh;
         pub const atanh = autodiff.dual.atanh;
+
+        pub fn standardUniform(prng: std.Random) autodiff.Dual(N) {
+            return .{
+                .val = stats.Uniform(N).sample(.{ .min = numeric.zero(N), .max = numeric.one(N) }, prng),
+                .eps = numeric.zero(N),
+            };
+        }
 
         pub fn fromFloat(x: anytype) autodiff.Dual(N) {
             return .{

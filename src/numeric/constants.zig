@@ -17,9 +17,7 @@ const complex = @import("../complex.zig");
 /// This function supports custom numeric types via specific method
 /// implementations.
 ///
-/// `N` must implement the required `zero` method. The expected signature and
-/// behavior of `zero` are as follows:
-/// * `fn zero(anytype) N`: Returns the zero value.
+/// `N` must expose the required `zero: N` declaration.
 pub fn zero(comptime N: type) N {
     comptime if (!meta.isNumeric(N))
         @compileError("zsl.numeric.zero: " ++ @typeName(N) ++ " is not a numeric type");
@@ -31,10 +29,10 @@ pub fn zero(comptime N: type) N {
         .dyadic => return .zero,
         .complex => return .zero,
         .custom => {
-            comptime if (!meta.hasMethod(N, "zero", fn () N, &.{}))
-                @compileError("zsl.numeric.zero: " ++ @typeName(N) ++ " must implement `fn zero() " ++ @typeName(N) ++ "`");
+            comptime if (!@hasDecl(N, "zero") or @TypeOf(N.zero) != N)
+                @compileError("zsl.numeric.zero: " ++ @typeName(N) ++ " must expose a `zero: " ++ @typeName(N) ++ "` declaration");
 
-            return N.zero();
+            return N.zero;
         },
     }
 }
@@ -51,9 +49,7 @@ pub fn zero(comptime N: type) N {
 /// This function supports custom numeric types via specific method
 /// implementations.
 ///
-/// `N` must implement the required `one` method. The expected signature and
-/// behavior of `one` are as follows:
-/// * `fn one() N`: Returns the one value.
+/// `N` must expose the required `one: N` declaration.
 pub fn one(comptime N: type) N {
     comptime if (!meta.isNumeric(N))
         @compileError("zsl.numeric.one: " ++ @typeName(N) ++ " is not a numeric type");
@@ -65,10 +61,10 @@ pub fn one(comptime N: type) N {
         .dyadic => return .one,
         .complex => return .one,
         .custom => {
-            comptime if (!meta.hasMethod(N, "one", fn () N, &.{}))
-                @compileError("zsl.numeric.one: " ++ @typeName(N) ++ " must implement `fn one() " ++ @typeName(N) ++ "`");
+            comptime if (!@hasDecl(N, "one") or @TypeOf(N.one) != N)
+                @compileError("zsl.numeric.one: " ++ @typeName(N) ++ " must expose a `one: " ++ @typeName(N) ++ "` declaration");
 
-            return N.one();
+            return N.one;
         },
     }
 }
@@ -85,9 +81,7 @@ pub fn one(comptime N: type) N {
 /// This function supports custom numeric types via specific method
 /// implementations.
 ///
-/// `N` must implement the required `two` method. The expected signature and
-/// behavior of `two` are as follows:
-/// * `fn two() N`: Returns the two value.
+/// `N` must expose the required `two: N` declaration.
 pub fn two(comptime N: type) N {
     comptime if (!meta.isNumeric(N))
         @compileError("zsl.numeric.two: " ++ @typeName(N) ++ " is not a numeric type");
@@ -99,10 +93,10 @@ pub fn two(comptime N: type) N {
         .dyadic => return .two,
         .complex => return .two,
         .custom => {
-            comptime if (!meta.hasMethod(N, "two", fn () N, &.{}))
-                @compileError("zsl.numeric.two: " ++ @typeName(N) ++ " must implement `fn two() " ++ @typeName(N) ++ "`");
+            comptime if (!@hasDecl(N, "two") or @TypeOf(N.two) != N)
+                @compileError("zsl.numeric.two: " ++ @typeName(N) ++ " must expose a `two: " ++ @typeName(N) ++ "` declaration");
 
-            return N.two();
+            return N.two;
         },
     }
 }
