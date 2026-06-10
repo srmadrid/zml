@@ -13,6 +13,10 @@ pub const Strided = strided.Strided;
 const sparse = @import("array/sparse.zig");
 pub const Sparse = sparse.Sparse;
 
+// sum, prod, min, max, argmin, argmax (over whole array, or specific axes if array is static)
+// _Alloc (over specific axes)
+// _Into
+
 // const arrops = @import("array/ops.zig");
 // pub const apply1 = arrops.apply1;
 // pub const apply1_ = arrops.apply1_;

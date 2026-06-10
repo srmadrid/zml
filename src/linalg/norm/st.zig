@@ -9,7 +9,7 @@ pub fn norm(x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)
 
     switch (comptime order) {
         .l1 => {
-            var sum: meta.Accumulator(R) = numeric.zero(R);
+            var sum = numeric.zero(meta.Accumulator(R));
 
             inline for (0..X.len) |i| {
                 // sum += abs(x[i])
@@ -23,7 +23,7 @@ pub fn norm(x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)
             return numeric.cast(R, sum);
         },
         .l2, .frobenius => {
-            var sum: meta.Accumulator(R) = numeric.zero(R);
+            var sum = numeric.zero(meta.Accumulator(R));
 
             inline for (0..X.len) |i| {
                 const abs_x = numeric.abs(x.data[i]);
@@ -39,7 +39,7 @@ pub fn norm(x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)
             return numeric.cast(R, numeric.sqrt(sum));
         },
         .inf => {
-            var max_val: R = numeric.zero(R);
+            var max_val = numeric.zero(R);
 
             inline for (0..X.len) |i| {
                 max_val = numeric.max(max_val, numeric.abs(x.data[i]));
@@ -48,7 +48,7 @@ pub fn norm(x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)
             return numeric.cast(R, max_val);
         },
         .p => |p_| {
-            var sum: meta.Accumulator(R) = numeric.zero(R);
+            var sum = numeric.zero(meta.Accumulator(R));
 
             inline for (0..X.len) |i| {
                 // sum += abs(x[i])ᵖ

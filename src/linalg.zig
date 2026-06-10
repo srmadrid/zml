@@ -7,61 +7,43 @@ pub const blas = @import("linalg/blas.zig");
 // pub const lapacke = @import("linalg/lapacke.zig");
 // pub const lapack = @import("linalg/lapack.zig");
 
-// dot
+// Vector operations
+pub const Dot = @import("linalg/dot.zig").Dot;
+pub const dot = @import("linalg/dot.zig").dot;
 
 // outer
 
 pub const Cross = @import("linalg/cross.zig").Cross;
 pub const cross = @import("linalg/cross.zig").cross;
 
+pub const Normalize = @import("linalg/normalize.zig").Normalize;
+pub const normalize = @import("linalg/normalize.zig").normalize;
+pub const normalizeAlloc = @import("linalg/normalize.zig").normalizeAlloc;
+pub const normalizeInto = @import("linalg/normalize.zig").normalizeInto;
+
+// Vector/matrix operations
 pub const Norm = @import("linalg/norm.zig").Norm;
 pub const NormOrder = @import("linalg/norm.zig").NormOrder;
 pub const norm = @import("linalg/norm.zig").norm;
 pub const normAlloc = @import("linalg/norm.zig").normAlloc;
 // pub const normInto = @import("linalg/norm.zig").normInto;
 
-pub const Normalize = @import("linalg/normalize.zig").Normalize;
-pub const normalize = @import("linalg/normalize.zig").normalize;
-pub const normalizeAlloc = @import("linalg/normalize.zig").normalizeAlloc;
-pub const normalizeInto = @import("linalg/normalize.zig").normalizeInto;
-
-// pub fn dot(x: anytype, y: anytype, ctx: anytype) !Coerce(Numeric(@TypeOf(x)), Numeric(@TypeOf(y))) {
-//     // Dot(X, Y) = begin
-//     //     const T = numeric.Mul(meta.Numeric(X), meta.Numeric(Y))
-//     //     return numeric.Add(T, T)
-//     // end
-//     const X: type = @TypeOf(x);
-//     const Y: type = @TypeOf(y);
-//     const C: type = Coerce(Numeric(X), Numeric(Y));
-
-//     comptime if (!meta.isVector(X) or !meta.isVector(Y))
-//         @compileError("dot: both arguments must be vectors, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
-
-//     comptime if (meta.isArbitraryPrecision(C)) {
-//         @compileError("zsl.linalg.blas.dotc not implemented for arbitrary precision types yet");
-//     } else {
-//         meta.validateContext(@TypeOf(ctx), .{});
-//     };
-
-//     if (x.len != y.len)
-//         return Error.DimensionMismatch;
-
-//     if (comptime meta.isDenseVector(X)) {
-//         if (comptime meta.isDenseVector(Y)) {
-//             return blas.dotc(meta.scast(i32, x.len), x.data, x.inc, y.data, y.inc, ctx);
-//         } else {
-//             return Error.NotImplemented;
-//         }
-//     } else {
-//         if (comptime meta.isDenseVector(Y)) {
-//             return Error.NotImplemented;
-//         } else {
-//             return Error.NotImplemented;
-//         }
-//     }
-// }
-
 // pub const matmul = @import("linalg/matmul.zig").matmul;
+
+// solve (with SolveMethod, to choose decomposition, and optional out parameter to save it)
+// Allow vector and matrix rhs
+
+// leastSquares
+// Allow vector and matrix rhs
+
+// Matrix operations
+// trace
+
+// det
+
+// inv
+
+// pinv
 
 // const _lu = @import("linalg/lu.zig");
 // pub const LU = _lu.LU;
@@ -90,6 +72,19 @@ pub const normalizeInto = @import("linalg/normalize.zig").normalizeInto;
 // pub const qr = qr_.qr;
 // pub const QRP = qr_.QRP;
 // pub const qrp = qr_.qrp;
+
+// svd
+
+// eig
+
+// schur
+
+// Array (tensor) operations
+// contract (generalization of the dot product, C[i, j, k] = sum(l, A[i, j, l] * B[l, k])
+
+// einsum
+
+// tensorProduct (generalization of the outer product, A (shape i, j) ⊗ B (shape k, l) gives (shape i, j, k, l))
 
 pub const Transpose = enum(u2) {
     no_trans,

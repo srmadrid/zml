@@ -13,12 +13,13 @@ pub fn main(init: std.process.Init) !void {
     const random = rng.random();
     const normal = zsl.stats.Normal(f64).init(0.0, 1.0);
 
-    const x: zsl.vector.Static(7, f64) = try .initFn(zsl.stats.Normal(f64).sample, .{ normal, random });
-    const y: zsl.vector.Static(7, f64) = try .initFn(zsl.stats.Normal(f64).sample, .{ normal, random });
+    const x: zsl.vector.Static(3, f64) = try .initFn(zsl.stats.Normal(f64).sample, .{ normal, random });
+    const y: zsl.vector.Static(3, f64) = try .initFn(zsl.stats.Normal(f64).sample, .{ normal, random });
 
     std.debug.print("x: {any}\n", .{x});
     std.debug.print("y: {any}\n", .{y});
     std.debug.print("x × y: {any}\n", .{zsl.linalg.cross(x, y)});
+    std.debug.print("x ⋅ y: {any}\n", .{zsl.linalg.dot(x, y) catch unreachable});
 }
 
 pub fn blas_lv1_threshold_calibration(init: std.process.Init) !void {
