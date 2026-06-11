@@ -586,12 +586,7 @@ pub fn isReal(comptime N: type) bool {
     if (comptime !meta.isNumeric(N))
         @compileError("zsl.meta.isReal: " ++ @typeName(N) ++ " is not a supported numeric type");
 
-    switch (comptime meta.numericType(N)) {
-        .bool => return true,
-        .int => return true,
-        .float => return true,
-        else => return @hasDecl(N, "is_real") and N.is_real,
-    }
+    return meta.numericType(N) != .complex;
 }
 
 /// Checks if the input numeric type is complex.
@@ -606,12 +601,7 @@ pub fn isComplex(comptime N: type) bool {
     if (comptime !meta.isNumeric(N))
         @compileError("zsl.meta.isComplex: " ++ @typeName(N) ++ " is not a supported numeric type");
 
-    switch (comptime meta.numericType(N)) {
-        .bool => return false,
-        .int => return false,
-        .float => return false,
-        else => return @hasDecl(N, "is_complex") and N.is_complex,
-    }
+    return meta.numericType(N) == .complex;
 }
 
 /// Checks if the input numeric type is signed.

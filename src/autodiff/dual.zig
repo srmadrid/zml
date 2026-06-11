@@ -23,11 +23,8 @@ pub fn Dual(comptime N: type) type {
         eps: N,
 
         // Type signature
-        pub const is_custom = true;
         pub const is_numeric = true;
         pub const is_dual = true;
-        pub const is_real = meta.isReal(N);
-        pub const is_complex = meta.isComplex(N);
 
         pub const Accumulator = Dual(meta.Accumulator(N));
         pub const Real = Dual(meta.Real(N));

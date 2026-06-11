@@ -264,9 +264,6 @@ pub inline fn numericType(comptime N: type) NumericType {
             if (comptime !@hasDecl(N, "is_numeric") or !N.is_numeric)
                 @compileError("zsl.meta.numericType: " ++ @typeName(N) ++ " is not a supported numeric type");
 
-            if (comptime @hasDecl(N, "is_custom") and N.is_custom)
-                return .custom;
-
             if (comptime @hasDecl(N, "is_dyadic") and N.is_dyadic)
                 return .dyadic;
 
@@ -275,7 +272,7 @@ pub inline fn numericType(comptime N: type) NumericType {
                 N == std.math.Complex(f80) or N == std.math.Complex(f128) or N == std.math.Complex(comptime_float))
                 return .complex;
 
-            @compileError("zsl.meta.numericType: " ++ @typeName(N) ++ " is not a supported numeric type");
+            return .custom;
         },
         else => @compileError("zsl.meta.numericType: " ++ @typeName(N) ++ " is not a supported numeric type"),
     }
