@@ -247,7 +247,7 @@ pub fn Dense(N: type) type {
         ///
         /// ## Errors
         /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
-        pub fn copy(self: vector.Dense(N), allocator: std.mem.Allocator) !vector.Dense(N) {
+        pub fn clone(self: vector.Dense(N), allocator: std.mem.Allocator) !vector.Dense(N) {
             const vec: vector.Dense(N) = try .init(allocator, self.len);
 
             var i: usize = 0;

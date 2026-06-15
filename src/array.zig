@@ -6,6 +6,8 @@ const numeric = @import("numeric.zig");
 
 pub const max_dimensions = @import("options").max_dimensions;
 
+// Arrays shall no longer use Layout, use Order = enum { c, f }, but only on creation
+
 const dense = @import("array/dense.zig");
 pub const Dense = dense.Dense;
 const strided = @import("array/strided.zig");

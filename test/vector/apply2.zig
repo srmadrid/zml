@@ -5,13 +5,25 @@ const zsl = @import("zsl");
 const tzsl = @import("../zsl.zig");
 
 const combinations = [_][2]type{
-    // __stst
+    // vecsta_vecsta
     .{ tzsl.vector.Static(zsl.cf64), tzsl.vector.Static(zsl.cf64) },
 
-    // __stnu
+    // vecsta_vecden
+    .{ tzsl.vector.Static(zsl.cf64), zsl.vector.Dense(zsl.cf64) },
+
+    // vecsta_vecspa
+    .{ tzsl.vector.Static(zsl.cf64), zsl.vector.Sparse(zsl.cf64) },
+
+    // vecsta_num
     .{ tzsl.vector.Static(zsl.cf64), zsl.cf64 },
 
-    // __nust
+    // vecden_vecsta
+    .{ zsl.vector.Dense(zsl.cf64), tzsl.vector.Static(zsl.cf64) },
+
+    // vecspa_vecsta
+    .{ zsl.vector.Sparse(zsl.cf64), tzsl.vector.Static(zsl.cf64) },
+
+    // num_vecsta
     .{ zsl.cf64, tzsl.vector.Static(zsl.cf64) },
 };
 
@@ -60,23 +72,25 @@ fn executeTestBlock(
     incC: isize,
 ) !void {
     inline for (ops) |op| {
-        const B = if (comptime zsl.meta.isNumeric(combination[0])) tzsl.randomNumber(combination[0], rand) else try tzsl.vector.randomVector(
+        var B = if (comptime zsl.meta.isNumeric(combination[0])) tzsl.randomNumber(combination[0], rand) else try tzsl.vector.randomVector(
             combination[0],
-            undefined,
+            allocator,
             rand,
             len,
             incB,
             len / 4,
         );
+        defer tzsl.deinit(allocator, &B);
 
-        const C = if (comptime zsl.meta.isNumeric(combination[1])) tzsl.randomNumber(combination[1], rand) else try tzsl.vector.randomVector(
+        var C = if (comptime zsl.meta.isNumeric(combination[1])) tzsl.randomNumber(combination[1], rand) else try tzsl.vector.randomVector(
             combination[1],
-            undefined,
+            allocator,
             rand,
             len,
             incC,
             len / 4,
         );
+        defer tzsl.deinit(allocator, &C);
 
         const A = if (comptime std.mem.eql(u8, op, "add"))
             zsl.vector.add(B, C)

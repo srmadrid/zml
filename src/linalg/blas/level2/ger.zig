@@ -2,7 +2,7 @@ const std = @import("std");
 const options = @import("options");
 
 const meta = @import("../../../meta.zig");
-const Layout = meta.Layout;
+const matrix = @import("../../../matrix.zig");
 
 const numeric = @import("../../../numeric.zig");
 
@@ -21,12 +21,12 @@ const linalg = @import("../../../linalg.zig");
 ///
 /// ## Signature
 /// ```zig
-/// linalg.blas.ger(layout: Layout, m: usize, n: usize, alpha: Al, x: [*]const X, incx: isize, y: [*]const Y, incy: isize, a: [*]A, lda: usize) !void
+/// linalg.blas.ger(layout: matrix.Layout, m: usize, n: usize, alpha: Al, x: [*]const X, incx: isize, y: [*]const Y, incy: isize, a: [*]A, lda: usize) !void
 /// ```
 ///
 /// ## Arguments
-/// * `layout` (`Layout`): Specifies whether two-dimensional array storage is
-///   col-major or row-major.
+/// * `layout` (`matrix.Layout`): Specifies whether two-dimensional array
+///   storage is col-major or row-major.
 /// * `m` (`usize`): Specifies the number of rows of the matrix `A`.
 /// * `n` (`usize`): Specifies the number of columns of the matrix `A`.
 /// * `alpha` (`anytype`): Specifies the numeric `alpha`.
@@ -64,7 +64,7 @@ const linalg = @import("../../../linalg.zig");
 /// * `linalg.blas.Error.InvalidArgument`: If `incx` or `incy` is 0, or if `lda`
 ///   is less than `max(1, m)` or `max(1, n)`
 pub fn ger(
-    layout: Layout,
+    layout: matrix.Layout,
     m: usize,
     n: usize,
     alpha: anytype,
@@ -136,7 +136,7 @@ pub fn ger(
             k_ger(n, m, alpha, y, incy, x, incx, a, lda);
 
     const Worker = struct {
-        fn execute(worker_layout: Layout, worker_m: usize, worker_n: usize, worker_alpha: Al, worker_x: [*]const X, worker_incx: isize, worker_y: [*]const Y, worker_incy: isize, worker_a: [*]A, worker_lda: usize) void {
+        fn execute(worker_layout: matrix.Layout, worker_m: usize, worker_n: usize, worker_alpha: Al, worker_x: [*]const X, worker_incx: isize, worker_y: [*]const Y, worker_incy: isize, worker_a: [*]A, worker_lda: usize) void {
             return if (worker_layout == .col_major)
                 k_ger(worker_m, worker_n, worker_alpha, worker_x, worker_incx, worker_y, worker_incy, worker_a, worker_lda)
             else

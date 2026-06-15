@@ -239,6 +239,20 @@ pub fn isGeneralMatrix(comptime T: type) bool {
     }
 }
 
+/// Checks if the input type is an instance of a general static matrix.
+///
+/// ## Arguments
+/// * `T` (`comptime type`): The type to check.
+///
+/// ## Returns
+/// `bool`: `true` if the type is a general static matrix, `false` otherwise.
+pub fn isGeneralStaticMatrix(comptime T: type) bool {
+    switch (comptime @typeInfo(T)) {
+        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_general") and T.is_general and @hasDecl(T, "is_static") and T.is_static,
+        else => return false,
+    }
+}
+
 /// Checks if the input type is an instance of a general dense matrix.
 ///
 /// ## Arguments
@@ -277,6 +291,20 @@ pub fn isGeneralSparseMatrix(comptime T: type) bool {
 pub fn isSymmetricMatrix(comptime T: type) bool {
     switch (comptime @typeInfo(T)) {
         .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_symmetric") and T.is_symmetric,
+        else => return false,
+    }
+}
+
+/// Checks if the input type is an instance of a symmetric static matrix.
+///
+/// ## Arguments
+/// * `T` (`comptime type`): The type to check.
+///
+/// ## Returns
+/// `bool`: `true` if the type is a symmetric static matrix, `false` otherwise.
+pub fn isSymmetricStaticMatrix(comptime T: type) bool {
+    switch (comptime @typeInfo(T)) {
+        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_symmetric") and T.is_symmetric and @hasDecl(T, "is_static") and T.is_static,
         else => return false,
     }
 }
@@ -323,6 +351,20 @@ pub fn isHermitianMatrix(comptime T: type) bool {
     }
 }
 
+/// Checks if the input type is an instance of a hermitian static matrix.
+///
+/// ## Arguments
+/// * `T` (`comptime type`): The type to check.
+///
+/// ## Returns
+/// `bool`: `true` if the type is a hermitian static matrix, `false` otherwise.
+pub fn isHermitianStaticMatrix(comptime T: type) bool {
+    switch (comptime @typeInfo(T)) {
+        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_hermitian") and T.is_hermitian and @hasDecl(T, "is_static") and T.is_static,
+        else => return false,
+    }
+}
+
 /// Checks if the input type is an instance of a hermitian dense matrix.
 ///
 /// ## Arguments
@@ -365,6 +407,20 @@ pub fn isTriangularMatrix(comptime T: type) bool {
     }
 }
 
+/// Checks if the input type is an instance of a triangular static matrix.
+///
+/// ## Arguments
+/// * `T` (`comptime type`): The type to check.
+///
+/// ## Returns
+/// `bool`: `true` if the type is a triangular static matrix, `false` otherwise.
+pub fn isTriangularStaticMatrix(comptime T: type) bool {
+    switch (comptime @typeInfo(T)) {
+        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_triangular") and T.is_triangular and @hasDecl(T, "is_static") and T.is_static,
+        else => return false,
+    }
+}
+
 /// Checks if the input type is an instance of a triangular dense matrix.
 ///
 /// ## Arguments
@@ -389,6 +445,90 @@ pub fn isTriangularDenseMatrix(comptime T: type) bool {
 pub fn isTriangularSparseMatrix(comptime T: type) bool {
     switch (comptime @typeInfo(T)) {
         .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_triangular") and T.is_triangular and @hasDecl(T, "is_sparse") and T.is_sparse,
+        else => return false,
+    }
+}
+
+/// Checks if the input type is an instance of a diagonal matrix.
+///
+/// ## Arguments
+/// * `T` (`comptime type`): The type to check.
+///
+/// ## Returns
+/// `bool`: `true` if the type is a diagonal matrix, `false` otherwise.
+pub fn isDiagonalMatrix(comptime T: type) bool {
+    switch (comptime @typeInfo(T)) {
+        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_diagonal") and T.is_diagonal,
+        else => return false,
+    }
+}
+
+/// Checks if the input type is an instance of a diagonal static matrix.
+///
+/// ## Arguments
+/// * `T` (`comptime type`): The type to check.
+///
+/// ## Returns
+/// `bool`: `true` if the type is a diagonal static matrix, `false` otherwise.
+pub fn isDiagonalStaticMatrix(comptime T: type) bool {
+    switch (comptime @typeInfo(T)) {
+        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_diagonal") and T.is_diagonal and @hasDecl(T, "is_static") and T.is_static,
+        else => return false,
+    }
+}
+
+/// Checks if the input type is an instance of a diagonal sparse matrix.
+///
+/// ## Arguments
+/// * `T` (`comptime type`): The type to check.
+///
+/// ## Returns
+/// `bool`: `true` if the type is a diagonal sparse matrix, `false` otherwise.
+pub fn isDiagonalSparseMatrix(comptime T: type) bool {
+    switch (comptime @typeInfo(T)) {
+        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_diagonal") and T.is_diagonal and @hasDecl(T, "is_sparse") and T.is_sparse,
+        else => return false,
+    }
+}
+
+/// Checks if the input type is an instance of a permutation matrix.
+///
+/// ## Arguments
+/// * `T` (`comptime type`): The type to check.
+///
+/// ## Returns
+/// `bool`: `true` if the type is a permutation matrix, `false` otherwise.
+pub fn isPermutationMatrix(comptime T: type) bool {
+    switch (comptime @typeInfo(T)) {
+        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_permutation") and T.is_permutation,
+        else => return false,
+    }
+}
+
+/// Checks if the input type is an instance of a permutation static matrix.
+///
+/// ## Arguments
+/// * `T` (`comptime type`): The type to check.
+///
+/// ## Returns
+/// `bool`: `true` if the type is a permutation static matrix, `false` otherwise.
+pub fn isPermutationStaticMatrix(comptime T: type) bool {
+    switch (comptime @typeInfo(T)) {
+        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_permutation") and T.is_permutation and @hasDecl(T, "is_static") and T.is_static,
+        else => return false,
+    }
+}
+
+/// Checks if the input type is an instance of a permutation sparse matrix.
+///
+/// ## Arguments
+/// * `T` (`comptime type`): The type to check.
+///
+/// ## Returns
+/// `bool`: `true` if the type is a permutation sparse matrix, `false` otherwise.
+pub fn isPermutationSparseMatrix(comptime T: type) bool {
+    switch (comptime @typeInfo(T)) {
+        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_permutation") and T.is_permutation and @hasDecl(T, "is_sparse") and T.is_sparse,
         else => return false,
     }
 }
@@ -421,30 +561,16 @@ pub fn isBuilderSparseMatrix(comptime T: type) bool {
     }
 }
 
-/// Checks if the input type is an instance of a diagonal matrix.
+/// Checks if the input type is a static matrix.
 ///
 /// ## Arguments
 /// * `T` (`comptime type`): The type to check.
 ///
 /// ## Returns
-/// `bool`: `true` if the type is a diagonal matrix, `false` otherwise.
-pub fn isDiagonalMatrix(comptime T: type) bool {
+/// `bool`: `true` if the type is a static matrix, `false` otherwise.
+pub fn isStaticMatrix(comptime T: type) bool {
     switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_diagonal") and T.is_diagonal,
-        else => return false,
-    }
-}
-
-/// Checks if the input type is an instance of a permutation matrix.
-///
-/// ## Arguments
-/// * `T` (`comptime type`): The type to check.
-///
-/// ## Returns
-/// `bool`: `true` if the type is a permutation matrix, `false` otherwise.
-pub fn isPermutationMatrix(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_permutation") and T.is_permutation,
+        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_static") and T.is_static,
         else => return false,
     }
 }

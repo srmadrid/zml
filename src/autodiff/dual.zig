@@ -158,8 +158,8 @@ pub fn Dual(comptime N: type) type {
             return numeric.cast(Float, self.val);
         }
 
-        pub fn toCfloat(self: Dual(N), comptime Cfloat: type) Cfloat {
-            return meta.scast(Cfloat, self.val);
+        pub fn toComplex(self: Dual(N), comptime Complex: type) Complex {
+            return numeric.cast(Complex, self.val);
         }
     };
 }

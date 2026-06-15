@@ -1,9 +1,6 @@
 const std = @import("std");
 
 const meta = @import("../../meta.zig");
-const Layout = meta.Layout;
-const Uplo = meta.Uplo;
-const Diag = meta.Diag;
 
 const numeric = @import("../../numeric.zig");
 
@@ -34,9 +31,9 @@ pub fn Sparse(N: type) type {
         pub const is_matrix = true;
         pub const is_builder = true;
         pub const is_sparse = true;
-        pub const storage_layout = meta.default_layout;
-        pub const storage_uplo = meta.default_uplo;
-        pub const storage_diag = meta.default_diag;
+        pub const storage_layout: ?matrix.Layout = null;
+        pub const storage_uplo: ?matrix.Uplo = null;
+        pub const storage_diag: ?matrix.Diag = null;
 
         // Numeric type
         pub const Numeric = N;
@@ -76,7 +73,7 @@ pub fn Sparse(N: type) type {
             if (rows == 0 or cols == 0)
                 return matrix.Error.ZeroDimension;
 
-            if (nnz == 0 or nnz > rows * cols)
+            if (nnz > rows * cols)
                 return matrix.Error.DimensionMismatch;
 
             const data: []N = try allocator.alloc(N, nnz);
@@ -236,7 +233,7 @@ pub fn Sparse(N: type) type {
         ///
         /// ## Errors
         /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
-        pub fn copy(self: matrix.builder.Sparse(N), allocator: std.mem.Allocator) !Sparse(N) {
+        pub fn clone(self: matrix.builder.Sparse(N), allocator: std.mem.Allocator) !Sparse(N) {
             var data: []N = try allocator.alloc(N, self.nnz);
             errdefer allocator.free(data);
             var ridx: []usize = try allocator.alloc(usize, self.nnz);
@@ -280,7 +277,7 @@ pub fn Sparse(N: type) type {
                 c: [*]usize,
 
                 pub fn lessThan(ctx: @This(), a: usize, b: usize) bool {
-                    if (comptime meta.layoutOf(M) == .col_major) {
+                    if (comptime meta.layoutOf(M).? == .col_major) {
                         if (ctx.c[a] != ctx.c[b])
                             return ctx.c[a] < ctx.c[b];
 
@@ -314,7 +311,7 @@ pub fn Sparse(N: type) type {
                 }
             }
 
-            var ptr = try allocator.alloc(usize, if (comptime meta.layoutOf(M) == .col_major) self.cols + 1 else self.rows + 1);
+            var ptr = try allocator.alloc(usize, if (comptime meta.layoutOf(M).? == .col_major) self.cols + 1 else self.rows + 1);
             errdefer allocator.free(ptr);
             @memset(ptr, 0);
 
@@ -341,8 +338,8 @@ pub fn Sparse(N: type) type {
                         numeric.addInto(&current_val, current_val, val);
                     } else {
                         data[write_idx] = current_val;
-                        idx[write_idx] = if (comptime meta.layoutOf(M) == .col_major) current_r else current_c;
-                        const major_idx = if (comptime meta.layoutOf(M) == .col_major) current_c else current_r;
+                        idx[write_idx] = if (comptime meta.layoutOf(M).? == .col_major) current_r else current_c;
+                        const major_idx = if (comptime meta.layoutOf(M).? == .col_major) current_c else current_r;
                         ptr[major_idx + 1] += 1;
 
                         write_idx += 1;
@@ -353,8 +350,8 @@ pub fn Sparse(N: type) type {
                 }
 
                 data[write_idx] = current_val;
-                idx[write_idx] = if (comptime meta.layoutOf(M) == .col_major) current_r else current_c;
-                const major_idx = if (comptime meta.layoutOf(M) == .col_major) current_c else current_r;
+                idx[write_idx] = if (comptime meta.layoutOf(M).? == .col_major) current_r else current_c;
+                const major_idx = if (comptime meta.layoutOf(M).? == .col_major) current_c else current_r;
                 ptr[major_idx + 1] += 1;
             }
 
@@ -369,67 +366,24 @@ pub fn Sparse(N: type) type {
                 allocator.free(self.cidx[0..self._clen]);
             }
 
-            var result: M = undefined;
-            result.data = data.ptr;
-            result._dlen = unique_nnz;
-            result.idx = idx.ptr;
-            result._ilen = unique_nnz;
-            result.ptr = ptr.ptr;
-            result.nnz = unique_nnz;
-            result.flags = .{ .owns_data = true };
+            var mat: M = undefined;
+            mat.data = data.ptr;
+            mat._dlen = unique_nnz;
+            mat.idx = idx.ptr;
+            mat._ilen = unique_nnz;
+            mat.ptr = ptr.ptr;
+            mat.nnz = unique_nnz;
+            mat.flags = .{ .owns_data = true };
 
-            result.rows = self.rows;
-            result.cols = self.cols;
+            mat.rows = self.rows;
+            mat.cols = self.cols;
 
             self.* = undefined;
 
-            return result;
+            return mat;
         }
 
-        /// Compiles the builder matrix into a general sparse matrix,
-        /// transferring ownership of the data and invalidating the builder.
-        ///
-        /// ## Arguments
-        /// * `self` (`*matrix.builder.Sparse(N)`): A pointer to the builder
-        ///   matrix to compile.
-        /// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
-        ///   allocations. Must be the same allocator used to initialize `self`.
-        /// * `layout` (`comptime Layout`): Specifies the memory layout of the
-        ///   compiled matrix: `.col_major` for CSC and `.row_major` for CSR.
-        ///
-        /// ## Returns
-        /// `matrix.general.Sparse(N, layout)`: The compiled general sparse
-        /// matrix.
-        ///
-        /// ## Errors
-        /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
-        pub fn compile(self: *matrix.builder.Sparse(N), allocator: std.mem.Allocator, comptime layout: Layout) !matrix.general.Sparse(N, layout) {
-            return self.compileInternal(allocator, matrix.general.Sparse(N, layout));
-        }
-
-        /// Compiles the builder matrix into a general sparse matrix by copying
-        /// the data, leaving the builder intact.
-        ///
-        /// ## Arguments
-        /// * `self` (`matrix.builder.Sparse(N)`): The builder matrix to
-        ///   compile.
-        /// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
-        ///   allocations. Must be the same allocator used to initialize `self`.
-        /// * `layout` (`comptime Layout`): Specifies the memory layout of the
-        ///   compiled matrix: `.col_major` for CSC and `.row_major` for CSR.
-        ///
-        /// ## Returns
-        /// `matrix.general.Sparse(N)`: The compiled general sparse matrix.
-        ///
-        /// ## Errors
-        /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
-        pub fn compileCopy(self: matrix.builder.Sparse(N), allocator: std.mem.Allocator, comptime layout: Layout) !matrix.general.Sparse(N, layout) {
-            var cpy = try self.copy(allocator);
-            errdefer cpy.deinit(allocator);
-            return cpy.compileInternal(allocator, matrix.general.Sparse(N, layout));
-        }
-
-        fn removeTriangle(self: *matrix.builder.Sparse(N), comptime uplo: Uplo, comptime diagonal: bool) void {
+        fn removeTriangle(self: *matrix.builder.Sparse(N), comptime uplo: matrix.Uplo, comptime diagonal: bool) void {
             var i: usize = 0;
             var j: usize = 0;
             while (i < self.nnz) : (i += 1) {
@@ -455,172 +409,76 @@ pub fn Sparse(N: type) type {
             self.nnz = j;
         }
 
-        /// Compiles the builder matrix into a symmetric sparse matrix, keeping
-        /// only the specified triangle part and discarding the other, and
+        /// Compiles the builder matrix into a specified sparse matrix type,
         /// transferring ownership of the data and invalidating the builder.
+        ///
+        /// If M is a symmetric, Hermitian or triangular matrix, only the
+        /// specified triangle is kept.
         ///
         /// ## Arguments
         /// * `self` (`*matrix.builder.Sparse(N)`): A pointer to the builder
         ///   matrix to compile.
         /// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
         ///   allocations. Must be the same allocator used to initialize `self`.
-        /// * `uplo` (`comptime Uplo`): Specifies which triangle part to keep.
-        /// * `layout` (`comptime Layout`): Specifies the memory layout of the
-        ///   compiled matrix: `.col_major` for CSC and `.row_major` for CSR.
+        /// * `M` (`comptime type`): The sparse type to compile the matrix to.
         ///
         /// ## Returns
-        /// `matrix.symmetric.Sparse(N, uplo)`: The compiled symmetric sparse
+        /// `matrix.general.Sparse(N, layout)`: The compiled general sparse
         /// matrix.
         ///
         /// ## Errors
         /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
-        /// * `matrix.Error.NotSquare`: If the builder matrix is not square.
-        pub fn compileSymmetric(self: *matrix.builder.Sparse(N), allocator: std.mem.Allocator, comptime uplo: Uplo, comptime layout: Layout) !matrix.symmetric.Sparse(N, uplo, layout) {
-            if (self.rows != self.cols)
+        /// * `matrix.Error.NotSquare`: If the builder matrix is not square and
+        ///   M is a square matrix type.
+        pub fn compile(self: *matrix.builder.Sparse(N), allocator: std.mem.Allocator, comptime M: type) !M {
+            comptime if (!meta.isMatrix(M) or !meta.isSparseMatrix(M) or
+                (!meta.isGeneralMatrix(M) and !meta.isSymmetricMatrix(M) or !meta.isHermitianMatrix(M) or !meta.isTriangularMatrix(M)))
+                @compileError("zsl.matrix.builder.Sparse(N).compile: M must a sparse general, symmetric, Hermitian or triangular matrix type, got \n\tM = " ++ @typeName(M) ++ "\n");
+
+            if ((comptime meta.isSquareMatrix(M)) and self.rows != self.cols)
                 return matrix.Error.NotSquare;
 
-            self.removeTriangle(comptime uplo.invert(), false);
-            return self.compileInternal(allocator, matrix.symmetric.Sparse(N, uplo, layout));
+            if (comptime meta.isSymmetricMatrix(M) or meta.isHermitianMatrix(M) or meta.isTriangularMatrix(M))
+                self.removeTriangle(meta.uploOf(M).?.invert(), (meta.diagOf(M) orelse .non_unit) == .unit);
+
+            return self.compileInternal(allocator, M);
         }
 
-        /// Compiles the builder matrix into a symmetric sparse matrix by
-        /// copying the data, leaving the builder intact, keeping only the
-        /// specified triangle part and discarding the other.
+        /// Compiles the builder matrix into a specified sparse matrix type by
+        /// copying the data, leaving the builder intact.
+        ///
+        /// If M is a symmetric, Hermitian or triangular matrix, only the
+        /// specified triangle is kept.
         ///
         /// ## Arguments
         /// * `self` (`matrix.builder.Sparse(N)`): The builder matrix to
         ///   compile.
         /// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
         ///   allocations. Must be the same allocator used to initialize `self`.
-        /// * `uplo` (`comptime Uplo`): Specifies which triangle part to keep.
-        /// * `layout` (`comptime Layout`): Specifies the memory layout of the
-        ///   compiled matrix: `.col_major` for CSC and `.row_major` for CSR.
+        /// * `M` (`comptime type`): The sparse type to compile the matrix to.
         ///
         /// ## Returns
-        /// `matrix.symmetric.Sparse(N, uplo)`: The compiled symmetric sparse
-        /// matrix.
+        /// `matrix.general.Sparse(N)`: The compiled general sparse matrix.
         ///
         /// ## Errors
         /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
-        /// * `matrix.Error.NotSquare`: If the builder matrix is not square.
-        pub fn compileSymmetricCopy(self: matrix.builder.Sparse(N), allocator: std.mem.Allocator, comptime uplo: Uplo, comptime layout: Layout) !matrix.symmetric.Sparse(N, uplo, layout) {
-            if (self.rows != self.cols)
+        /// * `matrix.Error.NotSquare`: If the builder matrix is not square and
+        ///   M is a square matrix type.
+        pub fn compileClone(self: matrix.builder.Sparse(N), allocator: std.mem.Allocator, comptime M: type) !M {
+            comptime if (!meta.isMatrix(M) or !meta.isSparseMatrix(M) or
+                (!meta.isGeneralMatrix(M) and !meta.isSymmetricMatrix(M) or !meta.isHermitianMatrix(M) or !meta.isTriangularMatrix(M)))
+                @compileError("zsl.matrix.builder.Sparse(N).compileClone: M must a sparse general, symmetric, Hermitian or triangular matrix type, got \n\tM = " ++ @typeName(M) ++ "\n");
+
+            if ((comptime meta.isSquareMatrix(M)) and self.rows != self.cols)
                 return matrix.Error.NotSquare;
 
-            var cpy = try self.copy(allocator);
-            errdefer cpy.deinit(allocator);
-            cpy.removeTriangle(comptime uplo.invert(), false);
-            return cpy.compileInternal(allocator, matrix.symmetric.Sparse(N, uplo, layout));
-        }
+            var copy = try self.clone(allocator);
+            errdefer copy.deinit(allocator);
 
-        /// Compiles the builder matrix into a Hermitian sparse matrix, keeping
-        /// only the specified triangle part and discarding the other, and
-        /// transferring ownership of the data and invalidating the builder.
-        ///
-        /// ## Arguments
-        /// * `self` (`*matrix.builder.Sparse(N)`): A pointer to the builder
-        ///   matrix to compile.
-        /// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
-        ///   allocations. Must be the same allocator used to initialize `self`.
-        /// * `uplo` (`comptime Uplo`): Specifies which triangle part to keep.
-        /// * `layout` (`comptime Layout`): Specifies the memory layout of the
-        ///   compiled matrix: `.col_major` for CSC and `.row_major` for CSR.
-        ///
-        /// ## Returns
-        /// `matrix.hermitian.Sparse(N, uplo)`: The compiled Hermitian sparse
-        /// matrix.
-        ///
-        /// ## Errors
-        /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
-        /// * `matrix.Error.NotSquare`: If the builder matrix is not square.
-        pub fn compileHermitian(self: *matrix.builder.Sparse(N), allocator: std.mem.Allocator, comptime uplo: Uplo, comptime layout: Layout) !matrix.hermitian.Sparse(N, uplo, layout) {
-            if (self.rows != self.cols)
-                return matrix.Error.NotSquare;
+            if (comptime meta.isSymmetricMatrix(M) or meta.isHermitianMatrix(M) or meta.isTriangularMatrix(M))
+                copy.removeTriangle(meta.uploOf(M).?.invert(), (meta.diagOf(M) orelse .non_unit) == .unit);
 
-            self.removeTriangle(comptime uplo.invert(), false);
-            return self.compileInternal(allocator, matrix.hermitian.Sparse(N, uplo, layout));
-        }
-
-        /// Compiles the builder matrix into a hermitian sparse matrix by
-        /// copying the data, leaving the builder intact, keeping only the
-        /// specified triangle part and discarding the other.
-        ///
-        /// ## Arguments
-        /// * `self` (`matrix.builder.Sparse(N)`): The builder matrix to
-        ///   compile.
-        /// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
-        ///   allocations. Must be the same allocator used to initialize `self`.
-        /// * `uplo` (`comptime Uplo`): Specifies which triangle part to keep.
-        /// * `layout` (`comptime Layout`): Specifies the memory layout of the
-        ///   compiled matrix: `.col_major` for CSC and `.row_major` for CSR.
-        ///
-        /// ## Returns
-        /// `matrix.hermitian.Sparse(N, uplo)`: The compiled hermitian
-        /// sparse matrix.
-        ///
-        /// ## Errors
-        /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
-        /// * `matrix.Error.NotSquare`: If the builder matrix is not square.
-        pub fn compileHermitianCopy(self: matrix.builder.Sparse(N), allocator: std.mem.Allocator, comptime uplo: Uplo, comptime layout: Layout) !matrix.hermitian.Sparse(N, uplo, layout) {
-            if (self.rows != self.cols)
-                return matrix.Error.NotSquare;
-
-            var cpy = try self.copy(allocator);
-            errdefer cpy.deinit(allocator);
-            cpy.removeTriangle(comptime uplo.invert(), false);
-            return cpy.compileInternal(allocator, matrix.hermitian.Sparse(N, uplo, layout));
-        }
-
-        /// Compiles the builder matrix into a triangular sparse matrix, keeping
-        /// only the specified triangle part and discarding the other, and
-        /// transferring ownership of the data and invalidating the builder.
-        ///
-        /// ## Arguments
-        /// * `self` (`*matrix.builder.Sparse(N)`): A pointer to the builder
-        ///   matrix to compile.
-        /// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
-        ///   allocations. Must be the same allocator used to initialize `self`.
-        /// * `uplo` (`comptime Uplo`): Specifies which triangle part to keep.
-        /// * `diag` (`comptime Diag`): Specifies whether the diagonal is unit
-        ///   or non-unit.
-        /// * `layout` (`comptime Layout`): Specifies the memory layout of the
-        ///   compiled matrix: `.col_major` for CSC and `.row_major` for CSR.
-        ///
-        /// ## Returns
-        /// `matrix.triangular.Sparse(N, uplo, diag, laayout)`: The compiled
-        /// triangular sparse matrix.
-        ///
-        /// ## Errors
-        /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
-        pub fn compileTriangular(self: *matrix.builder.Sparse(N), allocator: std.mem.Allocator, comptime uplo: Uplo, comptime diag: Diag, comptime layout: Layout) !matrix.triangular.Sparse(N, uplo, diag, layout) {
-            self.removeTriangle(comptime uplo.invert(), comptime diag == .unit);
-            return self.compileInternal(allocator, matrix.triangular.Sparse(N, uplo, diag, layout));
-        }
-
-        /// Compiles the builder matrix into a triangular sparse matrix by
-        /// copying the data, leaving the builder intact, keeping only the
-        /// specified triangle part and discarding the other.
-        ///
-        /// ## Arguments
-        /// * `self` (`matrix.builder.Sparse(N)`): The builder matrix to
-        ///   compile.
-        /// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
-        ///   allocations. Must be the same allocator used to initialize `self`.
-        /// * `uplo` (`comptime Uplo`): Specifies which triangle part to keep.
-        /// * `diag` (`comptime Diag`): Specifies whether the diagonal is unit
-        ///   or non-unit.
-        ///
-        /// ## Returns
-        /// `matrix.triangular.Sparse(N, uplo, diag, layout)`: The compiled
-        /// triangular sparse matrix.
-        ///
-        /// ## Errors
-        /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
-        pub fn compileTriangularCopy(self: matrix.builder.Sparse(N), allocator: std.mem.Allocator, comptime uplo: Uplo, comptime diag: Diag, comptime layout: Layout) !matrix.triangular.Sparse(N, uplo, diag, layout) {
-            var cpy = try self.copy(allocator);
-            errdefer cpy.deinit(allocator);
-            cpy.removeTriangle(comptime uplo.invert(), comptime diag == .unit);
-            return cpy.compileInternal(allocator, matrix.triangular.Sparse(N, uplo, diag, layout));
+            return copy.compileInternal(allocator, M);
         }
     };
 }

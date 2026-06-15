@@ -1,0 +1,406 @@
+#!/usr/bin/env python3
+"""
+gen_apply2Into_branches.py
+Generate the full comptime switch dispatch body for matrix.apply2Into.
+
+  python3 gen_apply2into_switch.py            # Zig switch body to stdout
+  python3 gen_apply2into_switch.py --stats    # also print statistics to stderr
+
+Rules
+-----
+  1. builder_sparse  – valid only as output; as X or Y it is unreachable.
+  2. permutation_*   – can never be output.
+  3. diagonal_*  output: both inputs must be diagonal or numeric.
+  4. symmetric_* output: both inputs must be symmetric, diagonal, or numeric.
+  5. hermitian_* output: inputs must be hermitian, symmetric, diagonal or
+     numeric; any symmetric, diagonal or numeric input emits an inline
+       comptime if (meta.isComplex(…)) @compileError(…)
+     guard (real-valued element type required).
+  6. triangular_* output: inputs must be triangular, diagonal, or numeric;
+     every valid combination emits an inline comptime if that checks
+       meta.uploOf(O) != meta.uploOf(X/Y)  and  meta.diagOf(O) == .unit.
+  7. Sparse outputs (all *_sparse) reject truly-dense inputs:
+     {general,symmetric,hermitian,triangular}_{static,dense}. Diagonal,
+     permutation and numeric are O(n)/O(1) and sparse-compatible.
+"""
+
+from __future__ import annotations
+
+import sys
+from collections import Counter
+
+# MatrixType enum members
+TYPES: list[str] = [
+    "general_static",
+    "general_dense",
+    "general_sparse",
+    "symmetric_static",
+    "symmetric_dense",
+    "symmetric_sparse",
+    "hermitian_static",
+    "hermitian_dense",
+    "hermitian_sparse",
+    "triangular_static",
+    "triangular_dense",
+    "triangular_sparse",
+    "diagonal_static",
+    "diagonal_sparse",
+    "permutation_static",
+    "permutation_sparse",
+    "builder_sparse",
+    "numeric",
+]
+
+# File-name id fragments (mat<type><variant>  or  num):
+#   general    -> gen    symmetric  -> sym    hermitian   -> her
+#   triangular -> tri    diagonal   -> dia    permutation -> per    builder -> bui
+#   static     -> sta    dense      -> den    sparse      -> spa
+FID: dict[str, str] = {
+    "general_static": "matgensta",
+    "general_dense": "matgenden",
+    "general_sparse": "matgenspa",
+    "symmetric_static": "matsymsta",
+    "symmetric_dense": "matsymden",
+    "symmetric_sparse": "matsymspa",
+    "hermitian_static": "mathersta",
+    "hermitian_dense": "matherden",
+    "hermitian_sparse": "matherspa",
+    "triangular_static": "mattrista",
+    "triangular_dense": "mattriden",
+    "triangular_sparse": "mattrispa",
+    "diagonal_static": "matdiasta",
+    "diagonal_sparse": "matdiaspa",
+    "permutation_static": "matpersta",
+    "permutation_sparse": "matperspa",
+    "builder_sparse": "matbuispa",
+    "numeric": "num",
+}
+
+# Truly-dense types that disqualify sparse outputs. Diagonal and permutation
+# matrices are O(n)/O(1), i.e., always sparse-compatible.
+DENSE: frozenset[str] = frozenset(
+    {
+        "general_static",
+        "general_dense",
+        "symmetric_static",
+        "symmetric_dense",
+        "hermitian_static",
+        "hermitian_dense",
+        "triangular_static",
+        "triangular_dense",
+    }
+)
+
+NS = "zsl.matrix.apply2Into"
+
+
+# Helpers
+
+
+def base(t: str) -> str:
+    """'hermitian_dense' -> 'hermitian';  'numeric'/'builder_sparse' -> itself."""
+    if t in ("numeric", "builder_sparse"):
+        return t
+    return "_".join(t.split("_")[:-1])
+
+
+def variant(t: str) -> str | None:
+    """'triangular_sparse' -> 'sparse';  'numeric' -> None."""
+    if t in ("numeric"):
+        return None
+    return t.split("_")[-1]
+
+
+# Decision
+
+
+def decide(o: str, x: str, y: str) -> str:
+    """
+    Returns one of:
+        'unr'         unreachable
+        'err:<msg>'   @compileError
+        'imp:<path>'  return @import(path).apply2Into(…)
+    """
+    ob = base(o)
+
+    # Invalid combinations
+    if o == "numeric":
+        return "unr"  # scalars cannot be matrix outputs
+    if x == "builder_sparse" or y == "builder_sparse":
+        return "unr"  # builder can only be output
+    if ob == "permutation":
+        return "err:permutation matrices cannot be used as output"
+    if x == "numeric" and y == "numeric":
+        return "unr"  # at least one operand must be a matrix
+
+    # Structural output constraints (most-specific error first)
+    if ob == "diagonal":
+        if (x != "numeric" and base(x) != "diagonal") or (
+            y != "numeric" and base(y) != "diagonal"
+        ):
+            return "err:diagonal output requires diagonal or numeric inputs"
+
+    elif ob == "symmetric":
+        ok = frozenset({"symmetric", "diagonal"})
+        if (x != "numeric" and base(x) not in ok) or (
+            y != "numeric" and base(y) not in ok
+        ):
+            return (
+                "err:symmetric output requires symmetric, diagonal, or numeric inputs"
+            )
+
+    elif ob == "hermitian":
+        # Structural check only: the real-value element-type sub-constraint is
+        # handled by inline comptime guards generated by comptime_guards()
+        # below.
+        ok = frozenset({"hermitian", "symmetric", "diagonal"})
+        if (x != "numeric" and base(x) not in ok) or (
+            y != "numeric" and base(y) not in ok
+        ):
+            return (
+                "err:hermitian output requires hermitian, symmetric, "
+                "diagonal, or numeric inputs"
+            )
+
+    elif ob == "triangular":
+        # Structural check only: uplo + unit-diagonal constraints are handled by
+        # inline comptime guards generated by comptime_guards() below.
+        ok = frozenset({"triangular", "diagonal"})
+        if (x != "numeric" and base(x) not in ok) or (
+            y != "numeric" and base(y) not in ok
+        ):
+            return (
+                "err:triangular output requires triangular, diagonal, or numeric inputs"
+            )
+
+    # Sparse-output density constraint
+    if variant(o) == "sparse" and (x in DENSE or y in DENSE):
+        return "err:sparse output requires sparse or numeric inputs (no dense operand)"
+
+    return f"imp:apply2/{FID[o]}_{FID[x]}_{FID[y]}.zig"
+
+
+# Comptime guard generation
+
+# Zig string suffix: closes the opening message string and appends @typeName
+# calls.
+_TYPS = (
+    '\\n\\to: *" ++ @typeName(O) ++ '
+    '"\\n\\tx: " ++ @typeName(X) ++ '
+    '"\\n\\ty: " ++ @typeName(Y)'
+)
+
+
+def _cerr(msg: str) -> str:
+    """Full Zig @compileError(…) expression, no trailing punctuation."""
+    return f'@compileError("{NS}: {msg}{_TYPS})'
+
+
+def _iscomplex_cond(t: str, var: str) -> str | None:
+    """
+    Zig isComplex expression for type `t` bound to identifier `var`.
+    Returns None when no real-value check is needed (hermitian can be complex).
+    """
+    if t == "numeric":
+        return f"meta.isComplex({var})"
+    b = base(t)
+    if b in ("symmetric", "diagonal"):
+        return f"meta.isComplex(meta.Numeric({var}))"
+    return None  # complex hermitian is always fine
+
+
+def comptime_guards(o: str, x: str, y: str) -> list[str]:
+    """
+    Returns a list of single-line `comptime if` Zig statements to emit
+    before the @import return, for a combination that passed decide().
+
+    Hermitian output:
+    Any symmetric, diagonal or numeric input must have a real element type.
+    The condition is emitted as a single combined comptime if when both
+    operands need checking.
+
+    Triangular output:
+    For every valid (O, X, Y) triple:
+      - If X is triangular: meta.uploOf(O) != meta.uploOf(X)
+      - If Y is triangular: meta.uploOf(O) != meta.uploOf(Y)
+      - Always:             meta.diagOf(O) == .unit
+    All conditions are OR-ed into a single comptime if.
+    """
+    ob = base(o)
+    stmts: list[str] = []
+
+    if ob == "hermitian":
+        cx = _iscomplex_cond(x, "X")
+        cy = _iscomplex_cond(y, "Y")
+        conds = [c for c in (cx, cy) if c is not None]
+        if conds:
+            stmts.append(
+                f"comptime if ({' or '.join(conds)}) "
+                f"{_cerr('hermitian output: symmetric, diagonal and numeric inputs must have a real element type')};"
+            )
+
+    elif ob == "triangular":
+        conds: list[str] = []
+        if base(x) == "triangular":
+            conds.append("meta.uploOf(O) != meta.uploOf(X)")
+        if base(y) == "triangular":
+            conds.append("meta.uploOf(O) != meta.uploOf(Y)")
+        conds.append("meta.diagOf(O) == .unit")
+        stmts.append(
+            f"comptime if ({' or '.join(conds)}) "
+            f"{_cerr('triangular operands must share uplo, and output must not be unit-diagonal')};"
+        )
+
+    return stmts
+
+
+# Arm generation
+
+
+def zig_arm(o: str, x: str, y: str) -> tuple[bool, list[str]]:
+    """
+    Returns (is_block, body_lines):
+      is_block=False -> body_lines is a single expression ending with ","
+                        suitable for:  .EnumVal => <expr>
+      is_block=True  -> body_lines are the statements for the block body
+                        (caller wraps with { } and adds the trailing ",")
+    """
+    d = decide(o, x, y)
+
+    if d == "unr":
+        return False, ["unreachable,"]
+
+    if d.startswith("err:"):
+        return False, [f"{_cerr(d[4:])},"]
+
+    # Valid import, may need inline comptime guards
+    path = d[4:]
+    guards = comptime_guards(o, x, y)
+    ret_stmt = f'return @import("{path}").apply2Into(o, x, y, opInto);'
+
+    if not guards:
+        # Single-line; change trailing ";" to "," for switch arm syntax
+        return False, [ret_stmt[:-1] + ","]
+
+    return True, guards + [ret_stmt]
+
+
+def optimize_switch_level(
+    switch_on: str, arms: dict[str, tuple[bool, list[str]]]
+) -> tuple[bool, list[str]]:
+    """
+    Takes a mapping of variant -> (is_block, lines).
+    Returns (is_block, lines) representing this entire switch level.
+    """
+    T = "    "
+
+    # Group identical arms. We use a string key (joined lines) for equality.
+    groups: dict[str, tuple[bool, list[str], list[str]]] = {}
+    for var, (is_block, lines) in arms.items():
+        key = "\n".join(lines)
+        if key not in groups:
+            groups[key] = (is_block, lines, [])
+        groups[key][2].append(var)
+
+    # Find the most common outcome that is an error or unreachable
+    # to act as our default `else =>` branch.
+    best_key = None
+    best_count = -1
+    for key, (is_block, lines, vars) in groups.items():
+        # Valid imports have is_block=True (if they have guards) or start with `return`
+        is_err_or_unr = not is_block and (
+            lines[0] == "unreachable," or lines[0].startswith("@compileError")
+        )
+
+        if is_err_or_unr and len(vars) > best_count:
+            best_count = len(vars)
+            best_key = key
+
+    # If absolutely everything resolves to the exact same outcome,
+    # collapse the entire switch away entirely.
+    if len(groups) == 1:
+        first_key = list(groups.keys())[0]
+        return groups[first_key][0], groups[first_key][1]
+
+    # Build the switch statement lines
+    out = [f"switch (comptime meta.matrixType({switch_on})) {{"]
+
+    for key, (is_block, lines, vars) in groups.items():
+        # Skip our chosen error/unreachable default
+        if key == best_key:
+            continue
+
+        # Group identical variants cleanly: .a, .b =>
+        prefix = ", ".join(f".{v}" for v in vars) + " => "
+
+        if is_block:
+            out.append(f"{T}{prefix}{{")
+            for ln in lines:
+                out.append(f"{T}{T}{ln}")
+            out.append(f"{T}}},")
+        else:
+            out.append(f"{T}{prefix}{lines[0]}")
+            for ln in lines[1:]:
+                out.append(f"{T}{ln}")
+
+    # Add the catch-all default branch only if we found a valid error/unreachable
+    if best_key is not None:
+        best_is_block, best_lines, _ = groups[best_key]
+        prefix = "else => "
+        if best_is_block:
+            out.append(f"{T}{prefix}{{")
+            for ln in best_lines:
+                out.append(f"{T}{T}{ln}")
+            out.append(f"{T}}},")
+        else:
+            out.append(f"{T}{prefix}{best_lines[0]}")
+            for ln in best_lines[1:]:
+                out.append(f"{T}{ln}")
+
+    out.append("},")
+
+    return False, out
+
+
+# Switch generation
+
+
+def generate(base_indent: int = 4) -> str:
+    # Build the AST hierarchically bottom-up
+    o_arms: dict[str, tuple[bool, list[str]]] = {}
+    for o in TYPES:
+        x_arms: dict[str, tuple[bool, list[str]]] = {}
+        for x in TYPES:
+            y_arms: dict[str, tuple[bool, list[str]]] = {}
+            for y in TYPES:
+                y_arms[y] = zig_arm(o, x, y)
+            x_arms[x] = optimize_switch_level("Y", y_arms)
+        o_arms[o] = optimize_switch_level("X", x_arms)
+
+    _, lines = optimize_switch_level("O", o_arms)
+
+    bi = " " * base_indent
+
+    # Clean up the trailing comma on the very last bracket
+    if lines[-1] == "},":
+        lines[-1] = "}"
+
+    return "\n".join(f"{bi}{ln}" if ln else ln for ln in lines)
+
+
+# Entry point
+
+if __name__ == "__main__":
+    if "--stats" in sys.argv:
+        c: Counter[str] = Counter()
+        for o in TYPES:
+            for x in TYPES:
+                for y in TYPES:
+                    c[decide(o, x, y).split(":")[0]] += 1
+        total = sum(c.values())
+        print(f"Total combinations : {total:>6}", file=sys.stderr)
+        print(f"Valid imports      : {c['imp']:>6}", file=sys.stderr)
+        print(f"Compile errors     : {c['err']:>6}", file=sys.stderr)
+        print(f"Unreachable        : {c['unr']:>6}", file=sys.stderr)
+
+    print(generate())

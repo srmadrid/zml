@@ -1,8 +1,6 @@
 const std = @import("std");
 
 const meta = @import("../../meta.zig");
-const Layout = meta.Layout;
-const Uplo = meta.Uplo;
 
 const numeric = @import("../../numeric.zig");
 const int = @import("../../int.zig");
@@ -16,7 +14,7 @@ const array = @import("../../array.zig");
 /// row-major order with a specified leading dimension. Only the upper or lower
 /// triangular part of the matrix is accessed, depending on the `uplo`
 /// parameter.
-pub fn Dense(N: type, uplo: Uplo, layout: Layout) type {
+pub fn Dense(N: type, uplo: matrix.Uplo, layout: matrix.Layout) type {
     if (!meta.isNumeric(N))
         @compileError("zsl.matrix.symmetric.Dense: N must be a numeric type, got \n\tN = " ++ @typeName(N) ++ "\n");
 
@@ -31,9 +29,9 @@ pub fn Dense(N: type, uplo: Uplo, layout: Layout) type {
         pub const is_matrix = true;
         pub const is_dense = true;
         pub const is_symmetric = true;
-        pub const storage_layout = layout;
-        pub const storage_uplo = uplo;
-        pub const storage_diag = meta.default_diag;
+        pub const storage_layout: ?matrix.Layout = layout;
+        pub const storage_uplo: ?matrix.Uplo = uplo;
+        pub const storage_diag: ?matrix.Diag = null;
 
         // Numeric type
         pub const Numeric = N;
@@ -382,12 +380,12 @@ pub fn Dense(N: type, uplo: Uplo, layout: Layout) type {
         /// ## Errors
         /// * `matrix.Error.PositionOutOfBounds`: If `r` or `c` is out of
         ///   bounds.
-        pub fn set(self: *matrix.symmetric.Dense(N, uplo, layout), row: usize, col: usize, value: N) !void {
-            if (row >= self.rows or col >= self.cols)
+        pub fn set(self: *matrix.symmetric.Dense(N, uplo, layout), r: usize, c: usize, value: N) !void {
+            if (r >= self.rows or c >= self.cols)
                 return matrix.Error.PositionOutOfBounds;
 
-            var i: usize = row;
-            var j: usize = col;
+            var i: usize = r;
+            var j: usize = c;
             if (comptime uplo == .upper) {
                 if (i > j) {
                     const temp: usize = i;
@@ -484,7 +482,7 @@ pub fn Dense(N: type, uplo: Uplo, layout: Layout) type {
         ///
         /// ## Errors
         /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
-        pub fn copy(self: matrix.symmetric.Dense(N, uplo, layout), allocator: std.mem.Allocator) !matrix.symmetric.Dense(N, uplo, layout) {
+        pub fn clone(self: matrix.symmetric.Dense(N, uplo, layout), allocator: std.mem.Allocator) !matrix.symmetric.Dense(N, uplo, layout) {
             const mat: matrix.symmetric.Dense(N, uplo, layout) = try .init(allocator, self.rows);
 
             if (comptime layout == .col_major) {
@@ -542,7 +540,7 @@ pub fn Dense(N: type, uplo: Uplo, layout: Layout) type {
         ///
         /// ## Errors
         /// `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
-        pub fn copyInverseUplo(self: matrix.symmetric.Dense(N, uplo, layout), allocator: std.mem.Allocator) !matrix.symmetric.Dense(N, uplo.invert(), layout) {
+        pub fn cloneInverseUplo(self: matrix.symmetric.Dense(N, uplo, layout), allocator: std.mem.Allocator) !matrix.symmetric.Dense(N, uplo.invert(), layout) {
             const mat: matrix.symmetric.Dense(N, uplo.invert(), layout) = try .init(allocator, self.rows);
 
             if (comptime layout == .col_major) {
@@ -595,7 +593,7 @@ pub fn Dense(N: type, uplo: Uplo, layout: Layout) type {
         /// ##  Returns
         /// `matrix.symmetric.Dense(N, uplo.invert(), layout.invert())`: The
         /// transposed matrix.
-        pub fn transpose(self: matrix.symmetric.Dense(N, uplo, layout)) matrix.symmetric.Dense(N, uplo.invert(), layout.invert()) {
+        pub fn transposeView(self: matrix.symmetric.Dense(N, uplo, layout)) matrix.symmetric.Dense(N, uplo.invert(), layout.invert()) {
             return .{
                 .data = self.data,
                 .rows = self.cols,
@@ -617,7 +615,7 @@ pub fn Dense(N: type, uplo: Uplo, layout: Layout) type {
         ///
         /// ## Returns
         /// `matrix.symmetric.Dense(N, uplo, layout)`: The submatrix.
-        pub fn submatrix(self: matrix.symmetric.Dense(N, uplo, layout), start: usize, end: usize) !matrix.symmetric.Dense(N, uplo, layout) {
+        pub fn submatrixView(self: matrix.symmetric.Dense(N, uplo, layout), start: usize, end: usize) !matrix.symmetric.Dense(N, uplo, layout) {
             if (start >= self.rows or end > self.rows or start >= end)
                 return matrix.Error.InvalidRange;
 
@@ -643,7 +641,7 @@ pub fn Dense(N: type, uplo: Uplo, layout: Layout) type {
         ///
         /// ## Errors
         /// `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
-        pub fn copyToGeneralDenseMatrix(self: matrix.symmetric.Dense(N, uplo, layout), allocator: std.mem.Allocator) !matrix.general.Dense(N, layout) {
+        pub fn cloneToGeneralDenseMatrix(self: matrix.symmetric.Dense(N, uplo, layout), allocator: std.mem.Allocator) !matrix.general.Dense(N, layout) {
             const mat: matrix.general.Dense(N, layout) = try .init(allocator, self.rows, self.cols);
 
             if (comptime layout == .col_major) {
@@ -698,73 +696,6 @@ pub fn Dense(N: type, uplo: Uplo, layout: Layout) type {
 
             return mat;
         }
-
-        // pub fn copyToDenseArray(
-        //     self: *const Dense(N, uplo, layout),
-        //     allocator: std.mem.Allocator,
-        //     ctx: anytype,
-        // ) !array.Dense(N, layout) {
-        //     var result: array.Dense(N, layout) = try .init(allocator, &.{ self.rows, self.cols });
-        //     errdefer result.deinit(allocator);
-
-        //     if (comptime !types.isArbitraryPrecision(N)) {
-        //         comptime types.validateContext(@TypeOf(ctx), .{});
-
-        //         if (comptime layout == .col_major) {
-        //             if (comptime uplo == .upper) { // cu
-        //                 var j: usize = 0;
-        //                 while (j < self.cols) : (j += 1) {
-        //                     var i: usize = 0;
-        //                     while (i < j) : (i += 1) {
-        //                         result.data[i + j * result.strides[1]] = self.data[i + j * self.ld];
-        //                         result.data[j + i * result.strides[1]] = self.data[i + j * self.ld];
-        //                     }
-
-        //                     result.data[j + j * result.strides[1]] = self.data[j + j * self.ld];
-        //                 }
-        //             } else { // cl
-        //                 var j: usize = 0;
-        //                 while (j < self.cols) : (j += 1) {
-        //                     result.data[j + j * result.strides[1]] = self.data[j + j * self.ld];
-
-        //                     var i: usize = j + 1;
-        //                     while (i < self.rows) : (i += 1) {
-        //                         result.data[i + j * result.strides[1]] = self.data[i + j * self.ld];
-        //                         result.data[j + i * result.strides[1]] = self.data[i + j * self.ld];
-        //                     }
-        //                 }
-        //             }
-        //         } else {
-        //             if (comptime uplo == .upper) { // ru
-        //                 var i: usize = 0;
-        //                 while (i < self.rows) : (i += 1) {
-        //                     result.data[i * result.strides[0] + i] = self.data[i * self.ld + i];
-
-        //                     var j: usize = i + 1;
-        //                     while (j < self.cols) : (j += 1) {
-        //                         result.data[i * result.strides[0] + j] = self.data[i * self.ld + j];
-        //                         result.data[j * result.strides[0] + i] = self.data[i * self.ld + j];
-        //                     }
-        //                 }
-        //             } else { // rl
-        //                 var i: usize = 0;
-        //                 while (i < self.rows) : (i += 1) {
-        //                     var j: usize = 0;
-        //                     while (j < i) : (j += 1) {
-        //                         result.data[i * result.strides[0] + j] = self.data[i * self.ld + j];
-        //                         result.data[j * result.strides[0] + i] = self.data[i * self.ld + j];
-        //                     }
-
-        //                     result.data[i * result.strides[0] + i] = self.data[i * self.ld + i];
-        //                 }
-        //             }
-        //         }
-        //     } else {
-        //         @compileError("Arbitrary precision types not implemented yet");
-        //     }
-
-        //     return result;
-        // }
 
         pub fn _index(self: *const Dense(N, uplo, layout), r: usize, c: usize) usize {
             return if (comptime layout == .col_major)

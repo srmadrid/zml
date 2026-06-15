@@ -1,6 +1,5 @@
 //! Namespace for hermitian matrix types.
 
-const dense = @import("hermitian/dense.zig");
-pub const Dense = dense.Dense;
-const sparse = @import("hermitian/sparse.zig");
-pub const Sparse = sparse.Sparse;
+pub const Static = @import("hermitian/static.zig").Static;
+pub const Dense = @import("hermitian/dense.zig").Dense;
+pub const Sparse = @import("hermitian/sparse.zig").Sparse;

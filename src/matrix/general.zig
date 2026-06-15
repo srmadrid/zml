@@ -1,6 +1,5 @@
 //! Namespace for general matrix types.
 
-const dense = @import("general/dense.zig");
-pub const Dense = dense.Dense;
-const sparse = @import("general/sparse.zig");
-pub const Sparse = sparse.Sparse;
+pub const Static = @import("general/static.zig").Static;
+pub const Dense = @import("general/dense.zig").Dense;
+pub const Sparse = @import("general/sparse.zig").Sparse;

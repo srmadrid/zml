@@ -1,9 +1,6 @@
 const std = @import("std");
 
 const meta = @import("../../meta.zig");
-const Layout = meta.Layout;
-const Uplo = meta.Uplo;
-const Diag = meta.Diag;
 
 const numeric = @import("../../numeric.zig");
 const int = @import("../../int.zig");
@@ -15,7 +12,7 @@ const array = @import("../../array.zig");
 /// Dense general matrix type, represented as a contiguous array of
 /// `rows × cols` elements of type `N`, stored in either column-major or
 /// row-major order with a specified leading dimension.
-pub fn Dense(N: type, layout: Layout) type {
+pub fn Dense(N: type, layout: matrix.Layout) type {
     if (!meta.isNumeric(N))
         @compileError("zsl.matrix.general.Dense: N must be a numeric type, got \n\tN = " ++ @typeName(N) ++ "\n");
 
@@ -30,9 +27,9 @@ pub fn Dense(N: type, layout: Layout) type {
         pub const is_matrix = true;
         pub const is_dense = true;
         pub const is_general = true;
-        pub const storage_layout = layout;
-        pub const storage_uplo = meta.default_uplo;
-        pub const storage_diag = meta.default_diag;
+        pub const storage_layout: ?matrix.Layout = layout;
+        pub const storage_uplo: ?matrix.Uplo = null;
+        pub const storage_diag: ?matrix.Diag = null;
 
         // Numeric type
         pub const Numeric = N;
@@ -369,7 +366,7 @@ pub fn Dense(N: type, layout: Layout) type {
         ///
         /// ## Errors
         /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
-        pub fn copy(self: matrix.general.Dense(N, layout), allocator: std.mem.Allocator) !matrix.general.Dense(N, layout) {
+        pub fn clone(self: matrix.general.Dense(N, layout), allocator: std.mem.Allocator) !matrix.general.Dense(N, layout) {
             const mat: matrix.general.Dense(N, layout) = try .init(allocator, self.rows, self.cols);
 
             if (comptime layout == .col_major) {
@@ -401,7 +398,7 @@ pub fn Dense(N: type, layout: Layout) type {
         ///
         /// ## Returns
         /// `matrix.general.Dense(N, layout.invert())`: The transposed matrix.
-        pub fn transpose(self: matrix.general.Dense(N, layout)) matrix.general.Dense(N, layout.invert()) {
+        pub fn transposeView(self: matrix.general.Dense(N, layout)) matrix.general.Dense(N, layout.invert()) {
             return .{
                 .data = self.data,
                 .rows = self.cols,
@@ -430,7 +427,7 @@ pub fn Dense(N: type, layout: Layout) type {
         ///
         /// ## Errors
         /// * `matrix.Error.InvalidRange`: If the specified range is invalid.
-        pub fn submatrix(self: matrix.general.Dense(N, layout), row_start: usize, row_end: usize, col_start: usize, col_end: usize) !matrix.general.Dense(N, layout) {
+        pub fn submatrixView(self: matrix.general.Dense(N, layout), row_start: usize, row_end: usize, col_start: usize, col_end: usize) !matrix.general.Dense(N, layout) {
             if (row_start >= self.rows or col_start >= self.cols or
                 row_end > self.rows or col_end > self.cols or
                 row_start >= row_end or col_start >= col_end)
@@ -457,7 +454,7 @@ pub fn Dense(N: type, layout: Layout) type {
         ///
         /// ## Errors
         /// * `matrix.Error.PositionOutOfBounds`: If `r` is out of bounds.
-        pub fn row(self: matrix.general.Dense(N, layout), r: usize) !vector.Dense(N) {
+        pub fn rowView(self: matrix.general.Dense(N, layout), r: usize) !vector.Dense(N) {
             if (r >= self.rows)
                 return matrix.Error.PositionOutOfBounds;
 
@@ -465,7 +462,7 @@ pub fn Dense(N: type, layout: Layout) type {
                 .data = self.data + self._index(r, 0),
                 .len = self.cols,
                 .inc = if (comptime layout == .col_major)
-                    meta.scast(isize, self.ld)
+                    numeric.cast(isize, self.ld)
                 else
                     1,
                 .flags = .{ .owns_data = false },
@@ -484,7 +481,7 @@ pub fn Dense(N: type, layout: Layout) type {
         ///
         /// ## Errors
         /// * `matrix.Error.PositionOutOfBounds`: If `c` is out of bounds.
-        pub fn col(self: matrix.general.Dense(N, layout), c: usize) !vector.Dense(N) {
+        pub fn colView(self: matrix.general.Dense(N, layout), c: usize) !vector.Dense(N) {
             if (c >= self.cols)
                 return matrix.Error.PositionOutOfBounds;
 
@@ -494,7 +491,7 @@ pub fn Dense(N: type, layout: Layout) type {
                 .inc = if (comptime layout == .col_major)
                     1
                 else
-                    meta.scast(isize, self.ld),
+                    numeric.cast(isize, self.ld),
                 .flags = .{ .owns_data = false },
             };
         }
@@ -504,16 +501,17 @@ pub fn Dense(N: type, layout: Layout) type {
         /// ## Arguments
         /// * `self` (`matrix.general.Dense(N, layout)`): The matrix to get the
         ///   view of.
-        /// * `uplo` (`comptime Uplo`): Specifies whether the upper or lower
-        ///   triangle of the matrix is used, the other triangle is ignored.
+        /// * `uplo` (`comptime matrix.Uplo`): Specifies whether the upper or
+        ///   lower triangle of the matrix is used, the other triangle is
+        ///   ignored.
         ///
         /// ## Returns
-        /// `matrix.symmetric.Dense(T, uplo, layout)`: The symmetric dense
+        /// `matrix.symmetric.Dense(N, uplo, layout)`: The symmetric dense
         /// matrix view.
         ///
         /// ## Errors
         /// * `matrix.Error.NotSquare`: If the matrix is not square.
-        pub fn asSymmetricDenseMatrix(self: matrix.general.Dense(N, layout), comptime uplo: Uplo) !matrix.symmetric.Dense(N, uplo, layout) {
+        pub fn symmetricView(self: matrix.general.Dense(N, layout), comptime uplo: matrix.Uplo) !matrix.symmetric.Dense(N, uplo, layout) {
             if (self.rows != self.cols)
                 return matrix.Error.NotSquare;
 
@@ -531,8 +529,9 @@ pub fn Dense(N: type, layout: Layout) type {
         /// ## Arguments
         /// * `self` (`matrix.general.Dense(N, layout)`): The matrix to get the
         ///   view of.
-        /// * `uplo` (`comptime Uplo`): Specifies whether the upper or lower
-        ///   triangle of the matrix is used, the other triangle is ignored.
+        /// * `uplo` (`comptime matrix.Uplo`): Specifies whether the upper or
+        ///   lower triangle of the matrix is used, the other triangle is
+        ///   ignored.
         ///
         /// ## Returns
         /// `matrix.hermitian.Dense(N, uplo, layout)`: The Hermitian dense
@@ -540,7 +539,7 @@ pub fn Dense(N: type, layout: Layout) type {
         ///
         /// ## Errors
         /// * `matrix.Error.NotSquare`: If the matrix is not square.
-        pub fn asHermitianDenseMatrix(self: matrix.general.Dense(N, layout), comptime uplo: Uplo) !matrix.hermitian.Dense(N, uplo, layout) {
+        pub fn hermitianView(self: matrix.general.Dense(N, layout), comptime uplo: matrix.Uplo) !matrix.hermitian.Dense(N, uplo, layout) {
             if (self.rows != self.cols)
                 return matrix.Error.NotSquare;
 
@@ -558,16 +557,17 @@ pub fn Dense(N: type, layout: Layout) type {
         /// ## Arguments
         /// * `self` (`matrix.general.Dense(N, layout)`): The matrix to get the
         ///   view of.
-        /// * `uplo` (`comptime Uplo`): Specifies whether the upper or lower
-        ///   triangle of the matrix is used, the other triangle is ignored.
-        /// * `diag` (`comptime Diag`): Specifies whether the matrix is unit
-        ///   triangular (diagonal elements are assumed to be 1 and are ignored)
-        ///   or non-unit triangular.
+        /// * `uplo` (`comptime matrix.Uplo`): Specifies whether the upper or
+        ///   lower triangle of the matrix is used, the other triangle is
+        ///   ignored.
+        /// * `diag` (`comptime matrix.Diag`): Specifies whether the matrix is
+        ///   unit triangular (diagonal elements are assumed to be 1 and are
+        ///   ignored) or non-unit triangular.
         ///
         /// ## Returns
         /// `matrix.triangular.Dense(N, uplo, diag, layout)`: The triangular
         /// dense matrix view.
-        pub fn asTriangularDenseMatrix(self: matrix.general.Dense(N, layout), comptime uplo: Uplo, comptime diag: Diag) matrix.triangular.Dense(N, uplo, diag, layout) {
+        pub fn triangularView(self: matrix.general.Dense(N, layout), comptime uplo: matrix.Uplo, comptime diag: matrix.Diag) matrix.triangular.Dense(N, uplo, diag, layout) {
             return .{
                 .data = self.data,
                 .rows = self.rows,
@@ -576,57 +576,6 @@ pub fn Dense(N: type, layout: Layout) type {
                 .flags = .{ .owns_data = false },
             };
         }
-
-        // pub fn asDenseArray(self: *const Dense(N, layout)) array.Dense(N, layout) {
-        //     return .{
-        //         .data = self.data,
-        //         .ndim = 2,
-        //         .shape = .{ self.rows, self.cols } ++ .{0} ** (array.max_dim - 2),
-        //         .strides = if (comptime layout == .col_major)
-        //             .{ 1, self.ld } ++ .{0} ** (array.max_dim - 2)
-        //         else
-        //             .{ self.ld, 1 } ++ .{0} ** (array.max_dim - 2),
-        //         .flags = .{
-        //             .order = self.flags.order,
-        //             .owns_data = false,
-        //         },
-        //     };
-        // }
-
-        // pub fn copyToDenseArray(
-        //     self: *const Dense(N, layout),
-        //     allocator: std.mem.Allocator,
-        //     ctx: anytype,
-        // ) !array.Dense(N, layout) {
-        //     var result: array.Dense(N, layout) = try .init(allocator, &.{ self.rows, self.cols });
-        //     errdefer result.deinit(allocator);
-
-        //     if (comptime !types.isArbitraryPrecision(N)) {
-        //         comptime types.validateContext(@TypeOf(ctx), .{});
-
-        //         if (comptime layout == .col_major) {
-        //             var j: usize = 0;
-        //             while (j < self.cols) : (j += 1) {
-        //                 var i: usize = 0;
-        //                 while (i < self.rows) : (i += 1) {
-        //                     result.data[i + j * result.strides[1]] = self.data[i + j * self.ld];
-        //                 }
-        //             }
-        //         } else {
-        //             var i: usize = 0;
-        //             while (i < self.rows) : (i += 1) {
-        //                 var j: usize = 0;
-        //                 while (j < self.cols) : (j += 1) {
-        //                     result.data[i * result.strides[0] + j] = self.data[i * self.ld + j];
-        //                 }
-        //             }
-        //         }
-        //     } else {
-        //         @compileError("Arbitrary precision types not implemented yet");
-        //     }
-
-        //     return result;
-        // }
 
         pub fn _index(self: matrix.general.Dense(N, layout), r: usize, c: usize) usize {
             return if (comptime layout == .col_major)

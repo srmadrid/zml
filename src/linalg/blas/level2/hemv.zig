@@ -2,8 +2,7 @@ const std = @import("std");
 const options = @import("options");
 
 const meta = @import("../../../meta.zig");
-const Layout = meta.Layout;
-const Uplo = meta.Uplo;
+const matrix = @import("../../../matrix.zig");
 
 const numeric = @import("../../../numeric.zig");
 
@@ -23,14 +22,14 @@ const linalg = @import("../../../linalg.zig");
 ///
 /// ## Signature
 /// ```zig
-/// linalg.blas.hemv(layout: Layout, uplo: Uplo, n: usize, alpha: Al, a: [*]const A, lda: usize, x: [*]const X, incx: isize, beta: Be, y: [*]Y, incy: isize) !void
+/// linalg.blas.hemv(layout: matrix.Layout, uplo: matrix.Uplo, n: usize, alpha: Al, a: [*]const A, lda: usize, x: [*]const X, incx: isize, beta: Be, y: [*]Y, incy: isize) !void
 /// ```
 ///
 /// ## Arguments
-/// * `layout` (`Layout`): Specifies whether two-dimensional array storage is
-///   col-major or row-major.
-/// * `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of
-///   the Hermitian matrix `A` is used.
+/// * `layout` (`matrix.Layout`): Specifies whether two-dimensional array
+///   storage is col-major or row-major.
+/// * `uplo` (`matrix.Uplo`): Specifies whether the upper or lower triangular
+///   part of the Hermitian matrix `A` is used.
 /// * `n` (`usize`): Specifies the size of the matrix `A`.
 /// * `alpha` (`anytype`): Specifies the numeric `alpha`.
 /// * `a` (`anytype`): Many-item pointer, size at least `lda * n`.
@@ -67,8 +66,8 @@ const linalg = @import("../../../linalg.zig");
 /// * `linalg.blas.Error.InvalidArgument`: If `lda` is less than `max(1, n)`, or
 ///   if `incx` or `incy` is 0.
 pub fn hemv(
-    layout: Layout,
-    uplo: Uplo,
+    layout: matrix.Layout,
+    uplo: matrix.Uplo,
     n: usize,
     alpha: anytype,
     a: anytype,
@@ -156,7 +155,7 @@ pub fn hemv(
 
     const Worker = struct {
         fn execute(
-            worker_uplo: Uplo,
+            worker_uplo: matrix.Uplo,
             worker_n: usize,
             worker_alpha: Al,
             worker_a: [*]const A,
@@ -445,7 +444,7 @@ pub fn hemv(
         return err;
 }
 
-fn k_hemv(uplo: Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anytype, incx: isize, beta: anytype, y: anytype, incy: isize, comptime noconj: bool) void {
+fn k_hemv(uplo: matrix.Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anytype, incx: isize, beta: anytype, y: anytype, incy: isize, comptime noconj: bool) void {
     const Al: type = @TypeOf(alpha);
     const A: type = meta.Child(@TypeOf(a));
     const X: type = meta.Child(@TypeOf(x));

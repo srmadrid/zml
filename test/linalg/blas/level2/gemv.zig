@@ -102,7 +102,7 @@ fn executeGemvTest(
     comptime N: type,
     allocator: std.mem.Allocator,
     rand: std.Random,
-    layout: zsl.Layout,
+    layout: zsl.matrix.Layout,
     transa: zsl.linalg.Transpose,
     m: usize,
     n: usize,

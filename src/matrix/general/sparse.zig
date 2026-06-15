@@ -1,7 +1,6 @@
 const std = @import("std");
 
 const meta = @import("../../meta.zig");
-const Layout = meta.Layout;
 
 const numeric = @import("../../numeric.zig");
 
@@ -9,7 +8,7 @@ const matrix = @import("../../matrix.zig");
 
 /// Sparse general matrix type, represented in either CSC or CSR format,
 /// depending on if `layout` is column-major or row-major, respectively.
-pub fn Sparse(N: type, layout: Layout) type {
+pub fn Sparse(N: type, layout: matrix.Layout) type {
     if (!meta.isNumeric(N))
         @compileError("zsl.matrix.general.Sparse: N must be a numeric type, got \n\tN = " ++ @typeName(N) ++ "\n");
 
@@ -28,9 +27,9 @@ pub fn Sparse(N: type, layout: Layout) type {
         pub const is_matrix = true;
         pub const is_sparse = true;
         pub const is_general = true;
-        pub const storage_layout = layout;
-        pub const storage_uplo = meta.default_uplo;
-        pub const storage_diag = meta.default_diag;
+        pub const storage_layout: ?matrix.Layout = layout;
+        pub const storage_uplo: ?matrix.Uplo = null;
+        pub const storage_diag: ?matrix.Diag = null;
 
         // Numeric type
         pub const Numeric = N;

@@ -15,10 +15,13 @@ pub fn Add(comptime X: type, comptime Y: type) type {
     return vecops.Apply2(X, Y, numeric.add);
 }
 
-/// Performs addition between two static vectors.
+/// Performs addition between two vectors.
 ///
-/// This function is intended for stack-allocated vector types
-/// (`vector.Static`), and performs dimension checks at compile time.
+/// This function is intended for when the result vector's length is known at
+/// compile time, i.e., at least one of the inputs is a static vector. For two
+/// static vectors, dimension checks are performed at compile time, for any
+/// other combination, dimension checks are performed at runtime throught
+/// `std.debug.assert`.
 ///
 /// ## Signature
 /// ```zig
@@ -32,23 +35,14 @@ pub fn Add(comptime X: type, comptime Y: type) type {
 /// ## Returns
 /// `vector.Add(@TypeOf(x), @TypeOf(y))`: The result of the addition.
 pub fn add(x: anytype, y: anytype) vector.Add(@TypeOf(x), @TypeOf(y)) {
-    const X: type = @TypeOf(x);
-    const Y: type = @TypeOf(y);
-    const R: type = vecops.Add(X, Y);
-
-    if (comptime meta.isDenseVector(X) or meta.isSparseVector(X) or
-        meta.isDenseVector(Y) or meta.isSparseVector(Y))
-        @compileError("zsl.vector.add: the result cannot be a heap-allocated vector type, i.e., both inputs must be static vectors, got\n\tx: " ++
-            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\tresult: " ++ @typeName(R) ++ "\nFor these inputs use zsl.vector.addAlloc instead.");
-
     return vecops.apply2(x, y, numeric.add);
 }
 
 /// Performs addition between two vectors, dynamically allocating memory for the
 /// result.
 ///
-/// This function is intended for heap-allocated vector types (`vector.Dense`
-/// and `vector.Sparse`), and performs dimension checks at runtime.
+/// This function is intended for when the result vector's length is known at
+/// runtime, i.e., none of the inputs is a static vector.
 ///
 /// ## Signature
 /// ```zig
@@ -99,14 +93,5 @@ pub fn addAlloc(allocator: std.mem.Allocator, x: anytype, y: anytype) !vector.Ad
 /// * `vector.Error.DimensionMismatch`: If the three vectors do not have the
 ///   same length.
 pub fn addInto(o: anytype, x: anytype, y: anytype) !void {
-    const O: type = @TypeOf(o);
-    const X: type = @TypeOf(x);
-    const Y: type = @TypeOf(y);
-
-    comptime if (!meta.isPointer(O) or meta.isConstPointer(O) or !meta.isVector(meta.Child(O)) or
-        !meta.isVector(X) or !meta.isVector(Y))
-        @compileError("zsl.vector.addInto: o must be a mutable one-itme pointer to a vector, and x and y must be vectors, got\n\to: " ++
-            @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
-
     return vecops.apply2Into(o, x, y, numeric.addInto);
 }

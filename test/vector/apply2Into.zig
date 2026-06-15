@@ -5,137 +5,137 @@ const zsl = @import("zsl");
 const tzsl = @import("../zsl.zig");
 
 const combinations = [_][3]type{
-    // ststst
+    // vecsta_vecsta_vecsta
     .{ tzsl.vector.Static(zsl.cf32), tzsl.vector.Static(zsl.cf64), tzsl.vector.Static(zsl.cf64) },
-    // ststst: aliasing
+    // vecsta_vecsta_vecsta: aliasing
     .{ tzsl.vector.Static(zsl.cf64), tzsl.vector.Static(zsl.cf64), tzsl.vector.Static(zsl.cf64) },
 
-    // ststde
+    // vecsta_vecsta_vecden
     .{ tzsl.vector.Static(zsl.cf32), tzsl.vector.Static(zsl.cf64), zsl.vector.Dense(zsl.cf64) },
-    // ststde: aliasing
+    // vecsta_vecsta_vecden: aliasing
     .{ tzsl.vector.Static(zsl.cf64), tzsl.vector.Static(zsl.cf64), zsl.vector.Dense(zsl.cf64) },
 
-    // ststsp
+    // vecsta_vecsta_vecspa
     .{ tzsl.vector.Static(zsl.cf32), tzsl.vector.Static(zsl.cf64), zsl.vector.Sparse(zsl.cf64) },
-    // ststsp: aliasing
+    // vecsta_vecsta_vecspa: aliasing
     .{ tzsl.vector.Static(zsl.cf64), tzsl.vector.Static(zsl.cf64), zsl.vector.Sparse(zsl.cf64) },
 
-    // ststnu
+    // vecsta_vecsta_num
     .{ tzsl.vector.Static(zsl.cf32), tzsl.vector.Static(zsl.cf64), zsl.cf64 },
-    // ststnu: aliasing
+    // vecsta_vecsta_num: aliasing
     .{ tzsl.vector.Static(zsl.cf64), tzsl.vector.Static(zsl.cf64), zsl.cf64 },
 
-    // stdest
+    // vecsta_vecden_vecsta
     .{ tzsl.vector.Static(zsl.cf32), zsl.vector.Dense(zsl.cf64), tzsl.vector.Static(zsl.cf64) },
-    // stdest: aliasing
+    // vecsta_vecden_vecsta: aliasing
     .{ tzsl.vector.Static(zsl.cf64), zsl.vector.Dense(zsl.cf64), tzsl.vector.Static(zsl.cf64) },
 
-    // stdede
+    // vecsta_vecden_vecden
     .{ tzsl.vector.Static(zsl.cf32), zsl.vector.Dense(zsl.cf64), zsl.vector.Dense(zsl.cf64) },
 
-    // stdesp
+    // vecsta_vecden_vecspa
     .{ tzsl.vector.Static(zsl.cf32), zsl.vector.Dense(zsl.cf64), zsl.vector.Sparse(zsl.cf64) },
 
-    // stdenu
+    // vecsta_vecden_num
     .{ tzsl.vector.Static(zsl.cf32), zsl.vector.Dense(zsl.cf64), zsl.cf64 },
 
-    // stspst
+    // vecsta_vecspa_vecsta
     .{ tzsl.vector.Static(zsl.cf32), zsl.vector.Sparse(zsl.cf64), tzsl.vector.Static(zsl.cf64) },
-    // stspst: aliasing
+    // vecsta_vecspa_vecsta: aliasing
     .{ tzsl.vector.Static(zsl.cf64), zsl.vector.Sparse(zsl.cf64), tzsl.vector.Static(zsl.cf64) },
 
-    // stspde
+    // vecsta_vecspa_vecden
     .{ tzsl.vector.Static(zsl.cf32), zsl.vector.Sparse(zsl.cf64), zsl.vector.Dense(zsl.cf64) },
 
-    // stspsp
+    // vecsta_vecspa_vecspa
     .{ tzsl.vector.Static(zsl.cf32), zsl.vector.Sparse(zsl.cf64), zsl.vector.Sparse(zsl.cf64) },
 
-    // stspnu
+    // vecsta_vecspa_num
     .{ tzsl.vector.Static(zsl.cf32), zsl.vector.Sparse(zsl.cf64), zsl.cf64 },
 
-    // stnust
+    // vecsta_num_vecsta
     .{ tzsl.vector.Static(zsl.cf32), zsl.cf64, tzsl.vector.Static(zsl.cf64) },
-    // stnust: aliasing
+    // vecsta_num_vecsta: aliasing
     .{ tzsl.vector.Static(zsl.cf64), zsl.cf64, tzsl.vector.Static(zsl.cf64) },
 
-    // stnude
+    // vecsta_num_vecden
     .{ tzsl.vector.Static(zsl.cf32), zsl.cf64, zsl.vector.Dense(zsl.cf64) },
 
-    // stnusp
+    // vecsta_num_vecspa
     .{ tzsl.vector.Static(zsl.cf32), zsl.cf64, zsl.vector.Sparse(zsl.cf64) },
 
-    // destst
+    // vecden_vecsta_vecsta
     .{ zsl.vector.Dense(zsl.cf32), tzsl.vector.Static(zsl.cf64), tzsl.vector.Static(zsl.cf64) },
 
-    // destde
+    // vecden_vecsta_vecden
     .{ zsl.vector.Dense(zsl.cf32), tzsl.vector.Static(zsl.cf64), zsl.vector.Dense(zsl.cf64) },
-    // destde: aliasing
+    // vecden_vecsta_vecden: aliasing
     .{ zsl.vector.Dense(zsl.cf64), tzsl.vector.Static(zsl.cf64), zsl.vector.Dense(zsl.cf64) },
 
-    // destsp
+    // vecden_vecsta_vecspa
     .{ zsl.vector.Dense(zsl.cf32), tzsl.vector.Static(zsl.cf64), zsl.vector.Sparse(zsl.cf64) },
 
-    // destnu
+    // vecden_vecsta_num
     .{ zsl.vector.Dense(zsl.cf32), tzsl.vector.Static(zsl.cf64), zsl.cf64 },
 
-    // dedest
+    // vecden_vecden_vecsta
     .{ zsl.vector.Dense(zsl.cf32), zsl.vector.Dense(zsl.cf64), tzsl.vector.Static(zsl.cf64) },
-    // dedest: aliasing
+    // vecden_vecden_vecsta: aliasing
     .{ zsl.vector.Dense(zsl.cf64), zsl.vector.Dense(zsl.cf64), tzsl.vector.Static(zsl.cf64) },
 
-    // dedede
+    // vecden_vecden_vecden
     .{ zsl.vector.Dense(zsl.cf32), zsl.vector.Dense(zsl.cf64), zsl.vector.Dense(zsl.cf64) },
-    // dedede: aliasing
+    // vecden_vecden_vecden: aliasing
     .{ zsl.vector.Dense(zsl.cf64), zsl.vector.Dense(zsl.cf64), zsl.vector.Dense(zsl.cf64) },
 
-    // dedesp
+    // vecden_vecden_vecspa
     .{ zsl.vector.Dense(zsl.cf32), zsl.vector.Dense(zsl.cf64), zsl.vector.Sparse(zsl.cf64) },
-    // dedesp: aliasing
+    // vecden_vecden_vecspa: aliasing
     .{ zsl.vector.Dense(zsl.cf64), zsl.vector.Dense(zsl.cf64), zsl.vector.Sparse(zsl.cf64) },
 
-    // dedenu
+    // vecden_vecden_num
     .{ zsl.vector.Dense(zsl.cf32), zsl.vector.Dense(zsl.cf64), zsl.cf64 },
-    // dedenu: aliasing
+    // vecden_vecden_num: aliasing
     .{ zsl.vector.Dense(zsl.cf64), zsl.vector.Dense(zsl.cf64), zsl.cf64 },
 
-    // despst
+    // vecden_vecspa_vecsta
     .{ zsl.vector.Dense(zsl.cf32), zsl.vector.Sparse(zsl.cf64), tzsl.vector.Static(zsl.cf64) },
 
-    // despde
+    // vecden_vecspa_vecden
     .{ zsl.vector.Dense(zsl.cf32), zsl.vector.Sparse(zsl.cf64), zsl.vector.Dense(zsl.cf64) },
-    // despde: aliasing
+    // vecden_vecspa_vecden: aliasing
     .{ zsl.vector.Dense(zsl.cf64), zsl.vector.Sparse(zsl.cf64), zsl.vector.Dense(zsl.cf64) },
 
-    // despsp
+    // vecden_vecspa_vecspa
     .{ zsl.vector.Dense(zsl.cf32), zsl.vector.Sparse(zsl.cf64), zsl.vector.Sparse(zsl.cf64) },
 
-    // despnu
+    // vecden_vecspa_num
     .{ zsl.vector.Dense(zsl.cf32), zsl.vector.Sparse(zsl.cf64), zsl.cf64 },
 
-    // denust
+    // vecden_num_vecsta
     .{ zsl.vector.Dense(zsl.cf32), zsl.cf64, tzsl.vector.Static(zsl.cf64) },
 
-    // denude
+    // vecden_num_vecden
     .{ zsl.vector.Dense(zsl.cf32), zsl.cf64, zsl.vector.Dense(zsl.cf64) },
-    // denude: aliasing
+    // vecden_num_vecden: aliasing
     .{ zsl.vector.Dense(zsl.cf64), zsl.cf64, zsl.vector.Dense(zsl.cf64) },
 
-    // denusp
+    // vecden_num_vecspa
     .{ zsl.vector.Dense(zsl.cf32), zsl.cf64, zsl.vector.Sparse(zsl.cf64) },
 
-    // spspsp
+    // vecspa_vecspa_vecspa
     .{ zsl.vector.Sparse(zsl.cf32), zsl.vector.Sparse(zsl.cf64), zsl.vector.Sparse(zsl.cf64) },
-    // spspsp: aliasing
+    // vecspa_vecspa_vecspa: aliasing
     .{ zsl.vector.Sparse(zsl.cf64), zsl.vector.Sparse(zsl.cf64), zsl.vector.Sparse(zsl.cf64) },
 
-    // spspnu
+    // vecspa_vecspa_num
     .{ zsl.vector.Sparse(zsl.cf32), zsl.vector.Sparse(zsl.cf64), zsl.cf64 },
-    // spspnu: aliasing
+    // vecspa_vecspa_num: aliasing
     .{ zsl.vector.Sparse(zsl.cf64), zsl.vector.Sparse(zsl.cf64), zsl.cf64 },
 
-    // spnusp
+    // vecspa_num_vecspa
     .{ zsl.vector.Sparse(zsl.cf32), zsl.cf64, zsl.vector.Sparse(zsl.cf64) },
-    // spnusp: aliasing
+    // vecspa_num_vecspa: aliasing
     .{ zsl.vector.Sparse(zsl.cf64), zsl.cf64, zsl.vector.Sparse(zsl.cf64) },
 };
 
@@ -160,7 +160,7 @@ const inc_combinations = [_][3]isize{
 };
 
 test "zsl.vector.apply2Into" {
-    @setEvalBranchQuota(3000);
+    @setEvalBranchQuota(3 * combinations.len);
 
     const allocator = std.testing.allocator;
 

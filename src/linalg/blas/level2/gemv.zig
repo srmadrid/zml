@@ -2,9 +2,9 @@ const std = @import("std");
 const options = @import("options");
 
 const meta = @import("../../../meta.zig");
-const Layout = meta.Layout;
 
 const numeric = @import("../../../numeric.zig");
+const matrix = @import("../../../matrix.zig");
 
 const int = @import("../../../int.zig");
 
@@ -39,12 +39,12 @@ const linalg = @import("../../../linalg.zig");
 ///
 /// ## Signature
 /// ```zig
-/// linalg.blas.gemv(layout: Layout, transa: linalg.Transpose, m: usize, n: usize, alpha: Al, a: [*]const A, lda: usize, x: [*]const X, incx: isize, beta: Be, y: [*]Y, incy: isize) !void
+/// linalg.blas.gemv(layout: matrix.Layout, transa: linalg.Transpose, m: usize, n: usize, alpha: Al, a: [*]const A, lda: usize, x: [*]const X, incx: isize, beta: Be, y: [*]Y, incy: isize) !void
 /// ```
 ///
 /// ## Arguments
-/// * `layout` (`Layout`): Specifies whether two-dimensional array storage is
-///   col-major or row-major.
+/// * `layout` (`matrix.Layout`): Specifies whether two-dimensional array
+///   storage is col-major or row-major.
 /// * `transa` (`linalg.Transpose`): Specifies the operation to be performed on
 ///   `A`:
 ///   * `no_transpose`: `y = alpha * A * x + beta * y`
@@ -92,7 +92,7 @@ const linalg = @import("../../../linalg.zig");
 /// * `linalg.blas.Error.InvalidArgument`: If `lda` is less than `max(1, m)` or
 ///   `max(1, n)`, or if `incx` or `incy` is 0.
 pub fn gemv(
-    layout: Layout,
+    layout: matrix.Layout,
     transa: linalg.Transpose,
     m: usize,
     n: usize,

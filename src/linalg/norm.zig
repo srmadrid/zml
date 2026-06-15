@@ -64,7 +64,7 @@ pub fn normAlloc(allocator: std.mem.Allocator, x: anytype, comptime order: linal
 
     switch (comptime meta.domain(X)) {
         .vector => switch (comptime meta.vectorType(X)) {
-            .static => return @import("norm/st.zig").norm(x, order),
+            .static => return @import("norm/vecsta.zig").norm(x, order),
             // .dense => return @import("norm/de.zig").norm(x, norm_type),
             // .sparse => return @import("norm/sp.zig").norm(x, norm_type),
             else => @compileError("zsl.linalg.normAlloc: not implemented yet for \n\tX = " ++ @typeName(X) ++ "\n"),

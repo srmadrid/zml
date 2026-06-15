@@ -2,8 +2,7 @@ const std = @import("std");
 const options = @import("options");
 
 const meta = @import("../../../meta.zig");
-const Layout = meta.Layout;
-const Uplo = meta.Uplo;
+const matrix = @import("../../../matrix.zig");
 
 const numeric = @import("../../../numeric.zig");
 
@@ -67,8 +66,8 @@ const linalg = @import("../../../linalg.zig");
 /// * `linalg.blas.Error.InvalidArgument`: If `lda` is less than `max(1, n)`, or
 ///   if `incx` or `incy` is 0.
 pub fn symv(
-    layout: Layout,
-    uplo: Uplo,
+    layout: matrix.Layout,
+    uplo: matrix.Uplo,
     n: usize,
     alpha: anytype,
     a: anytype,
@@ -146,7 +145,7 @@ pub fn symv(
 
     const Worker = struct {
         fn execute(
-            worker_uplo: Uplo,
+            worker_uplo: matrix.Uplo,
             worker_n: usize,
             worker_alpha: Al,
             worker_a: [*]const A,
@@ -402,7 +401,7 @@ pub fn symv(
         return err;
 }
 
-fn k_symv(uplo: Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anytype, incx: isize, beta: anytype, y: anytype, incy: isize) void {
+fn k_symv(uplo: matrix.Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anytype, incx: isize, beta: anytype, y: anytype, incy: isize) void {
     const Al: type = @TypeOf(alpha);
     const A: type = meta.Child(@TypeOf(a));
     const X: type = meta.Child(@TypeOf(x));

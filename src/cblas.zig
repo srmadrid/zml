@@ -15,7 +15,7 @@ const CBLAS_LAYOUT = enum(c_int) {
     CblasRowMajor = 101,
     CblasColMajor = 102,
 
-    fn to_zsl(self: CBLAS_LAYOUT) zsl.Layout {
+    fn to_zsl(self: CBLAS_LAYOUT) zsl.matrix.Layout {
         return switch (self) {
             .CblasRowMajor => .row_major,
             .CblasColMajor => .col_major,
@@ -43,7 +43,7 @@ const CBLAS_UPLO = enum(c_int) {
     CblasUpper = 121,
     CblasLower = 122,
 
-    fn to_zsl(self: CBLAS_UPLO) zsl.Uplo {
+    fn to_zsl(self: CBLAS_UPLO) zsl.matrix.Uplo {
         return switch (self) {
             .CblasUpper => .upper,
             .CblasLower => .lower,
@@ -55,7 +55,7 @@ const CBLAS_DIAG = enum(c_int) {
     CblasNonUnit = 131,
     CblasUnit = 132,
 
-    fn to_zsl(self: CBLAS_DIAG) zsl.Diag {
+    fn to_zsl(self: CBLAS_DIAG) zsl.matrix.Diag {
         return switch (self) {
             .CblasNonUnit => .non_unit,
             .CblasUnit => .unit,

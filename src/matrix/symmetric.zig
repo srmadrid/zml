@@ -1,6 +1,5 @@
 //! Namespace for symmetric matrix types.
 
-const dense = @import("symmetric/dense.zig");
-pub const Dense = dense.Dense;
-const sparse = @import("symmetric/sparse.zig");
-pub const Sparse = sparse.Sparse;
+pub const Static = @import("symmetric/static.zig").Static;
+pub const Dense = @import("symmetric/dense.zig").Dense;
+pub const Sparse = @import("symmetric/sparse.zig").Sparse;

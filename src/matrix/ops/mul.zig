@@ -1,58 +1,126 @@
 const std = @import("std");
 
-const types = @import("../../types.zig");
-const MulCoerce = types.MulCoerce;
-const Numeric = types.Numeric;
-const ops = @import("../../ops.zig");
-const int = @import("../../int.zig");
+const meta = @import("../../meta.zig");
+
+const numeric = @import("../../numeric.zig");
+const matrix = @import("../../matrix.zig");
 
 const matops = @import("../ops.zig");
 
-const linalg = @import("../../linalg.zig");
+pub fn Mul(comptime X: type, comptime Y: type) type {
+    comptime if ((!meta.isMatrix(X) and !meta.isNumeric(X)) or (!meta.isMatrix(Y) and !meta.isNumeric(Y)) or
+        (!meta.isMatrix(X) and !meta.isMatrix(Y)))
+        @compileError("zsl.matrix.Mul: at least one of X or Y must be a matrix type, the other must be a numeric or matrix type, got\n\tX = " ++
+            @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n");
 
-pub fn mul(
-    allocator: std.mem.Allocator,
-    x: anytype,
-    y: anytype,
-    ctx: anytype,
-) !MulCoerce(@TypeOf(x), @TypeOf(y)) {
-    const X: type = @TypeOf(x);
-    const Y: type = @TypeOf(y);
-    const C: type = MulCoerce(Numeric(X), Numeric(Y));
+    return if (comptime meta.isMatrix(X) and meta.isMatrix(Y))
+        // linalg.MatMul(X, Y)
+        @compileError("zsl.matrix.Mul: matrix matrix multiplication not implemented yet")
+    else
+        matops.Apply2(X, Y, numeric.mul);
+}
 
-    comptime if (!types.isMatrix(X) and !types.isMatrix(Y))
-        @compileError("At least one of the arguments must be a matrix type");
+/// Performs multiplication between two matrices, or a matrix and a numeric.
+///
+/// For two input matrices, the result inherits its memory layout from the
+/// inputs, i.e., if the input layouts mismatch, the left operand (`x`) strictly
+/// dictates the output layout, unless it provides no layout information. For
+/// more control over layouts, use `matrix.mulInto`.
+///
+/// This function is intended for when the result matrix's dimensions is known
+/// at compile time, i.e., at least one of the inputs is a static matrix. For
+/// two static matrices, dimension checks are performed at compile time, for any
+/// other two matrix combination, dimension checks are performed at runtime
+/// throught `std.debug.assert`.
+///
+/// ## Signature
+/// ```zig
+/// matrix.mul(x: X, y: Y) matrix.Mul(X, Y)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left matrix or numeric operand.
+/// * `y` (`anytype`): The right matrix or numeric operand.
+///
+/// ## Returns
+/// `matrix.Mul(@TypeOf(x), @TypeOf(y))`: The result of the multiplication.
+pub fn mul(x: anytype, y: anytype) matrix.Mul(@TypeOf(x), @TypeOf(y)) {
+    return if (comptime meta.isMatrix(@TypeOf(x)) and meta.isMatrix(@TypeOf(y)))
+        // linalg.matMul(x, y)
+        @compileError("zsl.matrix.mul: matrix matrix multiplication not implemented yet")
+    else
+        matops.apply2(x, y, numeric.mul);
+}
 
-    if (comptime (types.isMatrix(X) and types.isMatrix(Y)) or
-        types.isVector(X) or types.isVector(Y))
-    { // matrix * matrix  or  vector * matrix  or  matrix * vector
-        comptime if (types.isArbitraryPrecision(C)) {
-            @compileError("Arbitrary precision types not implemented yet");
-        } else {
-            types.validateContext(@TypeOf(ctx), .{});
-        };
+/// Performs multiplication between two matrices, or a matrix and a numeric,
+/// dynamically allocating memory for the result.
+///
+/// For two input matrices, the result inherits its memory layout from the
+/// inputs, i.e., if the input layouts mismatch, the left operand (`x`) strictly
+/// dictates the output layout, unless it provides no layout information. For
+/// more control over layouts, use `matrix.mulInto`.
+///
+/// This function is intended for when the result matrix's dimensions is known
+/// at runtime, i.e., none of the inputs is a static matrix.
+///
+/// ## Signature
+/// ```zig
+/// matrix.mulAlloc(allocator: std.mem.Allocator, x: X, y: Y) !matrix.Mul(X, Y)
+/// ```
+///
+/// ## Arguments
+/// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
+///   allocations.
+/// * `x` (`anytype`): The left matrix or numeric operand.
+/// * `y` (`anytype`): The right matrix or numeric operand.
+///
+/// ## Returns
+/// `matrix.Mul(@TypeOf(x), @TypeOf(y))`: The result of the multiplication.
+///
+/// ## Errors
+/// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
+/// * `linalg.Error.DimensionMismatch`: If the two matrices do not have
+///   compatible dimensions.
+pub fn mulAlloc(allocator: std.mem.Allocator, x: anytype, y: anytype) !matrix.Mul(@TypeOf(x), @TypeOf(y)) {
+    return if (comptime meta.isMatrix(@TypeOf(x)) and meta.isMatrix(@TypeOf(y)))
+        // linalg.matMulAlloc(allocator, x, y)
+        @compileError("zsl.matrix.mul: matrix matrix multiplication not implemented yet")
+    else
+        matops.apply2Alloc(allocator, x, y, numeric.mul);
+}
 
-        return linalg.matmul(allocator, x, y, ctx);
-    } else {
-        comptime if (types.isArbitraryPrecision(C)) { // scalar * matrix  or  matrix * scalar
-            @compileError("Arbitrary precision types not implemented yet");
-        } else {
-            if (types.numericType(C) == .int) {
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .mode = .{ .type = int.Mode, .required = false } },
-                );
-            } else {
-                types.validateContext(@TypeOf(ctx), .{});
-            }
-        };
-
-        return matops.apply2(
-            allocator,
-            x,
-            y,
-            ops.mul,
-            ctx,
-        );
-    }
+/// Performs computation of the multiplication two matrices, or a matrix and a
+/// numeric, `x` and `y`, into a matrix `o`.
+///
+/// Exact aliasing (in-place modification) between the output and an input, when
+/// only one input is a matrix, is permitted. Any other form of memory overlap
+/// might yield incorrect results.
+///
+/// For a static output matrix, two input static matrices, or an input matrix
+/// and an input numeric, the function cannot return an error.
+///
+/// ## Signature
+/// ```zig
+/// matrix.mulInto(o: *O, x: X, y: Y) !void
+/// ```
+///
+/// ## Arguments
+/// * `o` (`anytype`): The output matrix operand.
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `void`
+///
+/// ## Errors
+/// * `matrix.Error.DimensionMismatch`: If the two matrices do not have the same
+///   dimensions.
+/// * `linalg.Error.DimensionMismatch`: If the three matrices do not have
+///   compatible dimensions.
+pub fn mulInto(o: anytype, x: anytype, y: anytype) !void {
+    return if (comptime meta.isMatrix(@TypeOf(x)) and meta.isMatrix(@TypeOf(y)))
+        // linalg.matMulInto(o, x, y)
+        @compileError("zsl.matrix.mul: matrix matrix multiplication not implemented yet")
+    else
+        matops.apply2Into(o, x, y, numeric.mulInto);
 }

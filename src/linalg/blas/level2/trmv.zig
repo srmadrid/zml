@@ -2,9 +2,7 @@ const std = @import("std");
 const options = @import("options");
 
 const meta = @import("../../../meta.zig");
-const Layout = meta.Layout;
-const Uplo = meta.Uplo;
-const Diag = meta.Diag;
+const matrix = @import("../../../matrix.zig");
 
 const numeric = @import("../../../numeric.zig");
 
@@ -42,21 +40,22 @@ const linalg = @import("../../../linalg.zig");
 ///
 /// ## Signature
 /// ```zig
-/// linalg.blas.trmv(layout: Layout, uplo: Uplo, transa: linalg.Transpose, diag: Diag, n: usize, a: [*]const A, lda: usize, x: [*]X, incx: isize) !void
+/// linalg.blas.trmv(layout: matrix.Layout, uplo: matrix.Uplo, transa: linalg.Transpose, diag: matrix.Diag, n: usize, a: [*]const A, lda: usize, x: [*]X, incx: isize) !void
 /// ```
 ///
 /// ## Arguments
-/// * `layout` (`Layout`): Specifies whether two-dimensional array storage is
-///   col-major or row-major.
-/// * `uplo` (`Uplo`): Specifies whether the matrix `A` is an upper or lower
-///   triangular matrix:
+/// * `layout` (`matrix.Layout`): Specifies whether two-dimensional array
+///   storage is col-major or row-major.
+/// * `uplo` (`matrix.Uplo`): Specifies whether the matrix `A` is an upper or
+///   lower triangular matrix:
 /// * `transa` (`linalg.Transpose`): Specifies the operation to be performed on
 ///   `A`:
 ///   * `no_transpose`: `x = A * x`
 ///   * `transpose`: `x = Aᵀ * x`
 ///   * `conj_no_transpose`: `x = conj(A) * x`
 ///   * `conj_transpose`: `x = Aᴴ * x`
-/// * `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular.
+/// * `diag` (`matrix.Diag`): Specifies whether the matrix `A` is unit
+///   triangular.
 /// * `n` (`usize`): Specifies the size of the matrix `A`.
 /// * `a` (`anytype`): Many-item pointer, size at least `lda * n`.
 /// * `lda` (`usize`): Specifies the leading dimension of `a` as declared in the
@@ -89,10 +88,10 @@ const linalg = @import("../../../linalg.zig");
 /// * `linalg.blas.Error.InvalidArgument`: If `lda` is less than `max(1, n)`, or
 ///   if `incx` is 0.
 pub fn trmv(
-    layout: Layout,
-    uplo: Uplo,
+    layout: matrix.Layout,
+    uplo: matrix.Uplo,
     transa: linalg.Transpose,
-    diag: Diag,
+    diag: matrix.Diag,
     n: usize,
     a: anytype,
     lda: usize,
@@ -160,9 +159,9 @@ pub fn trmv(
 
     const Worker = struct {
         fn execute(
-            worker_uplo: Uplo,
+            worker_uplo: matrix.Uplo,
             worker_transa: linalg.Transpose,
-            worker_diag: Diag,
+            worker_diag: matrix.Diag,
             worker_n: usize,
             worker_a: [*]const A,
             worker_lda: usize,
@@ -228,9 +227,9 @@ pub fn trmv(
 }
 
 pub fn k_trmv(
-    uplo: Uplo,
+    uplo: matrix.Uplo,
     transa: linalg.Transpose,
-    diag: Diag,
+    diag: matrix.Diag,
     n: usize,
     a: anytype,
     lda: usize,
@@ -993,9 +992,9 @@ pub fn k_trmv(
 }
 
 fn k_trmv_nd(
-    uplo: Uplo,
+    uplo: matrix.Uplo,
     transa: linalg.Transpose,
-    diag: Diag,
+    diag: matrix.Diag,
     n: usize,
     a: anytype,
     lda: usize,

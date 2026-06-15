@@ -2,8 +2,7 @@ const std = @import("std");
 const options = @import("options");
 
 const meta = @import("../../../meta.zig");
-const Layout = meta.Layout;
-const Uplo = meta.Uplo;
+const matrix = @import("../../../matrix.zig");
 
 const numeric = @import("../../../numeric.zig");
 
@@ -23,14 +22,14 @@ const linalg = @import("../../../linalg.zig");
 ///
 /// ## Signature
 /// ```zig
-/// linalg.blas.her(layout: Layout, uplo: Uplo, n: usize, alpha: Al, x: [*]const X, incx: isize, a: [*]A, lda: usize) !void
+/// linalg.blas.her(layout: matrix.Layout, uplo: matrix.Uplo, n: usize, alpha: Al, x: [*]const X, incx: isize, a: [*]A, lda: usize) !void
 /// ```
 ///
 /// ## Arguments
-/// * `layout` (`Layout`): Specifies whether two-dimensional array storage is
-///   col-major or row-major.
-/// * `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of
-///   the Hermitian matrix `A` is used.
+/// * `layout` (`matrix.Layout`): Specifies whether two-dimensional array
+///   storage is col-major or row-major.
+/// * `uplo` (`matrix.Uplo`): Specifies whether the upper or lower triangular
+///   part of the Hermitian matrix `A` is used.
 /// * `n` (`usize`): Specifies the size of the matrix `A`.
 /// * `alpha` (`anytype`): Specifies the numeric `alpha`.
 /// * `x` (`anytype`): Many-item pointer, size at least
@@ -62,8 +61,8 @@ const linalg = @import("../../../linalg.zig");
 /// * `linalg.blas.Error.InvalidArgument`: If `incx` is 0, or if `lda` is less
 ///   than `max(1, n)`.
 pub fn her(
-    layout: Layout,
-    uplo: Uplo,
+    layout: matrix.Layout,
+    uplo: matrix.Uplo,
     n: usize,
     alpha: anytype,
     x: anytype,
@@ -130,7 +129,7 @@ pub fn her(
 
     const Worker = struct {
         fn execute(
-            worker_uplo: Uplo,
+            worker_uplo: matrix.Uplo,
             worker_n: usize,
             worker_alpha: Al,
             worker_a: [*]A,
@@ -344,7 +343,7 @@ pub fn her(
         return err;
 }
 
-fn k_her(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, a: anytype, lda: usize, comptime noconj: bool) void {
+fn k_her(uplo: matrix.Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, a: anytype, lda: usize, comptime noconj: bool) void {
     const Al: type = @TypeOf(alpha);
     const A: type = meta.Child(@TypeOf(a));
     const X: type = meta.Child(@TypeOf(x));

@@ -25,27 +25,25 @@ pub fn Apply2(comptime X: type, comptime Y: type, comptime op: anytype) type {
     comptime if (!meta.isNumeric(R))
         @compileError("zsl.vector.Apply2: calling op with arguments of types " ++ @typeName(meta.Numeric(X)) ++ " and " ++ @typeName(meta.Numeric(Y)) ++ " must return a numeric, got\n\tR = " ++ @typeName(R) ++ "\n");
 
+    comptime if (meta.isStaticVector(X) and meta.isStaticVector(Y) and X.len != Y.len)
+        @compileError("zsl.vector.Apply2: static vector types X and Y must have equal lengths, got\n\tX = " ++
+            @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n\top: " ++ @typeName(Op) ++ "\n");
+
     switch (comptime meta.vectorType(X)) {
         .static => switch (comptime meta.vectorType(Y)) {
-            .static => {
-                if (comptime X.len != Y.len)
-                    @compileError("zsl.vector.Apply2: static vector types X and Y must have equal lengths, got\n\tX = " ++
-                        @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n\top: " ++ @typeName(Op) ++ "\n");
-
-                return vector.Static(X.len, R);
-            },
-            .dense => return vector.Dense(R),
-            .sparse => return vector.Dense(R),
+            .static => return vector.Static(X.len, R),
+            .dense => return vector.Static(X.len, R),
+            .sparse => return vector.Static(X.len, R),
             .numeric => return vector.Static(X.len, R),
         },
         .dense => switch (comptime meta.vectorType(Y)) {
-            .static => return vector.Dense(R),
+            .static => return vector.Static(Y.len, R),
             .dense => return vector.Dense(R),
             .sparse => return vector.Dense(R),
             .numeric => return vector.Dense(R),
         },
         .sparse => switch (comptime meta.vectorType(Y)) {
-            .static => return vector.Dense(R),
+            .static => return vector.Static(Y.len, R),
             .dense => return vector.Dense(R),
             .sparse => return vector.Sparse(R),
             .numeric => return vector.Sparse(R),
@@ -59,11 +57,14 @@ pub fn Apply2(comptime X: type, comptime Y: type, comptime op: anytype) type {
     }
 }
 
-/// Applies a binary operation elementwise between two static vectors, or
-/// between a static vector and a numeric.
+/// Applies a binary operation elementwise between two vectors, or between a
+/// vector and a numeric.
 ///
-/// This function is intended for stack-allocated vector types
-/// (`vector.Static`), and performs dimension checks at compile time.
+/// This function is intended for when the result vector's length is known at
+/// compile time, i.e., at least one of the inputs is a static vector. For two
+/// static vectors, or a static vector and a numeric dimension checks are
+/// performed at compile time, for any other combination, dimension checks are
+/// performed at runtime throught `std.debug.assert`.
 ///
 /// ## Signature
 /// ```zig
@@ -84,10 +85,16 @@ pub fn apply2(x: anytype, y: anytype, comptime op: anytype) vecops.Apply2(@TypeO
     const Op: type = @TypeOf(op);
     const R: type = vecops.Apply2(X, Y, op);
 
-    if (comptime meta.isDenseVector(X) or meta.isSparseVector(X) or
-        meta.isDenseVector(Y) or meta.isSparseVector(Y))
-        @compileError("zsl.vector.apply2: the result cannot be a heap-allocated vector type, i.e., both inputs must be static vectors, or a static vector and a numeric, got\n\tx: " ++
+    if (comptime meta.isDenseVector(R) or meta.isSparseVector(R))
+        @compileError("zsl.vector.apply2: the result cannot be a heap-allocated vector type, i.e., at least one input must be a static vector, got\n\tx: " ++
             @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\top: " ++ @typeName(Op) ++ "\n\tresult: " ++ @typeName(R) ++ "\nFor these inputs use zsl.vector.apply2Alloc instead.");
+
+    const x_len_optional: ?usize = if (comptime meta.isVector(X)) (if (comptime meta.isStaticVector(X)) X.len else x.len) else null;
+    const y_len = if (comptime meta.isVector(Y)) (if (comptime meta.isStaticVector(Y)) Y.len else y.len) else x_len_optional.?;
+    const x_len = x_len_optional orelse y_len;
+
+    if (comptime !(meta.isStaticVector(X) or meta.isNumeric(X)) or !(meta.isStaticVector(Y) or meta.isNumeric(Y)))
+        std.debug.assert(x_len == y_len);
 
     var result = R.init;
 
@@ -110,8 +117,8 @@ pub fn apply2(x: anytype, y: anytype, comptime op: anytype) vecops.Apply2(@TypeO
 /// Applies a binary operation elementwise between two vectors, or between a
 /// vector and a numeric, dynamically allocating memory for the result.
 ///
-/// This function is intended for heap-allocated vector types (`vector.Dense`
-/// and `vector.Sparse`), and performs dimension checks at runtime.
+/// This function is intended for when the result vector's length is known at
+/// runtime, i.e., none of the inputs is a static vector.
 ///
 /// For two sparse vectors, or a sparse vector and a numeric, the operation is
 /// only applied to the indices where at least one of the vectors has a non-zero
@@ -146,9 +153,7 @@ pub fn apply2Alloc(allocator: std.mem.Allocator, x: anytype, y: anytype, comptim
     const y_len = if (comptime meta.isVector(Y)) (if (comptime meta.isStaticVector(Y)) Y.len else y.len) else x_len_optional.?;
     const x_len = x_len_optional orelse y_len;
 
-    if (comptime !((meta.isStaticVector(X) or meta.isNumeric(X)) and
-        (meta.isStaticVector(Y) or meta.isNumeric(Y))))
-    {
+    if (comptime !((meta.isStaticVector(X) or meta.isNumeric(X)) and (meta.isStaticVector(Y) or meta.isNumeric(Y)))) {
         if (x_len != y_len)
             return vector.Error.DimensionMismatch;
     }
@@ -219,7 +224,7 @@ pub fn apply2Into(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) 
         (!meta.isVector(X) and !meta.isNumeric(X)) or (!meta.isVector(Y) and !meta.isNumeric(Y)) or
         (!meta.isVector(X) and !meta.isVector(Y)) or
         opinfo != .@"fn" or opinfo.@"fn".params.len != 3)
-        @compileError("zsl.vector.apply2Into: o must be a mutable one-itme pointer to a vector, at least one of x or y must be a vector, the other must be a vector or a numeric, and opInto must be a function of three arguments, got\n\to: " ++
+        @compileError("zsl.vector.apply2Into: o must be a mutable one-item pointer to a vector, at least one of x or y must be a vector, the other must be a vector or a numeric, and opInto must be a function of three arguments, got\n\to: " ++
             @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\topInto: " ++ @typeName(OpInto) ++ "\n");
 
     O = meta.Child(O);
@@ -234,13 +239,13 @@ pub fn apply2Into(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) 
     {
         if (comptime o_len != x_len or o_len != y_len)
             if (comptime meta.isVector(X) and meta.isVector(Y))
-                @compileError("zsl.vector.apply2: static vectors o, x and y must have equal compile time lengths, got\n\to: *" ++
+                @compileError("zsl.vector.apply2Into: static vectors o, x and y must have equal compile time lengths, got\n\to: *" ++
                     @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n")
             else if (comptime meta.isVector(X))
-                @compileError("zsl.vector.apply2: static vectors o and x must have equal compile time lengths, got\n\to: *" ++
+                @compileError("zsl.vector.apply2Into: static vectors o and x must have equal compile time lengths, got\n\to: *" ++
                     @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n")
             else
-                @compileError("zsl.vector.apply2: static vectors o and y must have equal compile time lengths, got\n\to: *" ++
+                @compileError("zsl.vector.apply2Into: static vectors o and y must have equal compile time lengths, got\n\to: *" ++
                     @typeName(O) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
     } else {
         if (o_len != x_len or o_len != y_len)
@@ -250,65 +255,65 @@ pub fn apply2Into(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) 
     switch (comptime meta.vectorType(O)) {
         .static => switch (comptime meta.vectorType(X)) {
             .static => switch (comptime meta.vectorType(Y)) {
-                .static => return @import("apply2/ststst.zig").apply2Into(o, x, y, opInto),
-                .dense => return @import("apply2/ststde.zig").apply2Into(o, x, y, opInto),
-                .sparse => return @import("apply2/ststsp.zig").apply2Into(o, x, y, opInto),
-                .numeric => return @import("apply2/ststnu.zig").apply2Into(o, x, y, opInto),
+                .static => return @import("apply2/vecsta_vecsta_vecsta.zig").apply2Into(o, x, y, opInto),
+                .dense => return @import("apply2/vecsta_vecsta_vecden.zig").apply2Into(o, x, y, opInto),
+                .sparse => return @import("apply2/vecsta_vecsta_vecspa.zig").apply2Into(o, x, y, opInto),
+                .numeric => return @import("apply2/vecsta_vecsta_num.zig").apply2Into(o, x, y, opInto),
             },
             .dense => switch (comptime meta.vectorType(Y)) {
-                .static => return @import("apply2/stdest.zig").apply2Into(o, x, y, opInto),
-                .dense => return @import("apply2/stdede.zig").apply2Into(o, x, y, opInto),
-                .sparse => return @import("apply2/stdesp.zig").apply2Into(o, x, y, opInto),
-                .numeric => return @import("apply2/stdenu.zig").apply2Into(o, x, y, opInto),
+                .static => return @import("apply2/vecsta_vecden_vecsta.zig").apply2Into(o, x, y, opInto),
+                .dense => return @import("apply2/vecsta_vecden_vecden.zig").apply2Into(o, x, y, opInto),
+                .sparse => return @import("apply2/vecsta_vecden_vecspa.zig").apply2Into(o, x, y, opInto),
+                .numeric => return @import("apply2/vecsta_vecden_num.zig").apply2Into(o, x, y, opInto),
             },
             .sparse => switch (comptime meta.vectorType(Y)) {
-                .static => return @import("apply2/stspst.zig").apply2Into(o, x, y, opInto),
-                .dense => return @import("apply2/stspde.zig").apply2Into(o, x, y, opInto),
-                .sparse => return @import("apply2/stspsp.zig").apply2Into(o, x, y, opInto),
-                .numeric => return @import("apply2/stspnu.zig").apply2Into(o, x, y, opInto),
+                .static => return @import("apply2/vecsta_vecspa_vecsta.zig").apply2Into(o, x, y, opInto),
+                .dense => return @import("apply2/vecsta_vecspa_vecden.zig").apply2Into(o, x, y, opInto),
+                .sparse => return @import("apply2/vecsta_vecspa_vecspa.zig").apply2Into(o, x, y, opInto),
+                .numeric => return @import("apply2/vecsta_vecspa_num.zig").apply2Into(o, x, y, opInto),
             },
             .numeric => switch (comptime meta.vectorType(Y)) {
-                .static => return @import("apply2/stnust.zig").apply2Into(o, x, y, opInto),
-                .dense => return @import("apply2/stnude.zig").apply2Into(o, x, y, opInto),
-                .sparse => return @import("apply2/stnusp.zig").apply2Into(o, x, y, opInto),
+                .static => return @import("apply2/vecsta_num_vecsta.zig").apply2Into(o, x, y, opInto),
+                .dense => return @import("apply2/vecsta_num_vecden.zig").apply2Into(o, x, y, opInto),
+                .sparse => return @import("apply2/vecsta_num_vecspa.zig").apply2Into(o, x, y, opInto),
                 .numeric => unreachable,
             },
         },
         .dense => switch (comptime meta.vectorType(X)) {
             .static => switch (comptime meta.vectorType(Y)) {
-                .static => return @import("apply2/destst.zig").apply2Into(o, x, y, opInto),
-                .dense => return @import("apply2/destde.zig").apply2Into(o, x, y, opInto),
-                .sparse => return @import("apply2/destsp.zig").apply2Into(o, x, y, opInto),
-                .numeric => return @import("apply2/destnu.zig").apply2Into(o, x, y, opInto),
+                .static => return @import("apply2/vecden_vecsta_vecsta.zig").apply2Into(o, x, y, opInto),
+                .dense => return @import("apply2/vecden_vecsta_vecden.zig").apply2Into(o, x, y, opInto),
+                .sparse => return @import("apply2/vecden_vecsta_vecspa.zig").apply2Into(o, x, y, opInto),
+                .numeric => return @import("apply2/vecden_vecsta_num.zig").apply2Into(o, x, y, opInto),
             },
             .dense => switch (comptime meta.vectorType(Y)) {
-                .static => return @import("apply2/dedest.zig").apply2Into(o, x, y, opInto),
-                .dense => return @import("apply2/dedede.zig").apply2Into(o, x, y, opInto),
-                .sparse => return @import("apply2/dedesp.zig").apply2Into(o, x, y, opInto),
-                .numeric => return @import("apply2/dedenu.zig").apply2Into(o, x, y, opInto),
+                .static => return @import("apply2/vecden_vecden_vecsta.zig").apply2Into(o, x, y, opInto),
+                .dense => return @import("apply2/vecden_vecden_vecden.zig").apply2Into(o, x, y, opInto),
+                .sparse => return @import("apply2/vecden_vecden_vecspa.zig").apply2Into(o, x, y, opInto),
+                .numeric => return @import("apply2/vecden_vecden_num.zig").apply2Into(o, x, y, opInto),
             },
             .sparse => switch (comptime meta.vectorType(Y)) {
-                .static => return @import("apply2/despst.zig").apply2Into(o, x, y, opInto),
-                .dense => return @import("apply2/despde.zig").apply2Into(o, x, y, opInto),
-                .sparse => return @import("apply2/despsp.zig").apply2Into(o, x, y, opInto),
-                .numeric => return @import("apply2/despnu.zig").apply2Into(o, x, y, opInto),
+                .static => return @import("apply2/vecden_vecspa_vecsta.zig").apply2Into(o, x, y, opInto),
+                .dense => return @import("apply2/vecden_vecspa_vecden.zig").apply2Into(o, x, y, opInto),
+                .sparse => return @import("apply2/vecden_vecspa_vecspa.zig").apply2Into(o, x, y, opInto),
+                .numeric => return @import("apply2/vecden_vecspa_num.zig").apply2Into(o, x, y, opInto),
             },
             .numeric => switch (comptime meta.vectorType(Y)) {
-                .static => return @import("apply2/denust.zig").apply2Into(o, x, y, opInto),
-                .dense => return @import("apply2/denude.zig").apply2Into(o, x, y, opInto),
-                .sparse => return @import("apply2/denusp.zig").apply2Into(o, x, y, opInto),
+                .static => return @import("apply2/vecden_num_vecsta.zig").apply2Into(o, x, y, opInto),
+                .dense => return @import("apply2/vecden_num_vecden.zig").apply2Into(o, x, y, opInto),
+                .sparse => return @import("apply2/vecden_num_vecspa.zig").apply2Into(o, x, y, opInto),
                 .numeric => unreachable,
             },
         },
         .sparse => switch (comptime meta.vectorType(X)) {
             .sparse => switch (comptime meta.vectorType(Y)) {
-                .sparse => return @import("apply2/spspsp.zig").apply2Into(o, x, y, opInto),
-                .numeric => return @import("apply2/spspnu.zig").apply2Into(o, x, y, opInto),
+                .sparse => return @import("apply2/vecspa_vecspa_vecspa.zig").apply2Into(o, x, y, opInto),
+                .numeric => return @import("apply2/vecspa_vecspa_num.zig").apply2Into(o, x, y, opInto),
                 else => @compileError("zsl.vector.apply2Into: o cannot point to a sparse vector if the result is static or dense, got\n\to: *" ++
                     @typeName(O) ++ "x: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\topInto: " ++ @typeName(OpInto) ++ "\n"),
             },
             .numeric => switch (comptime meta.vectorType(Y)) {
-                .sparse => return @import("apply2/spnusp.zig").apply2Into(o, x, y, opInto),
+                .sparse => return @import("apply2/vecspa_num_vecspa.zig").apply2Into(o, x, y, opInto),
                 .numeric => unreachable,
                 else => @compileError("zsl.vector.apply2Into: o cannot point to a sparse vector if the result is static or dense, got\n\to: *" ++
                     @typeName(O) ++ "x: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\topInto: " ++ @typeName(OpInto) ++ "\n"),

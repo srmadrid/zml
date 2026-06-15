@@ -1,9 +1,6 @@
 const std = @import("std");
 
 const meta = @import("../../meta.zig");
-const Layout = meta.Layout;
-const Uplo = meta.Uplo;
-const Diag = meta.Diag;
 
 const numeric = @import("../../numeric.zig");
 const int = @import("../../int.zig");
@@ -19,7 +16,7 @@ const array = @import("../../array.zig");
 /// `uplo` parameter, and the diagonal can be either unit, meaning all diagonal
 /// elements are assumed to be 1 and not accessed, or non-unit, meaning the
 /// diagonal elements are accessed normally.
-pub fn Dense(N: type, uplo: Uplo, diag: Diag, layout: Layout) type {
+pub fn Dense(N: type, uplo: matrix.Uplo, diag: matrix.Diag, layout: matrix.Layout) type {
     if (!meta.isNumeric(N))
         @compileError("zsl.matrix.triangular.Dense: N must be a numeric type, got \n\tN = " ++ @typeName(N) ++ "\n");
 
@@ -34,9 +31,9 @@ pub fn Dense(N: type, uplo: Uplo, diag: Diag, layout: Layout) type {
         pub const is_matrix = true;
         pub const is_dense = true;
         pub const is_triangular = true;
-        pub const storage_layout = layout;
-        pub const storage_uplo = uplo;
-        pub const storage_diag = diag;
+        pub const storage_layout: ?matrix.Layout = layout;
+        pub const storage_uplo: ?matrix.Uplo = uplo;
+        pub const storage_diag: ?matrix.Diag = diag;
 
         // Numeric type
         pub const Numeric = N;
@@ -422,7 +419,7 @@ pub fn Dense(N: type, uplo: Uplo, diag: Diag, layout: Layout) type {
         /// Gets the element at the specified index.
         ///
         /// ## Arguments
-        /// * `self` (`matrix.triangular.Dense(T, uplo, diag, order)`): The
+        /// * `self` (`matrix.triangular.Dense(N, uplo, diag, layout)`): The
         ///   matrix to get the element from.
         /// * `r` (`usize`): The row index of the element to get.
         /// * `c` (`usize`): The column index of the element to get.
@@ -629,7 +626,7 @@ pub fn Dense(N: type, uplo: Uplo, diag: Diag, layout: Layout) type {
         ///
         /// ## Errors
         /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
-        pub fn copy(self: matrix.triangular.Dense(N, uplo, diag, layout), allocator: std.mem.Allocator) !matrix.triangular.Dense(N, uplo, diag, layout) {
+        pub fn clone(self: matrix.triangular.Dense(N, uplo, diag, layout), allocator: std.mem.Allocator) !matrix.triangular.Dense(N, uplo, diag, layout) {
             const mat: matrix.triangular.Dense(N, uplo, diag, layout) = try .init(allocator, self.rows, self.cols);
 
             if (comptime layout == .col_major) {
@@ -722,7 +719,7 @@ pub fn Dense(N: type, uplo: Uplo, diag: Diag, layout: Layout) type {
         /// ## Returns
         /// `matrix.triangular.Dense(N, uplo.invert(), diag, layout.invert())`:
         /// The transposed matrix.
-        pub fn transpose(self: matrix.triangular.Dense(N, uplo, diag, layout)) matrix.triangular.Dense(N, uplo.invert(), diag, layout.invert()) {
+        pub fn transposeView(self: matrix.triangular.Dense(N, uplo, diag, layout)) matrix.triangular.Dense(N, uplo.invert(), diag, layout.invert()) {
             return .{
                 .data = self.data,
                 .rows = self.cols,
@@ -749,7 +746,7 @@ pub fn Dense(N: type, uplo: Uplo, diag: Diag, layout: Layout) type {
         ///
         /// ## Errors
         /// * `matrix.Error.InvalidRange`: If the specified range is invalid.
-        pub fn submatrix(self: matrix.triangular.Dense(N, uplo, diag, layout), start: usize, row_end: usize, col_end: usize) !matrix.triangular.Dense(N, uplo, diag, layout) {
+        pub fn submatrixView(self: matrix.triangular.Dense(N, uplo, diag, layout), start: usize, row_end: usize, col_end: usize) !matrix.triangular.Dense(N, uplo, diag, layout) {
             if (start >= int.min(self.rows, self.cols) or
                 row_end > self.rows or col_end > self.cols or
                 row_end < start or col_end < start)
@@ -777,7 +774,7 @@ pub fn Dense(N: type, uplo: Uplo, diag: Diag, layout: Layout) type {
         ///
         /// ## Errors
         /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
-        pub fn copyToGeneralDenseMatrix(self: matrix.triangular.Dense(N, uplo, diag, layout), allocator: std.mem.Allocator) !matrix.general.Dense(N, layout) {
+        pub fn cloneToGeneralDenseMatrix(self: matrix.triangular.Dense(N, uplo, diag, layout), allocator: std.mem.Allocator) !matrix.general.Dense(N, layout) {
             const mat: matrix.general.Dense(N, layout) = try .init(allocator, self.rows, self.cols);
 
             if (comptime layout == .col_major) {
@@ -864,113 +861,6 @@ pub fn Dense(N: type, uplo: Uplo, diag: Diag, layout: Layout) type {
 
             return mat;
         }
-
-        // pub fn copyToDenseArray(
-        //     self: *const Dense(N, uplo, diag, layout),
-        //     allocator: std.mem.Allocator,
-        //     ctx: anytype,
-        // ) !array.Dense(N, layout) {
-        //     var result: array.Dense(N, layout) = try .init(allocator, &.{ self.rows, self.cols });
-        //     errdefer result.deinit(allocator);
-
-        //     if (comptime !types.isArbitraryPrecision(N)) {
-        //         comptime types.validateContext(@TypeOf(ctx), .{});
-
-        //         if (comptime layout == .col_major) {
-        //             if (comptime uplo == .upper) { // cu
-        //                 var j: usize = 0;
-        //                 while (j < self.cols) : (j += 1) {
-        //                     var i: usize = 0;
-        //                     while (i < int.min(j, self.rows)) : (i += 1) {
-        //                         result.data[i + j * result.strides[1]] = self.data[i + j * self.ld];
-        //                     }
-
-        //                     if (j < int.min(self.rows, self.cols)) {
-        //                         if (comptime diag == .unit) {
-        //                             result.data[j + j * result.strides[1]] = numeric.one(N, ctx) catch unreachable;
-        //                         } else {
-        //                             result.data[j + j * result.strides[1]] = self.data[j + j * self.ld];
-        //                         }
-        //                     }
-
-        //                     i = j + 1;
-        //                     while (i < self.rows) : (i += 1) {
-        //                         result.data[i + j * result.strides[1]] = numeric.zero(N, ctx) catch unreachable;
-        //                     }
-        //                 }
-        //             } else { // cl
-        //                 var j: usize = 0;
-        //                 while (j < self.cols) : (j += 1) {
-        //                     var i: usize = 0;
-        //                     while (i < int.min(j, self.rows)) : (i += 1) {
-        //                         result.data[i + j * result.strides[1]] = numeric.zero(N, ctx) catch unreachable;
-        //                     }
-
-        //                     if (j < int.min(self.rows, self.cols)) {
-        //                         if (comptime diag == .unit) {
-        //                             result.data[j + j * result.strides[1]] = numeric.one(N, ctx) catch unreachable;
-        //                         } else {
-        //                             result.data[j + j * result.strides[1]] = self.data[j + j * self.ld];
-        //                         }
-        //                     }
-
-        //                     i = j + 1;
-        //                     while (i < self.rows) : (i += 1) {
-        //                         result.data[i + j * result.strides[1]] = self.data[i + j * self.ld];
-        //                     }
-        //                 }
-        //             }
-        //         } else {
-        //             if (comptime uplo == .upper) { // ru
-        //                 var i: usize = 0;
-        //                 while (i < self.rows) : (i += 1) {
-        //                     var j: usize = 0;
-        //                     while (j < int.min(i, self.cols)) : (j += 1) {
-        //                         result.data[i * result.strides[0] + j] = numeric.zero(N, ctx) catch unreachable;
-        //                     }
-
-        //                     if (i < int.min(self.rows, self.cols)) {
-        //                         if (comptime diag == .unit) {
-        //                             result.data[i * result.strides[0] + i] = numeric.one(N, ctx) catch unreachable;
-        //                         } else {
-        //                             result.data[i * result.strides[0] + i] = self.data[i * self.ld + i];
-        //                         }
-        //                     }
-
-        //                     j = i + 1;
-        //                     while (j < self.cols) : (j += 1) {
-        //                         result.data[i * result.strides[0] + j] = self.data[i * self.ld + j];
-        //                     }
-        //                 }
-        //             } else { // rl
-        //                 var i: usize = 0;
-        //                 while (i < self.rows) : (i += 1) {
-        //                     var j: usize = 0;
-        //                     while (j < int.min(i, self.cols)) : (j += 1) {
-        //                         result.data[i * result.strides[0] + j] = self.data[i * self.ld + j];
-        //                     }
-
-        //                     if (i < int.min(self.rows, self.cols)) {
-        //                         if (comptime diag == .unit) {
-        //                             result.data[i * result.strides[0] + i] = numeric.one(N, ctx) catch unreachable;
-        //                         } else {
-        //                             result.data[i * result.strides[0] + i] = self.data[i * self.ld + i];
-        //                         }
-        //                     }
-
-        //                     j = i + 1;
-        //                     while (j < self.cols) : (j += 1) {
-        //                         result.data[i * result.strides[0] + j] = numeric.zero(N, ctx) catch unreachable;
-        //                     }
-        //                 }
-        //             }
-        //         }
-        //     } else {
-        //         @compileError("Arbitrary precision types not implemented yet");
-        //     }
-
-        //     return result;
-        // }
 
         pub fn _index(self: *const Dense(N, uplo, diag, layout), r: usize, c: usize) usize {
             return if (comptime layout == .col_major)

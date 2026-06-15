@@ -1,8 +1,4 @@
 pub const meta = @import("meta.zig");
-pub const Layout = meta.Layout;
-pub const Uplo = meta.Uplo;
-pub const Diag = meta.Diag;
-pub const IterationOrder = meta.IterationOrder;
 
 pub const int = @import("int.zig");
 pub const float = @import("float.zig");

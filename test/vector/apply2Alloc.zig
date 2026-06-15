@@ -5,49 +5,49 @@ const zsl = @import("zsl");
 const tzsl = @import("../zsl.zig");
 
 const combinations = [_][2]type{
-    // __stst
+    // vecsta_vecsta
     .{ tzsl.vector.Static(zsl.cf64), tzsl.vector.Static(zsl.cf64) },
 
-    // __stde
+    // vecsta_vecden
     .{ tzsl.vector.Static(zsl.cf64), zsl.vector.Dense(zsl.cf64) },
 
-    // __stsp
+    // vecsta_vecspa
     .{ tzsl.vector.Static(zsl.cf64), zsl.vector.Sparse(zsl.cf64) },
 
-    // __stnu
+    // vecsta_num
     .{ tzsl.vector.Static(zsl.cf64), zsl.cf64 },
 
-    // __dest
+    // vecden_vecsta
     .{ zsl.vector.Dense(zsl.cf64), tzsl.vector.Static(zsl.cf64) },
 
-    // __dede
+    // vecden_vecden
     .{ zsl.vector.Dense(zsl.cf64), zsl.vector.Dense(zsl.cf64) },
 
-    // __desp
+    // vecden_vecspa
     .{ zsl.vector.Dense(zsl.cf64), zsl.vector.Sparse(zsl.cf64) },
 
-    // __denu
+    // vecden_num
     .{ zsl.vector.Dense(zsl.cf64), zsl.cf64 },
 
-    // __spst
+    // vecspa_vecsta
     .{ zsl.vector.Sparse(zsl.cf64), tzsl.vector.Static(zsl.cf64) },
 
-    // __spde
+    // vecspa_vecden
     .{ zsl.vector.Sparse(zsl.cf64), zsl.vector.Dense(zsl.cf64) },
 
-    // __nust
-    .{ zsl.cf64, tzsl.vector.Static(zsl.cf64) },
+    // vecspa_vecspa
+    .{ zsl.vector.Sparse(zsl.cf64), zsl.vector.Dense(zsl.cf64) },
 
-    // __nude
-    .{ zsl.cf64, zsl.vector.Dense(zsl.cf64) },
-
-    // __spsp
-    .{ zsl.vector.Sparse(zsl.cf64), zsl.vector.Sparse(zsl.cf64) },
-
-    // __spnu
+    // vecspa_num
     .{ zsl.vector.Sparse(zsl.cf64), zsl.cf64 },
 
-    // __nusp
+    // num_vecsta
+    .{ zsl.cf64, tzsl.vector.Static(zsl.cf64) },
+
+    // num_vecden
+    .{ zsl.cf64, zsl.vector.Dense(zsl.cf64) },
+
+    // num_vecspa
     .{ zsl.cf64, zsl.vector.Sparse(zsl.cf64) },
 };
 

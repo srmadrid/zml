@@ -45,33 +45,31 @@ pub const normAlloc = @import("linalg/norm.zig").normAlloc;
 
 // pinv
 
-// const _lu = @import("linalg/lu.zig");
-// pub const LU = _lu.LU;
-// pub const lu = _lu.lu;
-// pub const PLU = _lu.PLU;
-// pub const plu = _lu.plu;
-// pub const PLUQ = _lu.PLUQ;
-// pub const pluq = _lu.pluq;
+// pub const LU = @import("linalg/lu.zig").LU;
+// pub const lu = @import("linalg/lu.zig").lu;
+// pub const PLU = @import("linalg/lu.zig").PLU;
+// pub const plu = @import("linalg/lu.zig").plu;
+// pub const PLUQ = @import("linalg/lu.zig").PLUQ;
+// pub const pluq = @import("linalg/lu.zig").pluq;
 
-// const _cholesky = @import("linalg/cholesky.zig");
-// pub const LLT = _cholesky.LLT;
-// pub const llt = _cholesky.llt;
-// pub const UTU = _cholesky.UTU;
-// pub const utu = _cholesky.utu;
-// pub const cholesky = _cholesky.cholesky;
+// ilu
 
-// const _bunchkaufman = @import("linalg/bunchkaufman.zig");
-// pub const LDLT = _bunchkaufman.LDLT;
-// pub const ldlt = _bunchkaufman.ldlt;
-// pub const UDUT = _bunchkaufman.UDUT;
-// pub const udut = _bunchkaufman.udut;
-// pub const bunchkaufman = _bunchkaufman.bunchkaufman;
+// pub const LLT = @import("linalg/cholesky.zig").LLT;
+// pub const llt = @import("linalg/cholesky.zig").llt;
+// pub const UTU = @import("linalg/cholesky.zig").UTU;
+// pub const utu = @import("linalg/cholesky.zig").utu;
+// pub const cholesky = @import("linalg/cholesky.zig").cholesky;
 
-// const qr_ = @import("linalg/qr.zig");
-// pub const QR = qr_.QR;
-// pub const qr = qr_.qr;
-// pub const QRP = qr_.QRP;
-// pub const qrp = qr_.qrp;
+// pub const LDLT = @import("linalg/bunchkaufman.zig").LDLT;
+// pub const ldlt = @import("linalg/bunchkaufman.zig").ldlt;
+// pub const UDUT = @import("linalg/bunchkaufman.zig").UDUT;
+// pub const udut = @import("linalg/bunchkaufman.zig").udut;
+// pub const bunchkaufman = @import("linalg/bunchkaufman.zig").bunchkaufman;
+
+// pub const QR = @import("linalg/qr.zig").QR;
+// pub const qr = @import("linalg/qr.zig").qr;
+// pub const QRP = @import("linalg/qr.zig").QRP;
+// pub const qrp = @import("linalg/qr.zig").qrp;
 
 // svd
 
@@ -86,6 +84,7 @@ pub const normAlloc = @import("linalg/norm.zig").normAlloc;
 
 // tensorProduct (generalization of the outer product, A (shape i, j) ⊗ B (shape k, l) gives (shape i, j, k, l))
 
+// Move to blas?
 pub const Transpose = enum(u2) {
     no_trans,
     trans,

@@ -1,8 +1,6 @@
 const std = @import("std");
 
 const meta = @import("../../meta.zig");
-const Layout = meta.Layout;
-const Uplo = meta.Uplo;
 
 const numeric = @import("../../numeric.zig");
 
@@ -12,7 +10,7 @@ const matrix = @import("../../matrix.zig");
 /// depending on if `layout` is column-major or row-major, respectively. Only
 /// the upper or lower triangular part of the matrix is stored, depending on the
 /// `uplo` parameter.
-pub fn Sparse(N: type, uplo: Uplo, layout: Layout) type {
+pub fn Sparse(N: type, uplo: matrix.Uplo, layout: matrix.Layout) type {
     if (!meta.isNumeric(N) or !meta.isComplex(N))
         @compileError("zsl.matrix.hermitian.Sparse: N must be a complex numeric type, got \n\tN = " ++ @typeName(N) ++ "\n");
 
@@ -31,9 +29,9 @@ pub fn Sparse(N: type, uplo: Uplo, layout: Layout) type {
         pub const is_matrix = true;
         pub const is_sparse = true;
         pub const is_hermitian = true;
-        pub const storage_layout = layout;
-        pub const storage_uplo = uplo;
-        pub const storage_diag = meta.default_diag;
+        pub const storage_layout: ?matrix.Layout = layout;
+        pub const storage_uplo: ?matrix.Uplo = uplo;
+        pub const storage_diag: ?matrix.Diag = null;
 
         // Numeric type
         pub const Numeric = N;

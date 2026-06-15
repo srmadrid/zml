@@ -34,7 +34,7 @@ pub fn dot(x: anytype, y: anytype) !linalg.Dot(@TypeOf(x), @TypeOf(y)) {
 
     switch (comptime meta.vectorType(X)) {
         .static => switch (comptime meta.vectorType(Y)) {
-            .static => return @import("dot/stst.zig").dot(x, y),
+            .static => return @import("dot/vecsta_vecsta.zig").dot(x, y),
             .numeric => unreachable,
             else => @compileError("zsl.linalg.dot: not implemented yet for \n\tX = " ++ @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n"),
         },

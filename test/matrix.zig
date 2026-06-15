@@ -2,6 +2,74 @@ const std = @import("std");
 
 const zsl = @import("zsl");
 
+pub const general = struct {
+    pub fn Static(N: type, layout: zsl.matrix.Layout) type {
+        return struct {
+            pub const instantiate = true;
+            pub const general = true;
+            pub const storage_layout = layout;
+            pub const Numeric = N;
+        };
+    }
+};
+
+pub const symmetric = struct {
+    pub fn Static(N: type, uplo: zsl.matrix.Uplo, layout: zsl.matrix.Layout) type {
+        return struct {
+            pub const instantiate = true;
+            pub const symmetric = true;
+            pub const storage_uplo = uplo;
+            pub const storage_layout = layout;
+            pub const Numeric = N;
+        };
+    }
+};
+
+pub const hermitian = struct {
+    pub fn Static(N: type, uplo: zsl.matrix.Uplo, layout: zsl.matrix.Layout) type {
+        return struct {
+            pub const instantiate = true;
+            pub const hermitian = true;
+            pub const storage_uplo = uplo;
+            pub const storage_layout = layout;
+            pub const Numeric = N;
+        };
+    }
+};
+
+pub const triangular = struct {
+    pub fn Static(N: type, uplo: zsl.matrix.Uplo, diag: zsl.matrix.Diag, layout: zsl.matrix.Layout) type {
+        return struct {
+            pub const instantiate = true;
+            pub const triangular = true;
+            pub const storage_uplo = uplo;
+            pub const storage_diag = diag;
+            pub const storage_layout = layout;
+            pub const Numeric = N;
+        };
+    }
+};
+
+pub const diagonal = struct {
+    pub fn Static(N: type) type {
+        return struct {
+            pub const instantiate = true;
+            pub const diagonal = true;
+            pub const Numeric = N;
+        };
+    }
+};
+
+pub const permutation = struct {
+    pub fn Static(N: type) type {
+        return struct {
+            pub const instantiate = true;
+            pub const permutation = true;
+            pub const Numeric = N;
+        };
+    }
+};
+
 pub fn printMatrix(desc: []const u8, A: anytype) void {
     std.debug.print("\nMatrix {s}:\n\n", .{desc});
 
@@ -298,5 +366,5 @@ pub fn areEql(A: anytype, B: anytype) !void {
 }
 
 test {
-    _ = @import("matrix/apply2_.zig");
+    _ = @import("matrix/apply2Into.zig");
 }

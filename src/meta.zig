@@ -2,9 +2,7 @@
 
 const std = @import("std");
 
-pub const default_layout = Layout.col_major;
-pub const default_uplo = Uplo.upper;
-pub const default_diag = Diag.non_unit;
+const matrix = @import("matrix.zig");
 
 pub const standard_integer_types: [10]type = .{
     u8,   u16,
@@ -12,79 +10,6 @@ pub const standard_integer_types: [10]type = .{
     u128, i8,
     i16,  i32,
     i64,  i128,
-};
-
-pub const Layout = enum(u1) {
-    row_major,
-    col_major,
-
-    pub fn toInt(self: Layout, comptime Int: type) Int {
-        comptime if (!isNumeric(Int) or numericType(Int) != .int)
-            @compileError("zsl.Layout.toInt: Int must be an int type, got:\n\tInt = " ++ @typeName(Int) ++ "\n");
-
-        return switch (self) {
-            .row_major => 101,
-            .col_major => 102,
-        };
-    }
-
-    pub fn toIterationOrder(self: Layout) IterationOrder {
-        return switch (self) {
-            .row_major => .right_to_left,
-            .col_major => .left_to_right,
-        };
-    }
-
-    pub fn invert(self: Layout) Layout {
-        return switch (self) {
-            .row_major => .col_major,
-            .col_major => .row_major,
-        };
-    }
-};
-
-pub const Uplo = enum(u1) {
-    upper,
-    lower,
-
-    pub fn toInt(self: Uplo, comptime Int: type) Int {
-        comptime if (!isNumeric(Int) or numericType(Int) != .int)
-            @compileError("zsl.Uplo.toInt: Int must be an int type, got:\n\tInt = " ++ @typeName(Int) ++ "\n");
-
-        return switch (self) {
-            .upper => if (comptime Int == u8) 'U' else 121,
-            .lower => if (comptime Int == u8) 'L' else 122,
-        };
-    }
-
-    pub fn invert(self: Uplo) Uplo {
-        return switch (self) {
-            .upper => .lower,
-            .lower => .upper,
-        };
-    }
-};
-
-pub const Diag = enum(u1) {
-    non_unit,
-    unit,
-
-    pub fn toInt(self: Diag, comptime Int: type) Int {
-        comptime if (!isNumeric(Int) or numericType(Int) != .int)
-            @compileError("zsl.Diag.toInt: Int must be an int type, got:\n\tInt = " ++ @typeName(Int) ++ "\n");
-
-        return switch (self) {
-            .non_unit => if (comptime Int == u8) 'N' else 131,
-            .unit => if (comptime Int == u8) 'U' else 132,
-        };
-    }
-
-    pub fn invert(self: Diag) Diag {
-        return switch (self) {
-            .non_unit => .unit,
-            .unit => .non_unit,
-        };
-    }
 };
 
 pub const IterationOrder = enum {
@@ -147,17 +72,23 @@ pub const VectorType = enum {
 };
 
 pub const MatrixType = enum {
+    general_static,
     general_dense,
     general_sparse,
+    symmetric_static,
     symmetric_dense,
     symmetric_sparse,
+    hermitian_static,
     hermitian_dense,
     hermitian_sparse,
+    triangular_static,
     triangular_dense,
     triangular_sparse,
+    diagonal_static,
+    diagonal_sparse,
+    permutation_static,
+    permutation_sparse,
     builder_sparse,
-    diagonal,
-    permutation,
     numeric, // Fallback for numeric types that are not matrices
 };
 
@@ -173,8 +104,10 @@ pub const MatrixKind = enum {
 };
 
 pub const MatrixStorage = enum {
+    static,
     dense,
     sparse,
+    numeric,
 };
 
 pub const ArrayType = enum {
@@ -306,6 +239,24 @@ pub fn vectorType(comptime V: type) VectorType {
 /// ## Returns
 /// `meta.MatrixType`: The corresponding `meta.MatrixType` enum value.
 pub fn matrixType(comptime M: type) MatrixType {
+    if (comptime isGeneralStaticMatrix(M))
+        return .general_static;
+
+    if (comptime isSymmetricStaticMatrix(M))
+        return .symmetric_static;
+
+    if (comptime isHermitianStaticMatrix(M))
+        return .hermitian_static;
+
+    if (comptime isTriangularStaticMatrix(M))
+        return .triangular_static;
+
+    if (comptime isDiagonalStaticMatrix(M))
+        return .diagonal_static;
+
+    if (comptime isPermutationStaticMatrix(M))
+        return .permutation_static;
+
     if (comptime isGeneralDenseMatrix(M))
         return .general_dense;
 
@@ -330,14 +281,14 @@ pub fn matrixType(comptime M: type) MatrixType {
     if (comptime isTriangularSparseMatrix(M))
         return .triangular_sparse;
 
+    if (comptime isDiagonalSparseMatrix(M))
+        return .diagonal_sparse;
+
+    if (comptime isPermutationSparseMatrix(M))
+        return .permutation_sparse;
+
     if (comptime isBuilderSparseMatrix(M))
         return .builder_sparse;
-
-    if (comptime isDiagonalMatrix(M))
-        return .diagonal;
-
-    if (comptime isPermutationMatrix(M))
-        return .permutation;
 
     return .numeric; // Fallback for numeric types that are not matrices
 }
@@ -360,6 +311,19 @@ pub fn matrixKind(comptime M: type) MatrixKind {
 
     if (comptime isPermutationMatrix(M))
         return .permutation;
+
+    return .numeric; // Fallback for numeric types that are not matrices
+}
+
+pub fn matrixStorage(comptime M: type) MatrixStorage {
+    if (comptime isStaticMatrix(M))
+        return .static;
+
+    if (comptime isDenseMatrix(M))
+        return .dense;
+
+    if (comptime isSparseMatrix(M))
+        return .sparse;
 
     return .numeric; // Fallback for numeric types that are not matrices
 }
@@ -425,6 +389,12 @@ pub const isDenseVector = type_checks.isDenseVector;
 pub const isSparseVector = type_checks.isSparseVector;
 pub const isMatrix = type_checks.isMatrix;
 pub const isSquareMatrix = type_checks.isSquareMatrix;
+pub const isGeneralStaticMatrix = type_checks.isGeneralStaticMatrix;
+pub const isSymmetricStaticMatrix = type_checks.isSymmetricStaticMatrix;
+pub const isHermitianStaticMatrix = type_checks.isHermitianStaticMatrix;
+pub const isTriangularStaticMatrix = type_checks.isTriangularStaticMatrix;
+pub const isDiagonalStaticMatrix = type_checks.isDiagonalStaticMatrix;
+pub const isPermutationStaticMatrix = type_checks.isPermutationStaticMatrix;
 pub const isGeneralDenseMatrix = type_checks.isGeneralDenseMatrix;
 pub const isSymmetricDenseMatrix = type_checks.isSymmetricDenseMatrix;
 pub const isHermitianDenseMatrix = type_checks.isHermitianDenseMatrix;
@@ -433,14 +403,17 @@ pub const isGeneralSparseMatrix = type_checks.isGeneralSparseMatrix;
 pub const isSymmetricSparseMatrix = type_checks.isSymmetricSparseMatrix;
 pub const isHermitianSparseMatrix = type_checks.isHermitianSparseMatrix;
 pub const isTriangularSparseMatrix = type_checks.isTriangularSparseMatrix;
+pub const isDiagonalSparseMatrix = type_checks.isDiagonalSparseMatrix;
+pub const isPermutationSparseMatrix = type_checks.isPermutationSparseMatrix;
 pub const isBuilderSparseMatrix = type_checks.isBuilderSparseMatrix;
-pub const isDiagonalMatrix = type_checks.isDiagonalMatrix;
-pub const isPermutationMatrix = type_checks.isPermutationMatrix;
 pub const isGeneralMatrix = type_checks.isGeneralMatrix;
 pub const isSymmetricMatrix = type_checks.isSymmetricMatrix;
 pub const isHermitianMatrix = type_checks.isHermitianMatrix;
 pub const isTriangularMatrix = type_checks.isTriangularMatrix;
+pub const isDiagonalMatrix = type_checks.isDiagonalMatrix;
+pub const isPermutationMatrix = type_checks.isPermutationMatrix;
 pub const isBuilderMatrix = type_checks.isBuilderMatrix;
+pub const isStaticMatrix = type_checks.isStaticMatrix;
 pub const isDenseMatrix = type_checks.isDenseMatrix;
 pub const isSparseMatrix = type_checks.isSparseMatrix;
 pub const isArray = type_checks.isArray;
@@ -579,104 +552,54 @@ pub fn Numeric(comptime T: type) type {
     switch (comptime domain(T)) {
         .numeric => return T,
         .vector => switch (comptime vectorType(T)) {
-            .static => return T.Numeric,
-            .dense => return T.Numeric,
-            .sparse => return T.Numeric,
+            else => return T.Numeric,
             .numeric => return T,
         },
         .matrix => switch (comptime matrixType(T)) {
-            .general_dense => return T.Numeric,
-            .general_sparse => return T.Numeric,
-            .symmetric_dense => return T.Numeric,
-            .symmetric_sparse => return T.Numeric,
-            .hermitian_dense => return T.Numeric,
-            .hermitian_sparse => return T.Numeric,
-            .triangular_dense => return T.Numeric,
-            .triangular_sparse => return T.Numeric,
-            .builder_sparse => return T.Numeric,
-            .diagonal => return T.Numeric,
-            .permutation => return T.Numeric,
+            else => return T.Numeric,
             .numeric => return T,
         },
         .array => switch (comptime arrayType(T)) {
-            .dense => return T.Numeric,
-            .strided => return T.Numeric,
-            .sparse => return T.Numeric,
+            else => return T.Numeric,
             .numeric => return T,
         },
         .expression => return T,
     }
 }
 
-pub fn layoutOf(comptime T: type) Layout {
+pub fn layoutOf(comptime T: type) ?matrix.Layout {
     if (comptime !isSupportedType(T))
         @compileError("zsl.meta.layoutOf: " ++ @typeName(T) ++ " is not a supported type");
 
     switch (comptime domain(T)) {
         .matrix => switch (comptime matrixType(T)) {
-            .general_dense => return T.storage_layout,
-            .general_sparse => return T.storage_layout,
-            .symmetric_dense => return T.storage_layout,
-            .symmetric_sparse => return T.storage_layout,
-            .hermitian_dense => return T.storage_layout,
-            .hermitian_sparse => return T.storage_layout,
-            .triangular_dense => return T.storage_layout,
-            .triangular_sparse => return T.storage_layout,
-            .builder_sparse => return T.storage_layout,
-            .diagonal => return T.storage_layout,
-            .permutation => return T.storage_layout,
+            else => return T.storage_layout,
             .numeric => unreachable,
         },
-        .array => switch (comptime arrayType(T)) {
-            .dense => return T.storage_layout,
-            .strided => return T.storage_layout,
-            .sparse => return T.storage_layout,
-            .numeric => unreachable,
-        },
-        else => @compileError("zsl.meta.layoutOf: T must be a matrix or array type, got " ++ @typeName(T)),
+        else => @compileError("zsl.meta.layoutOf: T must be a matrix type, got " ++ @typeName(T)),
     }
 }
 
-pub fn uploOf(comptime T: type) Uplo {
+pub fn uploOf(comptime T: type) ?matrix.Uplo {
     if (comptime !isSupportedType(T))
         @compileError("zsl.meta.uploOf: " ++ @typeName(T) ++ " is not a supported type");
 
     switch (comptime domain(T)) {
         .matrix => switch (comptime matrixType(T)) {
-            .general_dense => return T.storage_uplo,
-            .general_sparse => return T.storage_uplo,
-            .symmetric_dense => return T.storage_uplo,
-            .symmetric_sparse => return T.storage_uplo,
-            .hermitian_dense => return T.storage_uplo,
-            .hermitian_sparse => return T.storage_uplo,
-            .triangular_dense => return T.storage_uplo,
-            .triangular_sparse => return T.storage_uplo,
-            .builder_sparse => return T.storage_uplo,
-            .diagonal => return default_uplo,
-            .permutation => return default_uplo,
+            else => return T.storage_uplo,
             .numeric => unreachable,
         },
         else => @compileError("zsl.meta.uploOf: T must be a matrix type, got " ++ @typeName(T)),
     }
 }
 
-pub fn diagOf(comptime T: type) Diag {
+pub fn diagOf(comptime T: type) ?matrix.Diag {
     if (comptime !isSupportedType(T))
         @compileError("zsl.meta.diagOf: " ++ @typeName(T) ++ " is not a supported type");
 
     switch (comptime domain(T)) {
         .matrix => switch (comptime matrixType(T)) {
-            .general_dense => return T.storage_diag,
-            .general_sparse => return T.storage_diag,
-            .symmetric_dense => return T.storage_diag,
-            .symmetric_sparse => return T.storage_diag,
-            .hermitian_dense => return T.storage_diag,
-            .hermitian_sparse => return T.storage_diag,
-            .triangular_dense => return T.storage_diag,
-            .triangular_sparse => return T.storage_diag,
-            .builder_sparse => return T.storage_diag,
-            .diagonal => return default_diag,
-            .permutation => return default_diag,
+            else => return T.storage_diag,
             .numeric => unreachable,
         },
         else => @compileError("zsl.meta.diagOf: T must be a matrix type, got " ++ @typeName(T)),
