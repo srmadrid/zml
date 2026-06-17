@@ -13,7 +13,7 @@ pub fn apply2Into(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) 
             var i: usize = 0;
             while (i < j) : (i += 1) {
                 const ty = if (comptime meta.uploOf(Y) == .upper) y.data[y._index(i, j)] else y.data[y._index(j, i)];
-                opInto(&o.data[o._index(j, j)], numeric.zero(meta.Numeric(X)), ty);
+                opInto(&o.data[o._index(i, j)], numeric.zero(meta.Numeric(X)), ty);
             }
 
             opInto(&o.data[o._index(j, j)], x.data[j], y.data[y._index(j, j)]);
@@ -21,7 +21,7 @@ pub fn apply2Into(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) 
             i = j + 1;
             while (i < o.rows) : (i += 1) {
                 const ty = if (comptime meta.uploOf(Y) == .lower) y.data[y._index(i, j)] else y.data[y._index(j, i)];
-                opInto(&o.data[o._index(j, j)], numeric.zero(meta.Numeric(X)), ty);
+                opInto(&o.data[o._index(i, j)], numeric.zero(meta.Numeric(X)), ty);
             }
         }
     } else {
@@ -30,7 +30,7 @@ pub fn apply2Into(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) 
             var j: usize = 0;
             while (j < i) : (j += 1) {
                 const ty = if (comptime meta.uploOf(Y) == .lower) y.data[y._index(i, j)] else y.data[y._index(j, i)];
-                opInto(&o.data[o._index(j, j)], numeric.zero(meta.Numeric(X)), ty);
+                opInto(&o.data[o._index(i, j)], numeric.zero(meta.Numeric(X)), ty);
             }
 
             opInto(&o.data[o._index(i, i)], x.data[i], y.data[y._index(i, i)]);
@@ -38,7 +38,7 @@ pub fn apply2Into(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) 
             j = i + 1;
             while (j < o.cols) : (j += 1) {
                 const ty = if (comptime meta.uploOf(Y) == .upper) y.data[y._index(i, j)] else y.data[y._index(j, i)];
-                opInto(&o.data[o._index(j, j)], numeric.zero(meta.Numeric(X)), ty);
+                opInto(&o.data[o._index(i, j)], numeric.zero(meta.Numeric(X)), ty);
             }
         }
     }

@@ -24,7 +24,7 @@ pub fn apply2Into(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) 
 
             if (j < o.rows) {
                 if (comptime meta.diagOf(Y) == .unit)
-                    opInto(&o.data[o._index(i, j)], x, numeric.one(meta.Numeric(Y)))
+                    opInto(&o.data[o._index(j, j)], x, numeric.one(meta.Numeric(Y)))
                 else
                     opInto(&o.data[o._index(j, j)], x, y.data[y._index(j, j)]);
             }
@@ -56,7 +56,7 @@ pub fn apply2Into(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) 
 
             if (i < o.cols) {
                 if (comptime meta.diagOf(Y) == .unit)
-                    opInto(&o.data[o._index(i, j)], x, numeric.one(meta.Numeric(Y)))
+                    opInto(&o.data[o._index(i, i)], x, numeric.one(meta.Numeric(Y)))
                 else
                     opInto(&o.data[o._index(i, i)], x, y.data[y._index(i, i)]);
             }

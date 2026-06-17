@@ -59,7 +59,7 @@ pub fn Static(size_: comptime_int, N: type, direction_: matrix.permutation.Direc
         /// * `matrix.Error.PositionOutOfBounds`: If `r` or `c` is out of
         ///   bounds.
         pub fn get(self: matrix.permutation.Static(size, N, direction), r: usize, c: usize) !N {
-            if (r >= self.rows or c >= self.cols)
+            if (r >= rows or c >= cols)
                 return matrix.Error.PositionOutOfBounds;
 
             if (comptime direction == .forward) {
@@ -106,7 +106,7 @@ pub fn Static(size_: comptime_int, N: type, direction_: matrix.permutation.Direc
         }
 
         // pub fn set(self: *Permutation(T), row: usize, col: usize, value: usize) !void {
-        //     if (row >= self.rows or col >= self.cols)
+        //     if (row >= rows or col >= cols)
         //         return matrix.Error.PositionOutOfBounds;
 
         //     if (value != 0 and value != 1)

@@ -8,8 +8,8 @@ Generate the full comptime switch dispatch body for matrix.apply2Into.
 
 Rules
 -----
-  1. builder_sparse  – valid only as output; as X or Y it is unreachable.
-  2. permutation_*   – can never be output.
+  1. builder_sparse: valid only as output; as X or Y it is unreachable.
+  2. permutation_*: can never be output.
   3. diagonal_*  output: both inputs must be diagonal or numeric.
   4. symmetric_* output: both inputs must be symmetric, diagonal, or numeric.
   5. hermitian_* output: inputs must be hermitian, symmetric, diagonal or
@@ -106,7 +106,7 @@ def base(t: str) -> str:
 
 def variant(t: str) -> str | None:
     """'triangular_sparse' -> 'sparse';  'numeric' -> None."""
-    if t in ("numeric"):
+    if t == "numeric":
         return None
     return t.split("_")[-1]
 

@@ -432,7 +432,7 @@ pub fn Sparse(N: type) type {
         ///   M is a square matrix type.
         pub fn compile(self: *matrix.builder.Sparse(N), allocator: std.mem.Allocator, comptime M: type) !M {
             comptime if (!meta.isMatrix(M) or !meta.isSparseMatrix(M) or
-                (!meta.isGeneralMatrix(M) and !meta.isSymmetricMatrix(M) or !meta.isHermitianMatrix(M) or !meta.isTriangularMatrix(M)))
+                (!meta.isGeneralSparseMatrix(M) and !meta.isSymmetricSparseMatrix(M) and !meta.isHermitianSparseMatrix(M) and !meta.isTriangularSparseMatrix(M)))
                 @compileError("zsl.matrix.builder.Sparse(N).compile: M must a sparse general, symmetric, Hermitian or triangular matrix type, got \n\tM = " ++ @typeName(M) ++ "\n");
 
             if ((comptime meta.isSquareMatrix(M)) and self.rows != self.cols)

@@ -34,7 +34,7 @@ pub fn Static(rows_: comptime_int, cols_: comptime_int, N: type, uplo: matrix.Up
         // Numeric type
         pub const Numeric = N;
 
-        pub const empty: matrix.triangular.Static(rows, cols, N, uplo, layout) = .{
+        pub const empty: matrix.triangular.Static(rows, cols, N, uplo, diag, layout) = .{
             .data = undefined,
         };
 
@@ -57,27 +57,27 @@ pub fn Static(rows_: comptime_int, cols_: comptime_int, N: type, uplo: matrix.Up
                 if (comptime uplo == .upper) {
                     if (comptime diag == .unit) { // cuu
                         inline for (0..cols) |j| {
-                            inline for (0..int.min(j, rows)) |i| {
+                            inline for (0..(comptime int.min(j, rows))) |i| {
                                 mat.data[i + j * rows] = value;
                             }
                         }
                     } else { // cun
                         inline for (0..cols) |j| {
-                            inline for (0..int.min(j + 1, rows)) |i| {
+                            inline for (0..(comptime int.min(j + 1, rows))) |i| {
                                 mat.data[i + j * rows] = value;
                             }
                         }
                     }
                 } else {
                     if (comptime diag == .unit) { // clu
-                        inline for (0..int.min(rows, cols)) |j| {
-                            inline for (j + 1..rows) |i| {
+                        inline for (0..(comptime int.min(rows, cols))) |j| {
+                            inline for ((comptime int.min(j + 1, rows))..rows) |i| {
                                 mat.data[i + j * rows] = value;
                             }
                         }
                     } else { // cln
-                        inline for (0..int.min(rows, cols)) |j| {
-                            inline for (j..rows) |i| {
+                        inline for (0..(comptime int.min(rows, cols))) |j| {
+                            inline for ((comptime int.min(j, rows))..rows) |i| {
                                 mat.data[i + j * rows] = value;
                             }
                         }
@@ -86,14 +86,14 @@ pub fn Static(rows_: comptime_int, cols_: comptime_int, N: type, uplo: matrix.Up
             } else {
                 if (comptime uplo == .upper) {
                     if (comptime diag == .unit) { // ruu
-                        inline for (0..int.min(rows, cols)) |i| {
-                            inline for (i + 1..cols) |j| {
+                        inline for (0..(comptime int.min(rows, cols))) |i| {
+                            inline for ((comptime int.min(i + 1, cols))..cols) |j| {
                                 mat.data[i * cols + j] = value;
                             }
                         }
                     } else { // run
-                        inline for (0..int.min(rows, cols)) |i| {
-                            inline for (i..cols) |j| {
+                        inline for (0..(comptime int.min(rows, cols))) |i| {
+                            inline for ((comptime int.min(i, cols))..cols) |j| {
                                 mat.data[i * cols + j] = value;
                             }
                         }
@@ -101,13 +101,13 @@ pub fn Static(rows_: comptime_int, cols_: comptime_int, N: type, uplo: matrix.Up
                 } else {
                     if (comptime diag == .unit) { // rlu
                         inline for (0..rows) |i| {
-                            inline for (0..int.min(i, cols)) |j| {
+                            inline for (0..(comptime int.min(i, cols))) |j| {
                                 mat.data[i * cols + j] = value;
                             }
                         }
                     } else { // rln
                         inline for (0..rows) |i| {
-                            inline for (0..int.min(i + 1, cols)) |j| {
+                            inline for (0..(comptime int.min(i + 1, cols))) |j| {
                                 mat.data[i * cols + j] = value;
                             }
                         }
@@ -163,7 +163,7 @@ pub fn Static(rows_: comptime_int, cols_: comptime_int, N: type, uplo: matrix.Up
                 if (comptime uplo == .upper) {
                     if (comptime diag == .unit) { // cuu
                         inline for (0..cols) |j| {
-                            inline for (0..int.min(j, rows)) |i| {
+                            inline for (0..(comptime int.min(j, rows))) |i| {
                                 mat.data[i + j * rows] = if (comptime @typeInfo(meta.ReturnTypeFromInputs(@"fn", &meta.structToArrayOfTypes(Args))) == .error_union)
                                     try @call(.auto, @"fn", args)
                                 else
@@ -172,7 +172,7 @@ pub fn Static(rows_: comptime_int, cols_: comptime_int, N: type, uplo: matrix.Up
                         }
                     } else { // cun
                         inline for (0..cols) |j| {
-                            inline for (0..int.min(j + 1, rows)) |i| {
+                            inline for (0..(comptime int.min(j + 1, rows))) |i| {
                                 mat.data[i + j * rows] = if (comptime @typeInfo(meta.ReturnTypeFromInputs(@"fn", &meta.structToArrayOfTypes(Args))) == .error_union)
                                     try @call(.auto, @"fn", args)
                                 else
@@ -182,8 +182,8 @@ pub fn Static(rows_: comptime_int, cols_: comptime_int, N: type, uplo: matrix.Up
                     }
                 } else {
                     if (comptime diag == .unit) { // clu
-                        inline for (0..int.min(rows, cols)) |j| {
-                            inline for (j + 1..rows) |i| {
+                        inline for (0..(comptime int.min(rows, cols))) |j| {
+                            inline for ((comptime int.min(j + 1, rows))..rows) |i| {
                                 mat.data[i + j * rows] = if (comptime @typeInfo(meta.ReturnTypeFromInputs(@"fn", &meta.structToArrayOfTypes(Args))) == .error_union)
                                     try @call(.auto, @"fn", args)
                                 else
@@ -191,8 +191,8 @@ pub fn Static(rows_: comptime_int, cols_: comptime_int, N: type, uplo: matrix.Up
                             }
                         }
                     } else { // cln
-                        inline for (0..int.min(rows, cols)) |j| {
-                            inline for (j..rows) |i| {
+                        inline for (0..(comptime int.min(rows, cols))) |j| {
+                            inline for ((comptime int.min(j, rows))..rows) |i| {
                                 mat.data[i + j * rows] = if (comptime @typeInfo(meta.ReturnTypeFromInputs(@"fn", &meta.structToArrayOfTypes(Args))) == .error_union)
                                     try @call(.auto, @"fn", args)
                                 else
@@ -204,8 +204,8 @@ pub fn Static(rows_: comptime_int, cols_: comptime_int, N: type, uplo: matrix.Up
             } else {
                 if (comptime uplo == .upper) {
                     if (comptime diag == .unit) { // ruu
-                        inline for (0..int.min(rows, cols)) |i| {
-                            inline for (i + 1..cols) |j| {
+                        inline for (0..(comptime int.min(rows, cols))) |i| {
+                            inline for ((comptime int.min(i + 1, cols))..cols) |j| {
                                 mat.data[i * cols + j] = if (comptime @typeInfo(meta.ReturnTypeFromInputs(@"fn", &meta.structToArrayOfTypes(Args))) == .error_union)
                                     try @call(.auto, @"fn", args)
                                 else
@@ -213,8 +213,8 @@ pub fn Static(rows_: comptime_int, cols_: comptime_int, N: type, uplo: matrix.Up
                             }
                         }
                     } else { // run
-                        inline for (0..int.min(rows, cols)) |i| {
-                            inline for (i..cols) |j| {
+                        inline for (0..(comptime int.min(rows, cols))) |i| {
+                            inline for ((comptime int.min(i, cols))..cols) |j| {
                                 mat.data[i * cols + j] = if (comptime @typeInfo(meta.ReturnTypeFromInputs(@"fn", &meta.structToArrayOfTypes(Args))) == .error_union)
                                     try @call(.auto, @"fn", args)
                                 else
@@ -225,7 +225,7 @@ pub fn Static(rows_: comptime_int, cols_: comptime_int, N: type, uplo: matrix.Up
                 } else {
                     if (comptime diag == .unit) { // rlu
                         inline for (0..rows) |i| {
-                            inline for (0..int.min(i, cols)) |j| {
+                            inline for (0..(comptime int.min(i, cols))) |j| {
                                 mat.data[i * cols + j] = if (comptime @typeInfo(meta.ReturnTypeFromInputs(@"fn", &meta.structToArrayOfTypes(Args))) == .error_union)
                                     try @call(.auto, @"fn", args)
                                 else
@@ -234,7 +234,7 @@ pub fn Static(rows_: comptime_int, cols_: comptime_int, N: type, uplo: matrix.Up
                         }
                     } else { // rln
                         inline for (0..rows) |i| {
-                            inline for (0..int.min(i + 1, cols)) |j| {
+                            inline for (0..(comptime int.min(i + 1, cols))) |j| {
                                 mat.data[i * cols + j] = if (comptime @typeInfo(meta.ReturnTypeFromInputs(@"fn", &meta.structToArrayOfTypes(Args))) == .error_union)
                                     try @call(.auto, @"fn", args)
                                 else
@@ -263,7 +263,7 @@ pub fn Static(rows_: comptime_int, cols_: comptime_int, N: type, uplo: matrix.Up
         /// * `matrix.Error.PositionOutOfBounds`: If `r` or `c` is out of
         ///   bounds.
         pub fn get(self: matrix.triangular.Static(rows, cols, N, uplo, diag, layout), r: usize, c: usize) !N {
-            if (r >= self.rows or c >= self.cols)
+            if (r >= rows or c >= cols)
                 return matrix.Error.PositionOutOfBounds;
 
             if (comptime uplo == .upper) {
@@ -318,7 +318,7 @@ pub fn Static(rows_: comptime_int, cols_: comptime_int, N: type, uplo: matrix.Up
         /// * `matrix.Error.BreaksStructure`: If `r == c` and `diag` is unit, or
         ///   if the index is outside the correct triangular part of the matrix.
         pub fn set(self: *matrix.triangular.Static(rows, cols, N, uplo, diag, layout), r: usize, c: usize, value: N) !void {
-            if (r >= self.rows or c >= self.cols)
+            if (r >= rows or c >= cols)
                 return matrix.Error.PositionOutOfBounds;
 
             if (comptime uplo == .upper) {
@@ -422,27 +422,27 @@ pub fn Static(rows_: comptime_int, cols_: comptime_int, N: type, uplo: matrix.Up
                 if (comptime uplo == .upper) {
                     if (comptime diag == .unit) { // cuu
                         inline for (0..new_cols) |j| {
-                            inline for (0..int.min(j, new_rows)) |i| {
+                            inline for (0..(comptime int.min(j, new_rows))) |i| {
                                 mat.data[i + j * new_rows] = self.data[(start + i) + (start + j) * rows];
                             }
                         }
                     } else { // cun
                         inline for (0..new_cols) |j| {
-                            inline for (0..int.min(j + 1, new_rows)) |i| {
+                            inline for (0..(comptime int.min(j + 1, new_rows))) |i| {
                                 mat.data[i + j * new_rows] = self.data[(start + i) + (start + j) * rows];
                             }
                         }
                     }
                 } else {
                     if (comptime diag == .unit) { // clu
-                        inline for (0..int.min(new_rows, new_cols)) |j| {
-                            inline for (j + 1..new_rows) |i| {
+                        inline for (0..(comptime int.min(new_rows, new_cols))) |j| {
+                            inline for ((comptime int.min(j + 1, new_rows))..new_rows) |i| {
                                 mat.data[i + j * new_rows] = self.data[(start + i) + (start + j) * rows];
                             }
                         }
                     } else { // cln
-                        inline for (0..int.min(new_rows, new_cols)) |j| {
-                            inline for (j..new_rows) |i| {
+                        inline for (0..(comptime int.min(new_rows, new_cols))) |j| {
+                            inline for ((comptime int.min(j, new_rows))..new_rows) |i| {
                                 mat.data[i + j * new_rows] = self.data[(start + i) + (start + j) * rows];
                             }
                         }
@@ -451,14 +451,14 @@ pub fn Static(rows_: comptime_int, cols_: comptime_int, N: type, uplo: matrix.Up
             } else {
                 if (comptime uplo == .upper) {
                     if (comptime diag == .unit) { // ruu
-                        inline for (0..int.min(new_rows, new_cols)) |i| {
-                            inline for (i + 1..new_cols) |j| {
+                        inline for (0..(comptime int.min(new_rows, new_cols))) |i| {
+                            inline for ((comptime int.min(i + 1, new_cols))..new_cols) |j| {
                                 mat.data[i * new_cols + j] = self.data[(start + i) * cols + (start + j)];
                             }
                         }
                     } else { // run
-                        inline for (0..int.min(new_rows, new_cols)) |i| {
-                            inline for (i..new_cols) |j| {
+                        inline for (0..(comptime int.min(new_rows, new_cols))) |i| {
+                            inline for ((comptime int.min(i, new_cols))..new_cols) |j| {
                                 mat.data[i * new_cols + j] = self.data[(start + i) * cols + (start + j)];
                             }
                         }
@@ -466,13 +466,13 @@ pub fn Static(rows_: comptime_int, cols_: comptime_int, N: type, uplo: matrix.Up
                 } else {
                     if (comptime diag == .unit) { // rlu
                         inline for (0..new_rows) |i| {
-                            inline for (0..int.min(i, new_cols)) |j| {
+                            inline for (0..(comptime int.min(i, new_cols))) |j| {
                                 mat.data[i * new_cols + j] = self.data[(start + i) * cols + (start + j)];
                             }
                         }
                     } else { // rln
                         inline for (0..new_rows) |i| {
-                            inline for (0..int.min(i + 1, new_cols)) |j| {
+                            inline for (0..(comptime int.min(i + 1, new_cols))) |j| {
                                 mat.data[i * new_cols + j] = self.data[(start + i) * cols + (start + j)];
                             }
                         }
@@ -501,8 +501,8 @@ pub fn Static(rows_: comptime_int, cols_: comptime_int, N: type, uplo: matrix.Up
         /// ## Errors
         /// * `matrix.Error.InvalidRange`: If the specified range is invalid.
         pub fn submatrixView(self: matrix.triangular.Static(rows, cols, N, uplo, diag, layout), start: usize, row_end: usize, col_end: usize) !matrix.triangular.Dense(N, uplo, diag, layout) {
-            if (start >= int.min(self.rows, self.cols) or
-                row_end > self.rows or col_end > self.cols or
+            if (start >= int.min(rows, cols) or
+                row_end > rows or col_end > cols or
                 row_end < start or col_end < start)
                 return matrix.Error.InvalidRange;
 

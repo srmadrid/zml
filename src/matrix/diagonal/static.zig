@@ -46,7 +46,7 @@ pub fn Static(rows_: comptime_int, cols_: comptime_int, N: type) type {
         pub fn initValue(value: N) matrix.diagonal.Static(rows, cols, N) {
             const mat: matrix.diagonal.Static(N) = .init;
 
-            inline for (0..int.min(rows, cols)) |i| {
+            inline for (0..(comptime int.min(rows, cols))) |i| {
                 mat.data[i] = value;
             }
 
@@ -77,7 +77,7 @@ pub fn Static(rows_: comptime_int, cols_: comptime_int, N: type) type {
 
             var mat: matrix.diagonal.Static(rows, cols, N) = .init;
 
-            inline for (0..int.min(rows, cols)) |i| {
+            inline for (0..(comptime int.min(rows, cols))) |i| {
                 mat.data[i] = if (comptime @typeInfo(meta.ReturnTypeFromInputs(@"fn", &meta.structToArrayOfTypes(Args))) == .error_union)
                     try @call(.auto, @"fn", args)
                 else
@@ -101,7 +101,7 @@ pub fn Static(rows_: comptime_int, cols_: comptime_int, N: type) type {
         /// ## Errors
         /// `matrix.Error.PositionOutOfBounds`: If `r` or `c` is out of bounds.
         pub fn get(self: matrix.diagonal.Static(rows, cols, N), r: usize, c: usize) !N {
-            if (r >= self.rows or c >= self.cols)
+            if (r >= rows or c >= cols)
                 return matrix.Error.PositionOutOfBounds;
 
             if (r != c)
@@ -144,7 +144,7 @@ pub fn Static(rows_: comptime_int, cols_: comptime_int, N: type) type {
         ///   bounds.
         /// * `matrix.Error.BreaksStructure`: If `r` is not equal to `c`.
         pub fn set(self: *matrix.diagonal.Static(rows, cols, N), r: usize, c: usize, value: N) !void {
-            if (r >= self.rows or c >= self.cols)
+            if (r >= rows or c >= cols)
                 return matrix.Error.PositionOutOfBounds;
 
             if (r != c)
@@ -186,8 +186,8 @@ pub fn Static(rows_: comptime_int, cols_: comptime_int, N: type) type {
         /// ## Returns
         /// `matrix.diagonal.Static(row_end - start, col_end - start, N)`: The submatrix.
         pub fn submatrixCopy(self: matrix.diagonal.Static(rows, cols, N), comptime start: usize, comptime row_end: usize, comptime col_end: usize) matrix.diagonal.Static(row_end - start, col_end - start, N) {
-            comptime if (start >= int.min(self.rows, self.cols) or
-                row_end > self.rows or col_end > self.cols or
+            comptime if (start >= int.min(rows, cols) or
+                row_end > rows or col_end > cols or
                 row_end < start or col_end < start)
                 @compileError("zsl.matrix.diagonal.Static(rows, cols, N).submatrixCopy: Invalid range");
 
@@ -195,7 +195,7 @@ pub fn Static(rows_: comptime_int, cols_: comptime_int, N: type) type {
             const new_cols = col_end - start;
             var mat: matrix.diagonal.Static(new_rows, new_cols, N) = .init;
 
-            inline for (0..int.min(new_rows, new_cols)) |i| {
+            inline for (0..(comptime int.min(new_rows, new_cols))) |i| {
                 mat.data[i] = self.data[start + i];
             }
 
@@ -220,8 +220,8 @@ pub fn Static(rows_: comptime_int, cols_: comptime_int, N: type) type {
         /// ## Errors
         /// * `matrix.Error.InvalidRange`: If the specified range is invalid.
         pub fn submatrixView(self: matrix.diagonal.Static(rows, cols, N), start: usize, row_end: usize, col_end: usize) !matrix.diagonal.Sparse(N) {
-            if (start >= int.min(self.rows, self.cols) or
-                row_end > self.rows or col_end > self.cols or
+            if (start >= int.min(rows, cols) or
+                row_end > rows or col_end > cols or
                 row_end < start or col_end < start)
                 return matrix.Error.InvalidRange;
 

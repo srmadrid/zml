@@ -25,7 +25,7 @@ pub fn apply2Into(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) 
         inline for (0..O.rows) |i| {
             inline for (0..O.cols) |j| {
                 opInto(
-                    &o.data[o._index(i, j)],
+                    &o.data[O._index(i, j)],
                     if (comptime meta.isMatrix(X))
                         x.get(i, j) catch unreachable
                     else

@@ -92,7 +92,7 @@ pub fn Sparse(N: type, uplo: matrix.Uplo, layout: matrix.Layout) type {
                 .cols = size,
                 ._dlen = nnz,
                 ._ilen = nnz,
-                .flags = .{ .owns_data = false },
+                .flags = .{ .owns_data = true },
             };
         }
 

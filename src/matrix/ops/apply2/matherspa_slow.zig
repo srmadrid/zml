@@ -21,7 +21,7 @@ pub fn apply2Into(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) 
         .symmetric, .hermitian => y.nnz,
         .diagonal => o.rows,
         .numeric => 0,
-        .builder => unreachable,
+        else => unreachable,
     };
 
     if (o._dlen < x_nnz + y_nnz or o._ilen < x_nnz + y_nnz)

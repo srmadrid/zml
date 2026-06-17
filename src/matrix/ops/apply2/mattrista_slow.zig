@@ -10,7 +10,7 @@ pub fn apply2Into(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) 
     if (comptime meta.layoutOf(O) == .col_major) {
         inline for (0..O.cols) |j| {
             if (comptime meta.uploOf(O) == .upper) {
-                inline for (0..int.min(j + 1, o.rows)) |i| {
+                inline for (0..(comptime int.min(j + 1, O.rows))) |i| {
                     opInto(
                         &o.data[O._index(i, j)],
                         if (comptime meta.isMatrix(X))
@@ -24,7 +24,7 @@ pub fn apply2Into(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) 
                     );
                 }
             } else {
-                inline for (j..O.rows) |i| {
+                inline for ((comptime int.min(j, O.rows))..O.rows) |i| {
                     opInto(
                         &o.data[O._index(i, j)],
                         if (comptime meta.isMatrix(X))
@@ -42,7 +42,7 @@ pub fn apply2Into(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) 
     } else {
         inline for (0..O.rows) |i| {
             if (comptime meta.uploOf(O) == .lower) {
-                inline for (0..int.min(i + 1, o.cols)) |j| {
+                inline for (0..(comptime int.min(i + 1, O.cols))) |j| {
                     opInto(
                         &o.data[O._index(i, j)],
                         if (comptime meta.isMatrix(X))
@@ -56,7 +56,7 @@ pub fn apply2Into(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) 
                     );
                 }
             } else {
-                inline for (i..O.cols) |j| {
+                inline for ((comptime int.min(i, O.cols))..O.cols) |j| {
                     opInto(
                         &o.data[O._index(i, j)],
                         if (comptime meta.isMatrix(X))

@@ -33,6 +33,10 @@ pub fn deinit(allocator: std.mem.Allocator, value: anytype) void {
             .static => {},
             else => value.deinit(allocator),
         },
+        .matrix => switch (comptime zsl.meta.matrixStorage(V)) {
+            .static => {},
+            else => value.deinit(allocator),
+        },
         else => value.deinit(allocator),
     }
 }
@@ -47,8 +51,8 @@ test {
     const test_dyadic = false;
     const test_complex = false;
     const test_numeric = false;
-    const test_vector = true;
-    const test_matrix = false;
+    const test_vector = false;
+    const test_matrix = true;
     const test_array = false;
     const test_ops = false;
     const test_linalg = false;

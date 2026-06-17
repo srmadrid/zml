@@ -15,11 +15,11 @@ pub fn apply2Into(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) 
             var i: usize = 0;
             if (comptime meta.uploOf(X) == .upper) {
                 while (i < int.min(j, o.rows)) : (i += 1) {
-                    opInto(&o.data[o._index(j, j)], x.data[x._index(j, j)], numeric.zero(meta.Numeric(Y)));
+                    opInto(&o.data[o._index(i, j)], x.data[x._index(i, j)], numeric.zero(meta.Numeric(Y)));
                 }
             } else {
                 while (i < int.min(j, o.rows)) : (i += 1) {
-                    opInto(&o.data[o._index(j, j)], numeric.zero(meta.Numeric(X)), numeric.zero(meta.Numeric(Y)));
+                    opInto(&o.data[o._index(i, j)], numeric.zero(meta.Numeric(X)), numeric.zero(meta.Numeric(Y)));
                 }
             }
 
@@ -33,11 +33,11 @@ pub fn apply2Into(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) 
             i = int.min(j + 1, o.rows);
             if (comptime meta.uploOf(X) == .lower) {
                 while (i < o.rows) : (i += 1) {
-                    opInto(&o.data[o._index(j, j)], x.data[x._index(j, j)], numeric.zero(meta.Numeric(Y)));
+                    opInto(&o.data[o._index(i, j)], x.data[x._index(i, j)], numeric.zero(meta.Numeric(Y)));
                 }
             } else {
                 while (i < o.rows) : (i += 1) {
-                    opInto(&o.data[o._index(j, j)], numeric.zero(meta.Numeric(X)), numeric.zero(meta.Numeric(Y)));
+                    opInto(&o.data[o._index(i, j)], numeric.zero(meta.Numeric(X)), numeric.zero(meta.Numeric(Y)));
                 }
             }
         }
@@ -47,11 +47,11 @@ pub fn apply2Into(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) 
             var j: usize = 0;
             if (comptime meta.uploOf(X) == .lower) {
                 while (j < int.min(i, o.cols)) : (j += 1) {
-                    opInto(&o.data[o._index(j, j)], x.data[x._index(j, j)], numeric.zero(meta.Numeric(Y)));
+                    opInto(&o.data[o._index(i, j)], x.data[x._index(i, j)], numeric.zero(meta.Numeric(Y)));
                 }
             } else {
                 while (j < int.min(i, o.cols)) : (j += 1) {
-                    opInto(&o.data[o._index(j, j)], numeric.zero(meta.Numeric(X)), numeric.zero(meta.Numeric(Y)));
+                    opInto(&o.data[o._index(i, j)], numeric.zero(meta.Numeric(X)), numeric.zero(meta.Numeric(Y)));
                 }
             }
 
@@ -65,11 +65,11 @@ pub fn apply2Into(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) 
             j = int.min(i + 1, o.cols);
             if (comptime meta.uploOf(X) == .upper) {
                 while (j < o.cols) : (j += 1) {
-                    opInto(&o.data[o._index(j, j)], x.data[x._index(j, j)], numeric.zero(meta.Numeric(Y)));
+                    opInto(&o.data[o._index(i, j)], x.data[x._index(i, j)], numeric.zero(meta.Numeric(Y)));
                 }
             } else {
                 while (j < o.cols) : (j += 1) {
-                    opInto(&o.data[o._index(j, j)], numeric.zero(meta.Numeric(X)), numeric.zero(meta.Numeric(Y)));
+                    opInto(&o.data[o._index(i, j)], numeric.zero(meta.Numeric(X)), numeric.zero(meta.Numeric(Y)));
                 }
             }
         }

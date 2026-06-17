@@ -45,7 +45,7 @@ test "zsl.vector.apply2" {
         inline for (len_limits) |len| {
             comptime var combination = fake_combination;
             inline for (0..combination.len) |i| {
-                if (@hasDecl(combination[i], "instantiate"))
+                if (comptime !zsl.meta.isNumeric(combination[i]) and @hasDecl(combination[i], "instantiate"))
                     combination[i] = zsl.vector.Static(len, combination[i].Numeric);
             }
 
