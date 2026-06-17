@@ -572,11 +572,8 @@ pub fn layoutOf(comptime T: type) ?matrix.Layout {
         @compileError("zsl.meta.layoutOf: " ++ @typeName(T) ++ " is not a supported type");
 
     switch (comptime domain(T)) {
-        .matrix => switch (comptime matrixType(T)) {
-            else => return T.storage_layout,
-            .numeric => unreachable,
-        },
-        else => @compileError("zsl.meta.layoutOf: T must be a matrix type, got " ++ @typeName(T)),
+        .matrix => return T.storage_layout,
+        else => return null,
     }
 }
 
