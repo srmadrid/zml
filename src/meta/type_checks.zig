@@ -124,7 +124,7 @@ pub fn isNumeric(comptime T: type) bool {
         .bool => return true,
         .int, .comptime_int => return true,
         .float, .comptime_float => return true,
-        .@"struct" => return @hasDecl(T, "is_numeric") and T.is_numeric,
+        .@"struct", .@"union" => return @hasDecl(T, "is_numeric") and T.is_numeric,
         else => return false,
     }
 }

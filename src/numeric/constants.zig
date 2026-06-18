@@ -17,7 +17,9 @@ const complex = @import("../complex.zig");
 /// This function supports custom numeric types via specific method
 /// implementations.
 ///
-/// `N` must expose the required `zero: N` declaration.
+/// `N` must expose the `zero: N` declaration, or implement the `zero` method.
+/// The expected signature and behavior of `zero` are as follows:
+/// * `fn zero(anytype) N`: Returns the zero value.
 pub fn zero(comptime N: type) N {
     comptime if (!meta.isNumeric(N))
         @compileError("zsl.numeric.zero: " ++ @typeName(N) ++ " is not a numeric type");
@@ -29,10 +31,12 @@ pub fn zero(comptime N: type) N {
         .dyadic => return .zero,
         .complex => return .zero,
         .custom => {
-            comptime if (!@hasDecl(N, "zero") or @TypeOf(N.zero) != N)
-                @compileError("zsl.numeric.zero: " ++ @typeName(N) ++ " must expose a `zero: " ++ @typeName(N) ++ "` declaration");
-
-            return N.zero;
+            if (comptime @hasDecl(N, "zero") and @TypeOf(N.zero) == N)
+                return N.zero
+            else if (comptime meta.hasMethod(N, "zero", fn () N, &.{}))
+                return N.zero()
+            else
+                @compileError("zsl.numeric.zero: " ++ @typeName(N) ++ " must expose a `zero: " ++ @typeName(N) ++ "` declaration, or implement `fn zero() " ++ @typeName(N) ++ "`");
         },
     }
 }
@@ -49,7 +53,9 @@ pub fn zero(comptime N: type) N {
 /// This function supports custom numeric types via specific method
 /// implementations.
 ///
-/// `N` must expose the required `one: N` declaration.
+/// `N` must expose the `one: N` declaration, or implement the `one` method.
+/// The expected signature and behavior of `one` are as follows:
+/// * `fn one(anytype) N`: Returns the one value.
 pub fn one(comptime N: type) N {
     comptime if (!meta.isNumeric(N))
         @compileError("zsl.numeric.one: " ++ @typeName(N) ++ " is not a numeric type");
@@ -61,10 +67,12 @@ pub fn one(comptime N: type) N {
         .dyadic => return .one,
         .complex => return .one,
         .custom => {
-            comptime if (!@hasDecl(N, "one") or @TypeOf(N.one) != N)
-                @compileError("zsl.numeric.one: " ++ @typeName(N) ++ " must expose a `one: " ++ @typeName(N) ++ "` declaration");
-
-            return N.one;
+            if (comptime @hasDecl(N, "one") and @TypeOf(N.one) == N)
+                return N.one
+            else if (comptime meta.hasMethod(N, "one", fn () N, &.{}))
+                return N.one()
+            else
+                @compileError("zsl.numeric.one: " ++ @typeName(N) ++ " must expose a `one: " ++ @typeName(N) ++ "` declaration, or implement `fn one() " ++ @typeName(N) ++ "`");
         },
     }
 }
@@ -81,7 +89,9 @@ pub fn one(comptime N: type) N {
 /// This function supports custom numeric types via specific method
 /// implementations.
 ///
-/// `N` must expose the required `two: N` declaration.
+/// `N` must expose the `two: N` declaration, or implement the `two` method.
+/// The expected signature and behavior of `two` are as follows:
+/// * `fn two(anytype) N`: Returns the two value.
 pub fn two(comptime N: type) N {
     comptime if (!meta.isNumeric(N))
         @compileError("zsl.numeric.two: " ++ @typeName(N) ++ " is not a numeric type");
@@ -93,10 +103,12 @@ pub fn two(comptime N: type) N {
         .dyadic => return .two,
         .complex => return .two,
         .custom => {
-            comptime if (!@hasDecl(N, "two") or @TypeOf(N.two) != N)
-                @compileError("zsl.numeric.two: " ++ @typeName(N) ++ " must expose a `two: " ++ @typeName(N) ++ "` declaration");
-
-            return N.two;
+            if (comptime @hasDecl(N, "two") and @TypeOf(N.two) == N)
+                return N.two
+            else if (comptime meta.hasMethod(N, "two", fn () N, &.{}))
+                return N.two()
+            else
+                @compileError("zsl.numeric.two: " ++ @typeName(N) ++ " must expose a `two: " ++ @typeName(N) ++ "` declaration, or implement `fn two() " ++ @typeName(N) ++ "`");
         },
     }
 }

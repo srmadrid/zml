@@ -193,7 +193,7 @@ pub inline fn numericType(comptime N: type) NumericType {
         .bool => return .bool,
         .int, .comptime_int => return .int,
         .float, .comptime_float => return .float,
-        .@"struct" => {
+        .@"struct", .@"union" => {
             if (comptime !@hasDecl(N, "is_numeric") or !N.is_numeric)
                 @compileError("zsl.meta.numericType: " ++ @typeName(N) ++ " is not a supported numeric type");
 

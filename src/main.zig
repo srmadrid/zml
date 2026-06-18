@@ -7,19 +7,29 @@ pub fn main(init: std.process.Init) !void {
     // try blas_lv1_threshold_calibration(init);
     // try blas_lv2_threshold_calibration(init);
 
-    const io = init.io;
+    const allocator = init.gpa;
 
-    var rng = std.Random.DefaultPrng.init(@bitCast(std.Io.Clock.real.now(io).toMicroseconds()));
-    const random = rng.random();
-    const normal = zsl.stats.Normal(zsl.autodiff.Dual(f64)).init(.{ .val = 0.0, .eps = 0.0 }, .{ .val = 1.0, .eps = 0.0 });
+    var tape = try zsl.autodiff.Tape(f64).init(allocator, 16);
+    defer tape.deinit(allocator);
 
-    const x: zsl.vector.Static(3, zsl.autodiff.Dual(f64)) = try .initFn(zsl.stats.Normal(zsl.autodiff.Dual(f64)).sample, .{ normal, random });
-    const y: zsl.vector.Static(3, zsl.autodiff.Dual(f64)) = try .initFn(zsl.stats.Normal(zsl.autodiff.Dual(f64)).sample, .{ normal, random });
+    const x = zsl.autodiff.Var(f64).init(&tape, 3.0);
+    const y = zsl.autodiff.Var(f64).init(&tape, 2.0);
 
-    std.debug.print("x: {any}\n", .{x});
-    std.debug.print("y: {any}\n", .{y});
-    std.debug.print("x × y: {any}\n", .{zsl.linalg.cross(x, y)});
-    std.debug.print("x ⋅ y: {any}\n", .{zsl.linalg.dot(x, y) catch unreachable});
+    // z = x*y + x/y - 2
+    const z = zsl.numeric.sub(
+        zsl.numeric.add(
+            zsl.numeric.mul(x, y),
+            zsl.numeric.div(x, y),
+        ),
+        2.0,
+    );
+
+    std.debug.print("z: {d}\n", .{z.val()});
+
+    z.backward();
+
+    std.debug.print("dz/dx: {d}\n", .{x.grad()});
+    std.debug.print("dz/dy: {d}\n", .{y.grad()});
 }
 
 pub fn blas_lv1_threshold_calibration(init: std.process.Init) !void {

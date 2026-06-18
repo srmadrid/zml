@@ -6,7 +6,7 @@ const numeric = @import("../numeric.zig");
 const autodiff = @import("../autodiff.zig");
 const stats = @import("../stats.zig");
 
-pub fn isDual(comptime T: type) bool {
+pub fn isDual(T: type) bool {
     switch (comptime @typeInfo(T)) {
         .@"struct" => return @hasDecl(T, "is_dual") and T.is_dual,
         else => return false,
@@ -16,7 +16,7 @@ pub fn isDual(comptime T: type) bool {
 /// Represents a dual number `x + yϵ`, where `ϵ² = 0`.
 pub fn Dual(comptime N: type) type {
     if (comptime !meta.isNumeric(N))
-        @compileError("zsl.autodiff.Dual: N must be a numeric type, got \n\tT: " ++ @typeName(N) ++ "\n");
+        @compileError("zsl.autodiff.Dual: N must be a numeric type, got \n\tN: " ++ @typeName(N) ++ "\n");
 
     return struct {
         val: N,
