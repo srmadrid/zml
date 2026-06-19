@@ -371,7 +371,7 @@ pub fn apply2(x: anytype, y: anytype, comptime op: anytype) matops.Apply2(@TypeO
 ///
 /// ## Signature
 /// ```zig
-/// matrix.apply2Allocated(allocator: std.mem.Allocator, x: X, y: Y, op: Op) !matrix.Apply2(X, Y, op)
+/// matrix.apply2Alloc(allocator: std.mem.Allocator, x: X, y: Y, op: Op) !matrix.Apply2(X, Y, op)
 /// ```
 ///
 /// ## Arguments
@@ -414,6 +414,7 @@ pub fn apply2Alloc(allocator: std.mem.Allocator, x: anytype, y: anytype, comptim
             else => unreachable,
         },
         .sparse => blk: {
+            // Change nnz estimation to a two pass: to get exact nnz
             const x_nnz = switch (comptime meta.matrixKind(X)) {
                 .general => x.nnz,
                 .symmetric, .hermitian => 2 * x.nnz,
@@ -426,8 +427,8 @@ pub fn apply2Alloc(allocator: std.mem.Allocator, x: anytype, y: anytype, comptim
             const y_nnz = switch (comptime meta.matrixKind(Y)) {
                 .general => y.nnz,
                 .symmetric, .hermitian => 2 * y.nnz,
-                .triangular => if (comptime meta.diagOf(Y).? == .non_unit) y.nnz else y.nnz + int.min(x_rows, x_cols),
-                .diagonal, .permutation => int.min(x_rows, x_cols),
+                .triangular => if (comptime meta.diagOf(Y).? == .non_unit) y.nnz else y.nnz + int.min(y_rows, y_cols),
+                .diagonal, .permutation => int.min(y_rows, y_cols),
                 .numeric => 0,
                 .builder => unreachable,
             };
@@ -507,7 +508,7 @@ pub fn apply2Into(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) 
         (!meta.isMatrix(X) and !meta.isNumeric(X)) or (!meta.isMatrix(Y) and !meta.isNumeric(Y)) or
         (!meta.isMatrix(X) and !meta.isMatrix(Y)) or
         opinfo != .@"fn" or opinfo.@"fn".params.len != 3)
-        @compileError("zsl.matrix.apply2_: o must be a mutable one-itme pointer to a matrix, at least one of x or y must be a matrix, the other must be a matrix or a numeric, and opInto must be a function of three arguments, got\n\to: " ++
+        @compileError("zsl.matrix.apply2Into: o must be a mutable one-itme pointer to a matrix, at least one of x or y must be a matrix, the other must be a matrix or a numeric, and opInto must be a function of three arguments, got\n\to: " ++
             @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\topInto: " ++ @typeName(Op) ++ "\n");
 
     O = meta.Child(O);

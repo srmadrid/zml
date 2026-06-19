@@ -1,1010 +1,5607 @@
 const std = @import("std");
 
-const types = @import("../types.zig");
-const Numeric = types.Numeric;
-const Coerce = types.Coerce;
-const MulCoerce = types.MulCoerce;
-const int = @import("../int.zig");
-const ops = @import("../ops.zig");
-const constants = @import("../constants.zig");
+const meta = @import("../meta.zig");
 
+const int = @import("../int.zig");
+
+const numeric = @import("../numeric.zig");
 const vector = @import("../vector.zig");
 const matrix = @import("../matrix.zig");
 
 const linalg = @import("../linalg.zig");
 
-const blas = @import("blas.zig");
-const lapack = @import("lapack.zig");
+pub fn Matmul(comptime X: type, comptime Y: type) type {
+    comptime if ((!meta.isVector(X) and !meta.isMatrix(X)) or (!meta.isVector(Y) and !meta.isMatrix(Y)) or
+        (!meta.isMatrix(X) and !meta.isMatrix(Y)))
+        @compileError("zsl.linalg.Matmul: at least one of X or Y must be a matrix type, the other must be a matrix or a vector type, got\n\tX = " ++
+            @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n");
 
-pub fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: anytype) !MulCoerce(@TypeOf(a), @TypeOf(b)) {
-    const A: type = @TypeOf(a);
-    const B: type = @TypeOf(b);
-    const C: type = Coerce(Numeric(A), Numeric(B));
+    comptime if (meta.isBuilderMatrix(X) or meta.isBuilderMatrix(Y))
+        @compileError("zsl.linalg.Matmul: builder matrix types are not allowed, got\n\tX = " ++
+            @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n");
 
-    comptime if (!((types.isMatrix(A) and types.isMatrix(B)) or
-        (types.isMatrix(A) and types.isVector(B)) or
-        (types.isVector(A) and types.isMatrix(B))))
-        @compileError("matmul: at least one argument must be a matrix, the other must be a matrix or vector, got " ++ @typeName(A) ++ " and " ++ @typeName(B));
+    const R = numeric.Fma(meta.Numeric(X), meta.Numeric(Y), numeric.Mul(meta.Numeric(X), meta.Numeric(Y)));
 
-    comptime if (types.isArbitraryPrecision(Numeric(A)) or types.isArbitraryPrecision(Numeric(B))) {
-        // When implemented, expand if
-        @compileError("zml.linalg.matmul not implemented for arbitrary precision types yet");
-    } else {
-        types.validateContext(@TypeOf(ctx), .{});
+    comptime if ((meta.isStaticVector(X) or meta.isStaticMatrix(X)) and (meta.isStaticVector(Y) or meta.isStaticMatrix(Y))) {
+        if ((if (meta.isVector(X)) X.len else X.cols) != (if (meta.isVector(Y)) Y.len else Y.rows))
+            @compileError("zsl.linalg.Matmul: static types X and Y must have compatible inner dimensions (x cols == y rows), got\n\tX = " ++
+                @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n");
     };
 
-    if (comptime !types.isMatrix(A)) { // vector * matrix
-        const m: u32 = if (comptime types.isSquareMatrix(B)) b.size else b.rows;
-        const n: u32 = if (comptime types.isSquareMatrix(B)) b.size else b.cols;
-
-        if (a.len != m)
-            return linalg.Error.DimensionMismatch;
-
-        switch (comptime types.vectorType(A)) {
-            .dense => switch (comptime types.matrixType(B)) {
-                .dense_general => return @import("matmul/dvdge.zig").vm(allocator, a, b, ctx), // dense vector * dense general matrix
-                .dense_symmetric => return @import("matmul/dvdsy.zig").vm(allocator, a, b, ctx), // dense vector * dense symmetric matrix
-                .dense_hermitian => return @import("matmul/dvdhe.zig").vm(allocator, a, b, ctx), // dense vector * dense hermitian matrix
-                .dense_triangular => return @import("matmul/dvdtr.zig").vm(allocator, a, b, ctx), // dense vector * dense triangular matrix
-                .dense_diagonal => return @import("matmul/dvddi.zig").vm(allocator, a, b, ctx), // dense vector * dense diagonal matrix
-                .dense_banded => return @import("matmul/dvdba.zig").vm(allocator, a, b, ctx), // dense vector * dense banded matrix
-                .dense_tridiagonal => { // dense vector * dense tridiagonal matrix
-                    var result: vector.Dense(C) = try .init(allocator, n);
-                    errdefer result.deinit(allocator);
-
-                    // lapack.lagtm
-                    try defaultSlowVM(&result, a, b, ctx);
-
-                    return result;
+    switch (comptime meta.domain(X)) {
+        .matrix => switch (comptime meta.domain(Y)) {
+            .matrix => switch (comptime meta.matrixType(X)) {
+                .general_static, .symmetric_static, .hermitian_static => switch (comptime meta.matrixStorage(Y)) {
+                    .static => return matrix.general.Static(X.rows, Y.cols, R, meta.layoutOf(X).?),
+                    else => return matrix.general.Dense(R, meta.layoutOf(X).?),
                 },
-                .permutation => return @import("matmul/dvpe.zig").vm(allocator, a, b, ctx), // dense vector * permutation matrix
-                else => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
-                .numeric => unreachable,
+                .general_dense, .symmetric_dense, .hermitian_dense => return matrix.general.Dense(R, meta.layoutOf(X).?),
+                .general_sparse, .symmetric_sparse, .hermitian_sparse => switch (comptime meta.matrixStorage(Y)) {
+                    .sparse => return matrix.general.Sparse(R, meta.layoutOf(X).?),
+                    else => return matrix.general.Dense(R, meta.layoutOf(X).?),
+                },
+                .triangular_static => switch (comptime meta.matrixKind(Y)) {
+                    .triangular => switch (comptime meta.uploOf(X).? == meta.uploOf(Y).?) {
+                        true => switch (comptime meta.matrixStorage(Y)) {
+                            .static => return matrix.triangular.Static(X.rows, Y.cols, R, meta.uploOf(X).?, .non_unit, meta.layoutOf(X).?),
+                            else => return matrix.triangular.Dense(R, meta.uploOf(X).?, .non_unit, meta.layoutOf(X).?),
+                        },
+                        false => switch (comptime meta.matrixStorage(Y)) {
+                            .static => return matrix.general.Static(X.rows, Y.cols, R, meta.layoutOf(X).?),
+                            else => return matrix.general.Dense(R, meta.layoutOf(X).?),
+                        },
+                    },
+                    .diagonal => switch (comptime meta.matrixStorage(Y)) {
+                        .static => return matrix.triangular.Static(X.rows, Y.cols, R, meta.uploOf(X).?, .non_unit, meta.layoutOf(X).?),
+                        else => return matrix.triangular.Dense(R, meta.uploOf(X).?, .non_unit, meta.layoutOf(X).?),
+                    },
+                    else => switch (comptime meta.matrixStorage(Y)) {
+                        .static => return matrix.general.Static(X.rows, Y.cols, R, meta.layoutOf(X).?),
+                        else => return matrix.general.Dense(R, meta.layoutOf(X).?),
+                    },
+                },
+                .triangular_dense => switch (comptime meta.matrixKind(Y)) {
+                    .triangular => switch (comptime meta.uploOf(X).? == meta.uploOf(Y).?) {
+                        true => return matrix.triangular.Dense(R, meta.uploOf(X).?, .non_unit, meta.layoutOf(X).?),
+                        false => return matrix.general.Dense(R, meta.layoutOf(X).?),
+                    },
+                    .diagonal => return matrix.triangular.Dense(R, meta.uploOf(X).?, .non_unit, meta.layoutOf(X).?),
+                    else => return matrix.general.Dense(R, meta.layoutOf(X).?),
+                },
+                .triangular_sparse => switch (comptime meta.matrixKind(Y)) {
+                    .triangular => switch (comptime meta.uploOf(X).? == meta.uploOf(Y).?) {
+                        true => switch (comptime meta.matrixStorage(Y)) {
+                            .sparse => return matrix.triangular.Sparse(R, meta.uploOf(X).?, .non_unit, meta.layoutOf(X).?),
+                            else => return matrix.triangular.Dense(R, meta.uploOf(X).?, .non_unit, meta.layoutOf(X).?),
+                        },
+                        false => switch (comptime meta.matrixStorage(Y)) {
+                            .sparse => return matrix.general.Sparse(R, meta.layoutOf(X).?),
+                            else => return matrix.general.Dense(R, meta.layoutOf(X).?),
+                        },
+                    },
+                    .diagonal => switch (comptime meta.matrixStorage(Y)) {
+                        .sparse => return matrix.triangular.Sparse(R, meta.uploOf(X).?, .non_unit, meta.layoutOf(X).?),
+                        else => return matrix.triangular.Dense(R, meta.uploOf(X).?, .non_unit, meta.layoutOf(X).?),
+                    },
+                    else => switch (comptime meta.matrixStorage(Y)) {
+                        .sparse => return matrix.general.Sparse(R, meta.layoutOf(X).?),
+                        else => return matrix.general.Dense(R, meta.layoutOf(X).?),
+                    },
+                },
+                .diagonal_static => switch (comptime meta.matrixKind(Y)) {
+                    .diagonal => switch (comptime meta.matrixStorage(Y)) {
+                        .static => return matrix.diagonal.Static(X.rows, Y.cols, R),
+                        else => return matrix.diagonal.Sparse(R),
+                    },
+                    .triangular => switch (comptime meta.matrixStorage(Y)) {
+                        .static => return matrix.triangular.Static(X.rows, Y.cols, R, meta.uploOf(Y).?, .non_unit, meta.layoutOf(Y).?),
+                        else => return matrix.triangular.Dense(R, meta.uploOf(Y).?, .non_unit, meta.layoutOf(Y).?),
+                    },
+                    else => switch (comptime meta.matrixStorage(Y)) {
+                        .static => return matrix.general.Static(X.rows, Y.cols, R, meta.layoutOf(Y) orelse matrix.Layout.default),
+                        else => return matrix.general.Dense(R, meta.layoutOf(Y) orelse matrix.Layout.default),
+                    },
+                },
+                .diagonal_sparse => switch (comptime meta.matrixKind(Y)) {
+                    .diagonal => return matrix.diagonal.Sparse(R),
+                    .triangular => switch (comptime meta.matrixStorage(Y)) {
+                        .sparse => return matrix.triangular.Sparse(R, meta.uploOf(Y).?, .non_unit, meta.layoutOf(Y).?),
+                        else => return matrix.triangular.Dense(R, meta.uploOf(Y).?, .non_unit, meta.layoutOf(Y).?),
+                    },
+                    else => switch (comptime meta.matrixStorage(Y)) {
+                        .sparse => return matrix.general.Sparse(R, meta.layoutOf(Y) orelse matrix.Layout.default),
+                        else => return matrix.general.Dense(R, meta.layoutOf(Y) orelse matrix.Layout.default),
+                    },
+                },
+                .permutation_static => switch (comptime meta.matrixKind(Y)) {
+                    .permutation => switch (comptime meta.matrixStorage(Y)) {
+                        .static => return matrix.permutation.Static(X.rows, R, X.direction),
+                        else => return matrix.permutation.Sparse(R, X.direction),
+                    },
+                    else => switch (comptime meta.matrixStorage(Y)) {
+                        .static => return matrix.general.Static(X.rows, Y.cols, R, meta.layoutOf(Y) orelse matrix.Layout.default),
+                        else => return matrix.general.Dense(R, meta.layoutOf(Y) orelse matrix.Layout.default),
+                    },
+                },
+                .permutation_sparse => switch (comptime meta.matrixKind(Y)) {
+                    .permutation => return matrix.permutation.Sparse(R, X.direction),
+                    else => return matrix.general.Sparse(R, meta.layoutOf(Y) orelse matrix.Layout.default),
+                },
+                else => unreachable,
             },
-            .sparse => switch (comptime types.matrixType(B)) {
-                else => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
-                .numeric => unreachable,
+            .vector => switch (comptime meta.matrixStorage(X)) {
+                .static => return vector.Static(X.rows, R),
+                .dense => return vector.Dense(R),
+                .sparse => switch (comptime meta.vectorType(Y)) {
+                    .vector_sparse => return vector.Sparse(R),
+                    else => return vector.Dense(R),
+                },
+                else => unreachable,
+            },
+            else => unreachable,
+        },
+        .vector => switch (comptime meta.domain(Y)) {
+            .matrix => switch (comptime meta.matrixStorage(Y)) {
+                .static => return vector.Static(Y.cols, R),
+                .dense => return vector.Dense(R),
+                .sparse => switch (comptime meta.vectorType(X)) {
+                    .vector_sparse => return vector.Sparse(R),
+                    else => return vector.Dense(R),
+                },
+                else => unreachable,
+            },
+            else => unreachable,
+        },
+        else => unreachable,
+    }
+}
+
+/// Performs matrix multiplication between two matrices, or between a matrix and
+/// a vector.
+///
+/// For matrix outputs, the result inherits its memory layout from the inputs,
+/// i.e., if the input layouts mismatch, the left operand (`x`) strictly
+/// dictates the output layout, unless it provides no layout information. For
+/// more control over layouts, use `linalg.matmulInto`.
+///
+/// This function is intended for when the result's dimension is known at
+/// compile time. For two static inputs, dimension checks are performed at
+/// compile time, for any other combination, dimension checks are performed at
+/// runtime throught `std.debug.assert`.
+///
+/// ## Signature
+/// ```zig
+/// matrix.matmul(x: X, y: Y) linalg.Matmul(X, Y)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `linalg.Matmul(@TypeOf(x), @TypeOf(y))`: The result of the operation.
+pub fn matmul(x: anytype, y: anytype) linalg.Matmul(@TypeOf(x), @TypeOf(y)) {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const R: type = linalg.Matmul(X, Y);
+
+    if (comptime meta.isDenseVector(R) or meta.isSparseVector(R) or
+        meta.isDenseMatrix(R) or meta.isSparseMatrix(R))
+        @compileError("zsl.linalg.matmul: the result cannot be a heap-allocated type, i.e., at least one input must be static, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\tresult: " ++ @typeName(R) ++ "\nFor these inputs use zsl.linalg.matmulAlloc instead.");
+
+    const x_cols = if (comptime meta.isVector(X))
+        (if (comptime meta.isStaticVector(X)) X.len else x.len)
+    else
+        (if (comptime meta.isStaticMatrix(X)) X.cols else x.cols);
+    const y_rows = if (comptime meta.isVector(Y))
+        (if (comptime meta.isStaticVector(Y)) Y.len else y.len)
+    else
+        (if (comptime meta.isStaticMatrix(Y)) Y.rows else y.rows);
+
+    if (comptime !((meta.isVector(X) and meta.isStaticVector(X)) or meta.isStaticMatrix(X)) or
+        !((meta.isVector(Y) and meta.isStaticVector(Y)) or meta.isStaticMatrix(Y)))
+        std.debug.assert(x_cols == y_rows);
+
+    var result = R.init;
+
+    linalg.matmulInto(&result, x, y) catch unreachable;
+
+    return result;
+}
+
+/// Performs matrix multiplication between two matrices, or between a matrix and
+/// a vector, dynamically allocating memory for the result.
+///
+/// For matrix outputs, the result inherits its memory layout from the inputs,
+/// i.e., if the input layouts mismatch, the left operand (`x`) strictly
+/// dictates the output layout, unless it provides no layout information. For
+/// more control over layouts, use `linalg.matmulInto`.
+///
+/// This function is intended for when the result's dimension is known at
+/// runtime.
+///
+/// For two sparse inputs, the operation is only applied to the indices where at
+/// least one of the matrices has a non-zero element.
+///
+/// ## Signature
+/// ```zig
+/// linalg.matmulAlloc(allocator: std.mem.Allocator, x: X, y: Y) !linalg.Matmul(X, Y)
+/// ```
+///
+/// ## Arguments
+/// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
+///   allocations.
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `linalg.Matmul(@TypeOf(x), @TypeOf(y))`: The result of the operation.
+///
+/// ## Errors
+/// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
+/// * `linalg.Error.DimensionMismatch`: If the inputs do not have compatible
+///   dimensions.
+pub fn matmulAlloc(allocator: std.mem.Allocator, x: anytype, y: anytype) !linalg.Matmul(@TypeOf(x), @TypeOf(y)) {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const R: type = linalg.Matmul(X, Y);
+
+    const x_rows = if (comptime meta.isVector(X))
+        1
+    else
+        (if (comptime meta.isStaticMatrix(X)) X.rows else x.rows);
+    const x_cols = if (comptime meta.isVector(X))
+        (if (comptime meta.isStaticVector(X)) X.len else x.len)
+    else
+        (if (comptime meta.isStaticMatrix(X)) X.cols else x.cols);
+    const y_rows = if (comptime meta.isVector(Y))
+        (if (comptime meta.isStaticVector(Y)) Y.len else y.len)
+    else
+        (if (comptime meta.isStaticMatrix(Y)) Y.rows else y.rows);
+    const y_cols = if (comptime meta.isVector(Y))
+        1
+    else
+        (if (comptime meta.isStaticMatrix(Y)) Y.cols else y.cols);
+
+    if (comptime !((meta.isVector(X) and meta.isStaticVector(X)) or meta.isStaticMatrix(X)) or
+        !((meta.isVector(Y) and meta.isStaticVector(Y)) or meta.isStaticMatrix(Y)))
+    {
+        if (x_cols != y_rows)
+            return matrix.Error.DimensionMismatch;
+    }
+
+    var result = switch (comptime meta.domain(R)) {
+        .matrix => switch (comptime meta.matrixStorage(R)) {
+            .static => R.init,
+            .dense => switch (comptime meta.matrixKind((R))) {
+                .general, .triangular => try R.init(allocator, x_rows, y_cols),
+                else => unreachable,
+            },
+            .sparse => blk: {
+                // Change nnz estimation to a two pass: to get exact nnz, for instance Gustavson's algorithm
+                const x_nnz = switch (comptime meta.matrixKind(X)) {
+                    .general => x.nnz,
+                    .symmetric, .hermitian => 2 * x.nnz,
+                    .triangular => if (comptime meta.diagOf(X).? == .non_unit) x.nnz else x.nnz + int.min(x_rows, x_cols),
+                    .diagonal, .permutation => int.min(x_rows, x_cols),
+                    .builder, .numeric => unreachable,
+                };
+
+                const y_nnz = switch (comptime meta.matrixKind(Y)) {
+                    .general => y.nnz,
+                    .symmetric, .hermitian => 2 * y.nnz,
+                    .triangular => if (comptime meta.diagOf(Y).? == .non_unit) y.nnz else y.nnz + int.min(y_rows, y_cols),
+                    .diagonal, .permutation => int.min(y_rows, y_cols),
+                    .builder, .numeric => unreachable,
+                };
+
+                switch (comptime meta.matrixKind(R)) {
+                    .general, .triangular => break :blk try R.init(allocator, x_rows, y_cols, int.min(x_rows * y_cols, x_nnz * y_nnz)),
+                    .diagonal => break :blk try R.init(allocator, x_rows, y_cols),
+                    .permutation => break :blk try R.init(allocator, x_rows),
+                    else => unreachable,
+                }
             },
             .numeric => unreachable,
-        }
-    } else if (comptime !types.isMatrix(B)) { // matrix * vector
-        const m: u32 = if (comptime types.isSquareMatrix(A)) a.size else a.rows;
-        const n: u32 = if (comptime types.isSquareMatrix(A)) a.size else a.cols;
+        },
+        .vector => switch (comptime meta.vectorType(R)) {
+            .static => R.init,
+            .dense => try R.init(allocator, if (comptime meta.isVector(X)) y_cols else x_rows),
+            .sparse => blk: {
+                const r_len = if (comptime meta.isVector(X)) y_cols else x_rows;
 
-        if (b.len != n)
-            return linalg.Error.DimensionMismatch;
+                const x_nnz = if (comptime meta.isVector(X))
+                    x.nnz
+                else switch (comptime meta.matrixKind(X)) {
+                    .general => x.nnz,
+                    .symmetric, .hermitian => 2 * x.nnz,
+                    .triangular => if (comptime meta.diagOf(X).? == .non_unit) x.nnz else x.nnz + int.min(x_rows, x_cols),
+                    .diagonal, .permutation => int.min(x_rows, x_cols),
+                    .builder, .numeric => unreachable,
+                };
 
-        switch (comptime types.matrixType(A)) {
-            .dense_general => switch (comptime types.vectorType(B)) {
-                .dense => return @import("matmul/dgedv.zig").mv(allocator, a, b, ctx), // dense general matrix * dense vector
-                .sparse => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
-                .numeric => unreachable,
-            },
-            .dense_symmetric => switch (comptime types.vectorType(B)) {
-                .dense => return @import("matmul/dsydv.zig").mv(allocator, a, b, ctx), // dense symmetric matrix * dense vector
-                .sparse => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
-                .numeric => unreachable,
-            },
-            .dense_hermitian => switch (comptime types.vectorType(B)) {
-                .dense => return @import("matmul/dhedv.zig").mv(allocator, a, b, ctx), // dense hermitian matrix * dense vector
-                .sparse => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
-                .numeric => unreachable,
-            },
-            .dense_triangular => switch (comptime types.vectorType(B)) {
-                .dense => return @import("matmul/dtrdv.zig").mv(allocator, a, b, ctx), // dense triangular matrix * dense vector
-                .sparse => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
-                .numeric => unreachable,
-            },
-            .dense_diagonal => switch (comptime types.vectorType(B)) {
-                .dense => return @import("matmul/ddidv.zig").mv(allocator, a, b, ctx), // dense diagonal matrix * dense vector
-                .sparse => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
-                .numeric => unreachable,
-            },
-            .dense_banded => switch (comptime types.vectorType(B)) {
-                .dense => return @import("matmul/dbadv.zig").mv(allocator, a, b, ctx), // dense banded matrix * dense vector
-                .sparse => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
-                .numeric => unreachable,
-            },
-            .dense_tridiagonal => switch (comptime types.vectorType(B)) {
-                .dense => { // dense tridiagonal matrix * dense vector
-                    var result: vector.Dense(C) = try .init(allocator, m);
-                    errdefer result.deinit(allocator);
+                const y_nnz = if (comptime meta.isVector(Y))
+                    y.nnz
+                else switch (comptime meta.matrixKind(Y)) {
+                    .general => y.nnz,
+                    .symmetric, .hermitian => 2 * y.nnz,
+                    .triangular => if (comptime meta.diagOf(Y).? == .non_unit) y.nnz else y.nnz + int.min(y_rows, y_cols),
+                    .diagonal, .permutation => int.min(y_rows, y_cols),
+                    .builder, .numeric => unreachable,
+                };
 
-                    // lapack.lagtm
-                    try defaultSlowMV(&result, a, b, ctx);
+                break :blk try R.init(allocator, r_len, int.min(r_len, x_nnz * y_nnz));
+            },
+            else => unreachable,
+        },
+        else => unreachable,
+    };
 
-                    return result;
-                },
-                .sparse => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
-                .numeric => unreachable,
-            },
-            .permutation => switch (comptime types.vectorType(B)) {
-                .dense => return @import("matmul/pedv.zig").mv(allocator, a, b, ctx), // permutation matrix * dense vector
-                .sparse => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
-                .numeric => unreachable,
-            },
-            else => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
-            .numeric => unreachable,
-        }
+    linalg.matmulInto(&result, x, y) catch unreachable;
+
+    return result;
+}
+
+/// Performs matrix multiplication between two matrices, or between a matrix and
+/// a vector, storing the result in an output matrix or vector.
+///
+/// Exact aliasing (in-place modification) between the output and an input is
+/// not permitted and might yield incorrect results.
+///
+/// For three static inputs, or a static output, a static matrix and any vector,
+/// the function cannot return an error.
+///
+/// For sparse outputs, the operation is only applied to the indices where at
+/// least one of the inputs has a non-zero element.
+///
+/// The function is intentionally lenient regarding the structural type of the
+/// output matrix `o`. If `o` is a structured matrix, the function trusts the
+/// caller to provide input combinations that mathematically yield that
+/// structure. The only exception is a permutation matrix output, which strictly
+/// requires two permutation matrix inputs.
+///
+/// ## Signature
+/// ```zig
+/// matrix.apply2Into(*O, x: X, y: Y, opInto: OpInto) !void
+/// ```
+///
+/// ## Arguments
+/// * `o` (`anytype`): The output operand.
+/// * `x` (`anytype`): The left input operand.
+/// * `y` (`anytype`): The right input operand.
+///
+/// ## Returns
+/// `void`
+///
+/// ## Errors
+/// * `matrix.Error.DimensionMismatch`: If the matrices do not have the same
+///   dimensions.
+pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+
+    comptime if (!meta.isPointer(O) or meta.isConstPointer(O) or (!meta.isVector(meta.Child(O)) and !meta.isMatrix(meta.Child(O))) or
+        (!meta.isVector(X) and !meta.isMatrix(X)) or (!meta.isVector(Y) and !meta.isMatrix(Y)) or
+        (!meta.isMatrix(X) and !meta.isMatrix(Y)))
+        @compileError("zsl.linalg.matmulInto: o must be a mutable one-itme pointer to a matrix or vector, at least one of x or y must be a matrix, the other must be a matrix or a vector, got\n\to: " ++
+            @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+
+    O = meta.Child(O);
+
+    const o_rows = if (comptime meta.isVector(O))
+        (if (comptime meta.isVector(X)) 1 else (if (comptime meta.isStaticVector(O)) O.len else o.len))
+    else
+        (if (comptime meta.isStaticMatrix(O)) O.rows else o.rows);
+    const o_cols = if (comptime meta.isVector(O))
+        (if (comptime meta.isVector(Y)) 1 else (if (comptime meta.isStaticVector(O)) O.len else o.len))
+    else
+        (if (comptime meta.isStaticMatrix(O)) O.cols else o.cols);
+    const x_rows = if (comptime meta.isVector(X))
+        1
+    else
+        (if (comptime meta.isStaticMatrix(X)) X.rows else x.rows);
+    const x_cols = if (comptime meta.isVector(X))
+        (if (comptime meta.isStaticVector(X)) X.len else x.len)
+    else
+        (if (comptime meta.isStaticMatrix(X)) X.cols else x.cols);
+    const y_rows = if (comptime meta.isVector(Y))
+        (if (comptime meta.isStaticVector(Y)) Y.len else y.len)
+    else
+        (if (comptime meta.isStaticMatrix(Y)) Y.rows else y.rows);
+    const y_cols = if (comptime meta.isVector(Y))
+        1
+    else
+        (if (comptime meta.isStaticMatrix(Y)) Y.cols else y.cols);
+
+    if (comptime ((meta.isVector(X) and meta.isStaticVector(X)) or meta.isStaticMatrix(X)) and
+        ((meta.isVector(Y) and meta.isStaticVector(Y)) or meta.isStaticMatrix(Y)))
+    {
+        if (comptime x_cols != y_rows)
+            @compileError("zsl.linalg.matmulInto: inner dimensions mismatch (x cols != y rows), got\n\tx: " ++
+                @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
     } else {
-        const m: u32 = if (comptime types.isSquareMatrix(A)) a.size else a.rows;
-        const k: u32 = if (comptime types.isSquareMatrix(A)) a.size else a.cols;
-        const n: u32 = if (comptime types.isSquareMatrix(B)) b.size else b.cols;
-
-        if (k != (if (comptime types.isSquareMatrix(B)) b.size else b.rows))
-            return linalg.Error.DimensionMismatch;
-
-        switch (comptime types.matrixType(A)) {
-            .dense_general => switch (comptime types.matrixType(B)) {
-                .dense_general => return @import("matmul/dgedge.zig").mm(allocator, a, b, ctx), // dense general matrix * dense general matrix
-                .dense_symmetric => return @import("matmul/dgedsy.zig").mm(allocator, a, b, ctx), // dense general matrix * dense symmetric matrix
-                .dense_hermitian => return @import("matmul/dgedhe.zig").mm(allocator, a, b, ctx), // dense general matrix * dense hermitian matrix
-                .dense_triangular => { // dense general matrix * dense triangular matrix
-                    var result: matrix.dense.General(C, types.orderOf(A)) = try .full(allocator, m, n, 0, ctx);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_diagonal => return @import("matmul/dgeddi.zig").mm(allocator, a, b, ctx), // dense general matrix * dense diagonal matrix
-                .dense_banded => { // dense general matrix * dense banded matrix
-                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_tridiagonal => { // dense general matrix * dense tridiagonal matrix
-                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    // lapack.lagtm
-                    try defaultSlowMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .permutation => { // dense general matrix * permutation matrix
-                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    // lapack.lapmt: convert first to inverse permutation and then 1 based indexing
-                    try defaultSlowMP(&result, a, b, ctx);
-
-                    return result;
-                },
-                else => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
-                .numeric => unreachable,
-            },
-            .dense_symmetric => switch (comptime types.matrixType(B)) {
-                .dense_general => return @import("matmul/dsydge.zig").mm(allocator, a, b, ctx), // dense symmetric matrix * dense general matrix
-                .dense_symmetric => { // dense symmetric matrix * dense symmetric matrix
-                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, n, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_hermitian => { // dense symmetric matrix * dense hermitian matrix
-                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, n, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_triangular => { // dense symmetric matrix * dense triangular matrix
-                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_diagonal => { // dense symmetric matrix * dense diagonal matrix
-                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_banded => { // dense symmetric matrix * dense banded matrix
-                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_tridiagonal => { // dense symmetric matrix * dense tridiagonal matrix
-                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, n, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .permutation => { // dense symmetric matrix * permutation matrix
-                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, n, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowMP(&result, a, b, ctx);
-
-                    return result;
-                },
-                else => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
-                .numeric => unreachable,
-            },
-            .dense_hermitian => switch (comptime types.matrixType(B)) {
-                .dense_general => return @import("matmul/dhedge.zig").mm(allocator, a, b, ctx), // dense hermitian matrix * dense general matrix
-                .dense_symmetric => { // dense hermitian matrix * dense symmetric matrix
-                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, n, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_hermitian => { // dense hermitian matrix * dense hermitian matrix
-                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, n, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_triangular => { // dense hermitian matrix * dense triangular matrix
-                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_diagonal => { // dense hermitian matrix * dense diagonal matrix
-                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_banded => { // dense hermitian matrix * dense banded matrix
-                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_tridiagonal => { // dense hermitian matrix * dense tridiagonal matrix
-                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, n, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .permutation => { // dense hermitian matrix * permutation matrix
-                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, n, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowMP(&result, a, b, ctx);
-
-                    return result;
-                },
-                else => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
-                .numeric => unreachable,
-            },
-            .dense_triangular => switch (comptime types.matrixType(B)) {
-                .dense_general => { // dense triangular matrix * dense general matrix
-                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    // Change to blas calls
-                    try defaultSlowMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_symmetric => { // dense triangular matrix * dense symmetric matrix
-                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_hermitian => { // dense triangular matrix * dense hermitian matrix
-                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_triangular => { // dense triangular matrix * dense triangular matrix
-                    if (comptime types.uploOf(A) == types.uploOf(B)) {
-                        var result: matrix.dense.Triangular(
-                            C,
-                            types.uploOf(A),
-                            if (types.diagOf(A) == types.diagOf(B))
-                                types.diagOf(A)
-                            else
-                                .non_unit,
-                            types.orderOf(A),
-                        ) = try .init(allocator, m, n);
-                        errdefer result.deinit(allocator);
-
-                        try defaultSlowTMM(&result, a, b, ctx);
-
-                        return result;
-                    } else {
-                        var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
-                        errdefer result.deinit(allocator);
-
-                        try defaultSlowMM(&result, a, b, ctx);
-
-                        return result;
-                    }
-                },
-                .dense_diagonal => { // dense triangular matrix * dense diagonal matrix
-                    var result: matrix.dense.Triangular(C, types.uploOf(A), .non_unit, types.orderOf(A)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowTMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_banded => { // dense triangular matrix * dense banded matrix
-                    var result: matrix.dense.Banded(C, types.orderOf(A)) = try .init(
-                        allocator,
-                        m,
-                        n,
-                        // lC ≤ min{m − 1, lA ​+ lB​}, uC ​≤ min{n − 1, uA ​+ uB​}.​
-                        if (comptime types.uploOf(A) == .upper) int.min(m - 1, b.lower) else m - 1,
-                        if (comptime types.uploOf(A) == .upper) int.min(n - 1, k - 1 + b.upper) else int.min(n - 1, b.upper),
-                    );
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowBMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_tridiagonal => { // dense triangular matrix * dense tridiagonal matrix
-                    var result: matrix.dense.Banded(C, types.orderOf(A)) = try .init(
-                        allocator,
-                        m,
-                        n,
-                        // lC ≤ min{m − 1, lA ​+ lB​}, uC ​≤ min{n − 1, uA ​+ uB​}.​
-                        if (comptime types.uploOf(A) == .upper) 1 else m - 1,
-                        if (comptime types.uploOf(A) == .upper) n - 1 else 1,
-                    );
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowBMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .permutation => { // dense triangular matrix * permutation matrix
-                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowMP(&result, a, b, ctx);
-
-                    return result;
-                },
-                else => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
-                .numeric => unreachable,
-            },
-            .dense_diagonal => switch (comptime types.matrixType(B)) {
-                .dense_general => return @import("matmul/ddidge.zig").mm(allocator, a, b, ctx), // dense diagonal matrix * dense general matrix
-                .dense_symmetric => { // dense diagonal matrix * dense symmetric matrix
-                    var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_hermitian => { // dense diagonal matrix * dense hermitian matrix
-                    var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_triangular => { // dense diagonal matrix * dense triangular matrix
-                    var result: matrix.dense.Triangular(C, types.uploOf(B), .non_unit, types.orderOf(B)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowTMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_diagonal => return @import("matmul/ddiddi.zig").mm(allocator, a, b, ctx), // dense diagonal matrix * dense diagonal matrix
-                .dense_banded => { // dense diagonal matrix * dense banded matrix
-                    var result: matrix.dense.Banded(C, types.orderOf(B)) = try .init(allocator, m, n, b.lower, b.upper);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowBMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_tridiagonal => { // dense diagonal matrix * dense tridiagonal matrix
-                    var result: matrix.dense.Banded(C, types.orderOf(B)) = try .init(allocator, m, n, 1, 1);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowBMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .permutation => { // dense diagonal matrix * permutation matrix
-                    var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowMP(&result, a, b, ctx);
-
-                    return result;
-                },
-                else => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
-                .numeric => unreachable,
-            },
-            .dense_banded => switch (comptime types.matrixType(B)) {
-                .dense_general => { // dense banded matrix * dense general matrix
-                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_symmetric => { // dense banded matrix * dense symmetric matrix
-                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_hermitian => { // dense banded matrix * dense hermitian matrix
-                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_triangular => { // densed banded matrix * dense triangular matrix
-                    var result: matrix.dense.Banded(C, types.orderOf(A)) = try .init(
-                        allocator,
-                        m,
-                        n,
-                        // lC ≤ min{m − 1, lA ​+ lB​}, uC ​≤ min{n − 1, uA ​+ uB​}.​
-                        if (comptime types.uploOf(B) == .upper) int.min(m - 1, a.lower) else int.min(m - 1, a.lower + k - 1),
-                        if (comptime types.uploOf(B) == .upper) n - 1 else int.min(n - 1, a.upper),
-                    );
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowBMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_diagonal => { // dense banded matrix * dense diagonal matrix
-                    var result: matrix.dense.Banded(C, types.orderOf(A)) = try .init(allocator, m, n, a.lower, a.upper);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowBMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_banded => { // dense banded matrix * dense banded matrix
-                    var result: matrix.dense.Banded(C, types.orderOf(A)) = try .init(
-                        allocator,
-                        m,
-                        n,
-                        // lC ≤ min{m − 1, lA ​+ lB​}, uC ​≤ min{n − 1, uA ​+ uB​}.​
-                        int.min(m - 1, a.lower + b.lower),
-                        int.min(n - 1, a.upper + b.upper),
-                    );
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowBMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_tridiagonal => { // dense banded matrix * dense tridiagonal matrix
-                    var result: matrix.dense.Banded(C, types.orderOf(A)) = try .init(
-                        allocator,
-                        m,
-                        n,
-                        // lC ≤ min{m − 1, lA ​+ lB​}, uC ​≤ min{n − 1, uA ​+ uB​}.​
-                        int.min(m - 1, a.lower + 1),
-                        int.min(n - 1, a.upper + 1),
-                    );
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowBMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .permutation => { // dense banded matrix * permutation matrix
-                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowMP(&result, a, b, ctx);
-
-                    return result;
-                },
-                else => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
-                .numeric => unreachable,
-            },
-            .dense_tridiagonal => switch (comptime types.matrixType(B)) {
-                .dense_general => { // dense tridiagonal matrix * dense general matrix
-                    var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    // lapack.lagtm
-                    try defaultSlowMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_symmetric => { // dense tridiagonal matrix * dense symmetric matrix
-                    var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, n, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_hermitian => { // dense tridiagonal matrix * dense hermitian matrix
-                    var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, n, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_triangular => { // dense tridiagonal matrix * dense triangular matrix
-                    var result: matrix.dense.Banded(C, types.orderOf(B)) = try .init(
-                        allocator,
-                        m,
-                        n,
-                        // lC ≤ min{m − 1, lA ​+ lB​}, uC ​≤ min{n − 1, uA ​+ uB​}.​
-                        if (comptime types.uploOf(B) == .upper) 1 else m - 1,
-                        if (comptime types.uploOf(B) == .upper) n - 1 else 1,
-                    );
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowBMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_diagonal => { // dense tridiagonal matrix * dense diagonal matrix
-                    var result: matrix.dense.Banded(C, types.orderOf(B)) = try .init(allocator, m, n, 1, 1);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowBMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_banded => { // dense tridiagonal matrix * dense banded matrix
-                    var result: matrix.dense.Banded(C, types.orderOf(B)) = try .init(
-                        allocator,
-                        m,
-                        n,
-                        // lC ≤ min{m − 1, lA ​+ lB​}, uC ​≤ min{n − 1, uA ​+ uB​}.​
-                        int.min(m - 1, 1 + b.lower),
-                        int.min(n - 1, 1 + b.upper),
-                    );
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowBMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_tridiagonal => { // dense tridiagonal matrix * dense tridiagonal matrix
-                    var result: matrix.dense.Banded(C, types.orderOf(B)) = try .init(
-                        allocator,
-                        n,
-                        n,
-                        // lC ≤ min{m − 1, lA ​+ lB​}, uC ​≤ min{n − 1, uA ​+ uB​}.​
-                        int.min(n - 1, 2),
-                        int.min(n - 1, 2),
-                    );
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowBMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .permutation => { // dense tridiagonal matrix * permutation matrix
-                    var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, n, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowMP(&result, a, b, ctx);
-
-                    return result;
-                },
-                else => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
-                .numeric => unreachable,
-            },
-            .permutation => switch (comptime types.matrixType(B)) {
-                .dense_general => { // permutation matrix * dense general matrix
-                    var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    // lapack.laswp
-                    try defaultSlowPM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_symmetric => { // permutation matrix * dense symmetric matrix
-                    var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, n, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowPM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_hermitian => { // permutation matrix * dense hermitian matrix
-                    var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, n, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowPM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_triangular => { // permutation matrix * dense triangular matrix
-                    var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowPM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_diagonal => { // permutation matrix * dense diagonal matrix
-                    var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowPM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_banded => { // permutation matrix * dense banded matrix
-                    var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowPM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .dense_tridiagonal => { // permutation matrix * dense tridiagonal matrix
-                    var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, n, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowPM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .permutation => { // permutation matrix * permutation matrix
-                    var result: matrix.Permutation(C) = try .init(allocator, n);
-                    errdefer result.deinit(allocator);
-
-                    var i: u32 = 0;
-                    while (i < n) : (i += 1) {
-                        result.data[i] = b.data[a.data[i]];
-                    }
-
-                    return result;
-                },
-                else => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
-                .numeric => unreachable,
-            },
-            else => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
-            .numeric => unreachable,
-        }
+        if (x_cols != y_rows)
+            return matrix.Error.DimensionMismatch;
     }
-}
 
-fn defaultSlowVM(result: anytype, x: anytype, a: anytype, ctx: anytype) !void {
-    const A: type = @TypeOf(a);
-    const C: type = Numeric(types.Child(@TypeOf(result)));
-
-    const m: u32 = if (comptime types.isSquareMatrix(A)) a.size else a.rows;
-    const n: u32 = if (comptime types.isSquareMatrix(A)) a.size else a.cols;
-
-    var i: u32 = 0;
-    while (i < n) : (i += 1) {
-        try result.set(i, try constants.zero(C, ctx));
-
-        var j: u32 = 0;
-        while (j < m) : (j += 1) {
-            try result.set(
-                i,
-                try ops.add(
-                    result.get(i) catch unreachable,
-                    try ops.mul(
-                        a.get(j, i) catch unreachable,
-                        x.get(j) catch unreachable,
-                        ctx,
-                    ),
-                    ctx,
-                ),
-            );
-        }
-    }
-}
-
-fn defaultSlowMV(result: anytype, a: anytype, x: anytype, ctx: anytype) !void {
-    const A: type = @TypeOf(a);
-    const C: type = Numeric(types.Child(@TypeOf(result)));
-
-    const m: u32 = if (comptime types.isSquareMatrix(A)) a.size else a.rows;
-    const n: u32 = if (comptime types.isSquareMatrix(A)) a.size else a.cols;
-
-    var i: u32 = 0;
-    while (i < m) : (i += 1) {
-        try result.set(i, try constants.zero(C, ctx));
-
-        var j: u32 = 0;
-        while (j < n) : (j += 1) {
-            try result.set(
-                i,
-                try ops.add(
-                    result.get(i) catch unreachable,
-                    try ops.mul(
-                        a.get(i, j) catch unreachable,
-                        x.get(j) catch unreachable,
-                        ctx,
-                    ),
-                    ctx,
-                ),
-            );
-        }
-    }
-}
-
-fn defaultSlowMM(result: anytype, a: anytype, b: anytype, ctx: anytype) !void {
-    const A: type = @TypeOf(a);
-    const B: type = @TypeOf(b);
-    const C: type = Numeric(types.Child(@TypeOf(result)));
-
-    const m: u32 = if (comptime types.isSquareMatrix(A)) a.size else a.rows;
-    const k: u32 = if (comptime types.isSquareMatrix(A)) a.size else a.cols;
-    const n: u32 = if (comptime types.isSquareMatrix(B)) b.size else b.cols;
-
-    var i: u32 = 0;
-    while (i < m) : (i += 1) {
-        var j: u32 = 0;
-        while (j < n) : (j += 1) {
-            try result.set(i, j, try constants.zero(C, ctx));
-
-            var kk: u32 = 0;
-            while (kk < k) : (kk += 1) {
-                try result.set(
-                    i,
-                    j,
-                    try ops.add(
-                        result.get(i, j) catch unreachable,
-                        try ops.mul(
-                            a.get(i, kk) catch unreachable,
-                            b.get(kk, j) catch unreachable,
-                            ctx,
-                        ),
-                        ctx,
-                    ),
-                );
-            }
-        }
-    }
-}
-
-fn defaultSlowTMM(result: anytype, a: anytype, b: anytype, ctx: anytype) !void {
-    const A: type = @TypeOf(a);
-    const B: type = @TypeOf(b);
-    const C: type = Numeric(types.Child(@TypeOf(result)));
-
-    const m: u32 = if (comptime types.isSquareMatrix(A)) a.size else a.rows;
-    const k: u32 = if (comptime types.isSquareMatrix(A)) a.size else a.cols;
-    const n: u32 = if (comptime types.isSquareMatrix(B)) b.size else b.cols;
-
-    if (comptime types.uploOf(types.Child(@TypeOf(result))) == .upper) {
-        var i: u32 = 0;
-        while (i < m) : (i += 1) {
-            var j: u32 = undefined;
-            if (comptime types.diagOf(types.Child(@TypeOf(result))) == .unit) {
-                j = i + 1;
-            } else {
-                j = i;
-            }
-
-            while (j < n) : (j += 1) {
-                try result.set(i, j, try constants.zero(C, ctx));
-
-                var kk: u32 = 0;
-                while (kk < k) : (kk += 1) {
-                    try result.set(
-                        i,
-                        j,
-                        try ops.add(
-                            result.get(i, j) catch unreachable,
-                            try ops.mul(
-                                a.get(i, kk) catch unreachable,
-                                b.get(kk, j) catch unreachable,
-                                ctx,
-                            ),
-                            ctx,
-                        ),
-                    );
-                }
-            }
-        }
+    if (comptime ((meta.isVector(O) and (meta.isVector(X) or meta.isStaticVector(O))) or meta.isStaticMatrix(O)) and
+        (meta.isVector(X) or meta.isStaticMatrix(X)))
+    {
+        if (comptime o_rows != x_rows)
+            @compileError("zsl.linalg.matmulInto: output rows mismatch (o rows != x rows), got\n\to: *" ++
+                @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n");
     } else {
-        var i: u32 = 0;
-        while (i < m) : (i += 1) {
-            var j: u32 = 0;
-            while (j < if (comptime types.diagOf(types.Child(@TypeOf(result))) == .unit) i else i + 1) : (j += 1) {
-                try result.set(i, j, try constants.zero(C, ctx));
-
-                var kk: u32 = 0;
-                while (kk < k) : (kk += 1) {
-                    try result.set(
-                        i,
-                        j,
-                        try ops.add(
-                            result.get(i, j) catch unreachable,
-                            try ops.mul(
-                                a.get(i, kk) catch unreachable,
-                                b.get(kk, j) catch unreachable,
-                                ctx,
-                            ),
-                            ctx,
-                        ),
-                    );
-                }
-            }
-        }
+        if (o_rows != x_rows)
+            return matrix.Error.DimensionMismatch;
     }
-}
 
-fn defaultSlowBMM(result: anytype, a: anytype, b: anytype, ctx: anytype) !void {
-    const A: type = @TypeOf(a);
-    const B: type = @TypeOf(b);
-    const C: type = Numeric(types.Child(@TypeOf(result)));
-
-    const m: u32 = if (comptime types.isSquareMatrix(A)) a.size else a.rows;
-    const k: u32 = if (comptime types.isSquareMatrix(A)) a.size else a.cols;
-    const n: u32 = if (comptime types.isSquareMatrix(B)) b.size else b.cols;
-
-    var i: u32 = 0;
-    while (i < m) : (i += 1) {
-        var j: u32 = if (i < result.lower) 0 else i - result.lower;
-        while (j <= int.min(n - 1, i + result.upper)) : (j += 1) {
-            try result.set(i, j, try constants.zero(C, ctx));
-
-            var kk: u32 = 0;
-            while (kk < k) : (kk += 1) {
-                try result.set(
-                    i,
-                    j,
-                    try ops.add(
-                        result.get(i, j) catch unreachable,
-                        try ops.mul(
-                            a.get(i, kk) catch unreachable,
-                            b.get(kk, j) catch unreachable,
-                            ctx,
-                        ),
-                        ctx,
-                    ),
-                );
-            }
-        }
-    }
-}
-
-fn defaultSlowMP(result: anytype, a: anytype, b: anytype, ctx: anytype) !void {
-    // Since P is on the right and we follow LAPACK convention (row permutation
-    // array), we have to get the inverse of the permutation to correctly
-    // permute the columns of A.
-    const A: type = @TypeOf(a);
-
-    const m: u32 = if (comptime types.isSquareMatrix(A)) a.size else a.rows;
-    const n: u32 = if (comptime types.isSquareMatrix(A)) a.size else a.cols;
-
-    if (b.direction == .forward) {
-        var j: u32 = 0;
-        while (j < n) : (j += 1) {
-            var k: u32 = 0;
-            while (k < n) : (k += 1) {
-                if (b.data[k] == j) {
-                    break;
-                }
-            }
-
-            var i: u32 = 0;
-            while (i < m) : (i += 1) {
-                try ops.set(
-                    &result.data[
-                        if (comptime types.orderOf(types.Child(@TypeOf(result))) == .col_major)
-                            i + j * result.ld
-                        else
-                            i * result.ld + j
-                    ],
-                    a.get(i, k) catch unreachable,
-                    ctx,
-                );
-            }
-        }
+    if (comptime ((meta.isVector(O) and (meta.isVector(Y) or meta.isStaticVector(O))) or meta.isStaticMatrix(O)) and
+        (meta.isVector(Y) or meta.isStaticMatrix(Y)))
+    {
+        if (comptime o_cols != y_cols)
+            @compileError("zsl.linalg.matmulInto: output cols mismatch (o cols != y cols), got\n\to: *" ++
+                @typeName(O) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
     } else {
-        var j: u32 = 0;
-        while (j < n) : (j += 1) {
-            var i: u32 = 0;
-            while (i < m) : (i += 1) {
-                try ops.set(
-                    &result.data[
-                        if (comptime types.orderOf(types.Child(@TypeOf(result))) == .col_major)
-                            i + j * result.ld
-                        else
-                            i * result.ld + j
-                    ],
-                    a.get(i, b.data[j]) catch unreachable,
-                    ctx,
-                );
-            }
-        }
+        if (o_cols != y_cols)
+            return matrix.Error.DimensionMismatch;
     }
-}
 
-fn defaultSlowPM(result: anytype, a: anytype, b: anytype, ctx: anytype) !void {
-    const B: type = @TypeOf(b);
-
-    const m: u32 = if (comptime types.isSquareMatrix(B)) b.size else b.rows;
-    const n: u32 = if (comptime types.isSquareMatrix(B)) b.size else b.cols;
-
-    if (a.direction == .forward) {
-        var i: u32 = 0;
-        while (i < m) : (i += 1) {
-            var j: u32 = 0;
-            while (j < n) : (j += 1) {
-                try ops.set(
-                    &result.data[
-                        if (comptime types.orderOf(types.Child(@TypeOf(result))) == .col_major)
-                            i + j * result.ld
-                        else
-                            i * result.ld + j
-                    ],
-                    b.get(a.data[i], j) catch unreachable,
-                    ctx,
-                );
-            }
-        }
-    } else {
-        var i: u32 = 0;
-        while (i < m) : (i += 1) {
-            var k: u32 = 0;
-            while (k < m) : (k += 1) {
-                if (a.data[k] == i) {
-                    break;
-                }
-            }
-
-            var j: u32 = 0;
-            while (j < n) : (j += 1) {
-                try ops.set(
-                    &result.data[
-                        if (comptime types.orderOf(types.Child(@TypeOf(result))) == .col_major)
-                            i + j * result.ld
-                        else
-                            i * result.ld + j
-                    ],
-                    b.get(k, j) catch unreachable,
-                    ctx,
-                );
-            }
-        }
+    switch (comptime meta.domain(O)) {
+        .matrix => switch (comptime meta.matrixType(O)) {
+            .general_static => switch (comptime meta.domain(X)) {
+                .matrix => switch (comptime meta.matrixType(X)) {
+                    .general_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgensta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgensta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgensta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgensta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgensta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgensta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgensta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgensta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgensta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgensta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgensta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgensta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgensta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgensta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgensta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgensta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .general_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgenden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgenden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgenden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgenden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgenden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgenden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgenden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgenden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgenden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgenden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgenden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgenden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgenden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgenden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgenden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgenden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .general_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgenspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgenspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgenspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgenspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgenspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgenspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgenspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgenspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgenspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgenspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgenspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgenspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgenspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgenspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgenspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matgenspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .symmetric_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymsta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymsta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymsta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymsta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymsta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymsta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymsta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymsta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymsta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymsta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymsta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymsta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymsta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymsta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymsta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymsta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .symmetric_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .symmetric_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matsymspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .hermitian_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mathersta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mathersta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mathersta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mathersta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mathersta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mathersta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mathersta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mathersta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mathersta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mathersta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mathersta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mathersta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mathersta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mathersta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mathersta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mathersta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .hermitian_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matherden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matherden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matherden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matherden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matherden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matherden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matherden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matherden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matherden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matherden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matherden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matherden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matherden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matherden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matherden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matherden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .hermitian_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matherspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matherspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matherspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matherspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matherspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matherspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matherspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matherspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matherspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matherspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matherspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matherspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matherspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matherspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matherspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matherspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .triangular_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattrista_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattrista_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattrista_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattrista_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattrista_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattrista_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattrista_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattrista_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattrista_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattrista_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattrista_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattrista_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattrista_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattrista_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattrista_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattrista_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .triangular_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattriden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattriden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattriden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattriden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattriden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattriden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattriden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattriden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattriden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattriden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattriden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattriden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattriden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattriden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattriden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattriden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .triangular_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattrispa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattrispa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattrispa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattrispa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattrispa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattrispa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattrispa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattrispa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattrispa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattrispa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattrispa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattrispa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattrispa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattrispa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattrispa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_mattrispa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .diagonal_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matdiasta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matdiasta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matdiasta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matdiasta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matdiasta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matdiasta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matdiasta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matdiasta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matdiasta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matdiasta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matdiasta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matdiasta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matdiasta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matdiasta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matdiasta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matdiasta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .diagonal_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matdiaspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matdiaspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matdiaspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matdiaspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matdiaspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matdiaspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matdiaspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matdiaspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matdiaspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matdiaspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matdiaspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matdiaspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matdiaspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matdiaspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matdiaspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matdiaspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .permutation_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matpersta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matpersta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matpersta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matpersta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matpersta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matpersta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matpersta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matpersta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matpersta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matpersta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matpersta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matpersta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matpersta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matpersta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matpersta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matpersta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .permutation_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matperspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matperspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matperspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matperspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matperspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matperspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matperspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matperspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matperspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matperspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matperspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matperspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matperspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matperspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matperspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgensta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgensta_matperspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    else => unreachable,
+                },
+                .vector => switch (comptime meta.domain(Y)) {
+                    .matrix => switch (comptime meta.matrixType(Y)) {
+                        .builder_sparse => unreachable,
+                        else => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                    },
+                    .vector => @compileError("zsl.linalg.matmulInto: vector × vector outer products are not supported by matmulInto; use linalg.outer instead\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                    else => unreachable,
+                },
+                else => unreachable,
+            },
+            .general_dense => switch (comptime meta.domain(X)) {
+                .matrix => switch (comptime meta.matrixType(X)) {
+                    .general_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgensta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgensta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgensta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgensta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgensta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgensta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgensta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgensta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgensta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgensta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgensta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgensta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgensta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgensta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgensta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgensta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .general_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgenden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgenden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgenden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgenden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgenden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgenden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgenden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgenden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgenden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgenden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgenden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgenden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgenden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgenden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgenden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgenden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .general_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgenspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgenspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgenspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgenspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgenspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgenspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgenspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgenspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgenspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgenspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgenspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgenspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgenspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgenspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgenspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matgenspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .symmetric_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymsta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymsta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymsta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymsta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymsta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymsta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymsta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymsta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymsta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymsta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymsta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymsta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymsta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymsta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymsta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymsta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .symmetric_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .symmetric_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matsymspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .hermitian_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mathersta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mathersta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mathersta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mathersta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mathersta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mathersta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mathersta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mathersta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mathersta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mathersta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mathersta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mathersta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mathersta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mathersta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mathersta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mathersta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .hermitian_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matherden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matherden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matherden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matherden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matherden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matherden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matherden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matherden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matherden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matherden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matherden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matherden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matherden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matherden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matherden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matherden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .hermitian_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matherspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matherspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matherspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matherspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matherspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matherspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matherspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matherspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matherspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matherspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matherspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matherspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matherspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matherspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matherspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matherspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .triangular_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattrista_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattrista_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattrista_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattrista_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattrista_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattrista_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattrista_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattrista_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattrista_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattrista_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattrista_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattrista_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattrista_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattrista_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattrista_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattrista_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .triangular_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattriden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattriden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattriden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattriden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattriden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattriden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattriden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattriden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattriden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattriden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattriden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattriden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattriden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattriden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattriden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattriden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .triangular_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattrispa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattrispa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattrispa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattrispa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattrispa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattrispa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattrispa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattrispa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattrispa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattrispa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattrispa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattrispa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattrispa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattrispa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattrispa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_mattrispa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .diagonal_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matdiasta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matdiasta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matdiasta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matdiasta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matdiasta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matdiasta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matdiasta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matdiasta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matdiasta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matdiasta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matdiasta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matdiasta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matdiasta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matdiasta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matdiasta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matdiasta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .diagonal_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matdiaspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matdiaspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matdiaspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matdiaspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matdiaspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matdiaspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matdiaspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matdiaspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matdiaspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matdiaspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matdiaspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matdiaspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matdiaspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matdiaspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matdiaspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matdiaspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .permutation_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matpersta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matpersta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matpersta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matpersta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matpersta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matpersta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matpersta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matpersta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matpersta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matpersta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matpersta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matpersta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matpersta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matpersta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matpersta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matpersta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .permutation_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matperspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matperspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matperspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matperspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matperspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matperspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matperspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matperspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matperspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matperspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matperspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matperspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matperspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matperspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matperspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgenden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenden_matperspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    else => unreachable,
+                },
+                .vector => switch (comptime meta.domain(Y)) {
+                    .matrix => switch (comptime meta.matrixType(Y)) {
+                        .builder_sparse => unreachable,
+                        else => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                    },
+                    .vector => @compileError("zsl.linalg.matmulInto: vector × vector outer products are not supported by matmulInto; use linalg.outer instead\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                    else => unreachable,
+                },
+                else => unreachable,
+            },
+            .general_sparse => switch (comptime meta.domain(X)) {
+                .matrix => switch (comptime meta.matrixType(X)) {
+                    .general_static, .general_dense, .symmetric_static, .symmetric_dense, .hermitian_static, .hermitian_dense, .triangular_static, .triangular_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .general_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matgenspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matgenspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matgenspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matgenspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matgenspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matgenspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matgenspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matgenspa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .symmetric_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matsymspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matsymspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matsymspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matsymspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matsymspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matsymspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matsymspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matsymspa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .hermitian_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matherspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matherspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matherspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matherspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matherspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matherspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matherspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matherspa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .triangular_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_mattrispa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_mattrispa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_mattrispa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_mattrispa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_mattrispa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_mattrispa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_mattrispa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_mattrispa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .diagonal_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matdiasta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matdiasta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matdiasta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matdiasta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matdiasta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matdiasta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matdiasta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matdiasta_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .diagonal_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matdiaspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matdiaspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matdiaspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matdiaspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matdiaspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matdiaspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matdiaspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matdiaspa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .permutation_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matpersta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matpersta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matpersta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matpersta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matpersta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matpersta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matpersta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matpersta_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .permutation_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matperspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matperspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matperspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matperspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matperspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matperspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matperspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matgenspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matgenspa_matperspa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    else => unreachable,
+                },
+                .vector => switch (comptime meta.domain(Y)) {
+                    .matrix => switch (comptime meta.matrixType(Y)) {
+                        .builder_sparse => unreachable,
+                        else => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                    },
+                    .vector => @compileError("zsl.linalg.matmulInto: vector × vector outer products are not supported by matmulInto; use linalg.outer instead\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                    else => unreachable,
+                },
+                else => unreachable,
+            },
+            .symmetric_static => switch (comptime meta.domain(X)) {
+                .matrix => switch (comptime meta.matrixType(X)) {
+                    .general_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgensta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgensta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgensta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgensta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgensta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgensta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgensta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgensta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgensta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgensta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgensta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgensta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgensta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgensta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgensta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgensta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .general_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgenden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgenden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgenden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgenden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgenden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgenden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgenden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgenden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgenden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgenden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgenden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgenden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgenden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgenden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgenden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgenden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .general_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgenspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgenspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgenspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgenspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgenspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgenspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgenspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgenspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgenspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgenspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgenspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgenspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgenspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgenspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgenspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matgenspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .symmetric_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymsta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymsta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymsta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymsta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymsta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymsta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymsta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymsta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymsta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymsta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymsta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymsta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymsta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymsta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymsta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymsta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .symmetric_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .symmetric_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matsymspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .hermitian_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mathersta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mathersta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mathersta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mathersta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mathersta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mathersta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mathersta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mathersta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mathersta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mathersta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mathersta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mathersta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mathersta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mathersta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mathersta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mathersta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .hermitian_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matherden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matherden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matherden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matherden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matherden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matherden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matherden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matherden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matherden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matherden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matherden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matherden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matherden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matherden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matherden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matherden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .hermitian_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matherspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matherspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matherspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matherspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matherspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matherspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matherspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matherspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matherspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matherspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matherspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matherspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matherspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matherspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matherspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matherspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .triangular_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattrista_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattrista_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattrista_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattrista_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattrista_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattrista_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattrista_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattrista_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattrista_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattrista_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattrista_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattrista_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattrista_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattrista_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattrista_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattrista_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .triangular_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattriden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattriden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattriden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattriden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattriden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattriden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattriden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattriden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattriden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattriden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattriden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattriden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattriden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattriden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattriden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattriden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .triangular_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattrispa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattrispa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattrispa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattrispa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattrispa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattrispa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattrispa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattrispa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattrispa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattrispa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattrispa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattrispa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattrispa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattrispa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattrispa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_mattrispa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .diagonal_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matdiasta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matdiasta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matdiasta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matdiasta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matdiasta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matdiasta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matdiasta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matdiasta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matdiasta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matdiasta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matdiasta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matdiasta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matdiasta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matdiasta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matdiasta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matdiasta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .diagonal_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matdiaspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matdiaspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matdiaspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matdiaspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matdiaspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matdiaspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matdiaspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matdiaspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matdiaspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matdiaspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matdiaspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matdiaspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matdiaspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matdiaspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matdiaspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matdiaspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .permutation_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matpersta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matpersta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matpersta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matpersta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matpersta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matpersta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matpersta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matpersta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matpersta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matpersta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matpersta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matpersta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matpersta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matpersta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matpersta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matpersta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .permutation_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matperspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matperspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matperspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matperspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matperspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matperspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matperspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matperspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matperspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matperspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matperspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matperspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matperspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matperspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matperspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymsta_matperspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    else => unreachable,
+                },
+                .vector => switch (comptime meta.domain(Y)) {
+                    .matrix => switch (comptime meta.matrixType(Y)) {
+                        .builder_sparse => unreachable,
+                        else => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                    },
+                    .vector => @compileError("zsl.linalg.matmulInto: vector × vector outer products are not supported by matmulInto; use linalg.outer instead\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                    else => unreachable,
+                },
+                else => unreachable,
+            },
+            .symmetric_dense => switch (comptime meta.domain(X)) {
+                .matrix => switch (comptime meta.matrixType(X)) {
+                    .general_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgensta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgensta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgensta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgensta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgensta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgensta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgensta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgensta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgensta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgensta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgensta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgensta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgensta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgensta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgensta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgensta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .general_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgenden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgenden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgenden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgenden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgenden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgenden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgenden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgenden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgenden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgenden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgenden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgenden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgenden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgenden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgenden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgenden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .general_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgenspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgenspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgenspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgenspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgenspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgenspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgenspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgenspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgenspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgenspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgenspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgenspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgenspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgenspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgenspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matgenspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .symmetric_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymsta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymsta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymsta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymsta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymsta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymsta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymsta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymsta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymsta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymsta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymsta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymsta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymsta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymsta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymsta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymsta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .symmetric_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .symmetric_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matsymspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .hermitian_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mathersta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mathersta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mathersta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mathersta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mathersta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mathersta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mathersta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mathersta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mathersta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mathersta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mathersta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mathersta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mathersta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mathersta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mathersta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mathersta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .hermitian_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matherden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matherden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matherden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matherden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matherden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matherden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matherden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matherden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matherden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matherden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matherden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matherden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matherden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matherden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matherden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matherden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .hermitian_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matherspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matherspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matherspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matherspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matherspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matherspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matherspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matherspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matherspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matherspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matherspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matherspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matherspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matherspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matherspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matherspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .triangular_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattrista_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattrista_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattrista_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattrista_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattrista_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattrista_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattrista_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattrista_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattrista_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattrista_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattrista_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattrista_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattrista_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattrista_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattrista_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattrista_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .triangular_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattriden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattriden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattriden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattriden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattriden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattriden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattriden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattriden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattriden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattriden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattriden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattriden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattriden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattriden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattriden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattriden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .triangular_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattrispa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattrispa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattrispa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattrispa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattrispa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattrispa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattrispa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattrispa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattrispa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattrispa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattrispa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattrispa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattrispa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattrispa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattrispa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_mattrispa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .diagonal_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matdiasta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matdiasta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matdiasta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matdiasta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matdiasta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matdiasta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matdiasta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matdiasta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matdiasta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matdiasta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matdiasta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matdiasta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matdiasta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matdiasta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matdiasta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matdiasta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .diagonal_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matdiaspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matdiaspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matdiaspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matdiaspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matdiaspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matdiaspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matdiaspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matdiaspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matdiaspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matdiaspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matdiaspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matdiaspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matdiaspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matdiaspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matdiaspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matdiaspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .permutation_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matpersta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matpersta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matpersta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matpersta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matpersta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matpersta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matpersta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matpersta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matpersta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matpersta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matpersta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matpersta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matpersta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matpersta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matpersta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matpersta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .permutation_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matperspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matperspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matperspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matperspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matperspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matperspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matperspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matperspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matperspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matperspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matperspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matperspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matperspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matperspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matperspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymden_matperspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    else => unreachable,
+                },
+                .vector => switch (comptime meta.domain(Y)) {
+                    .matrix => switch (comptime meta.matrixType(Y)) {
+                        .builder_sparse => unreachable,
+                        else => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                    },
+                    .vector => @compileError("zsl.linalg.matmulInto: vector × vector outer products are not supported by matmulInto; use linalg.outer instead\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                    else => unreachable,
+                },
+                else => unreachable,
+            },
+            .symmetric_sparse => switch (comptime meta.domain(X)) {
+                .matrix => switch (comptime meta.matrixType(X)) {
+                    .general_static, .general_dense, .symmetric_static, .symmetric_dense, .hermitian_static, .hermitian_dense, .triangular_static, .triangular_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .general_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matgenspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matgenspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matgenspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matgenspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matgenspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matgenspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matgenspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matgenspa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .symmetric_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matsymspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matsymspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matsymspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matsymspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matsymspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matsymspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matsymspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matsymspa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .hermitian_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matherspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matherspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matherspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matherspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matherspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matherspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matherspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matherspa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .triangular_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_mattrispa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_mattrispa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_mattrispa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_mattrispa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_mattrispa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_mattrispa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_mattrispa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_mattrispa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .diagonal_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matdiasta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matdiasta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matdiasta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matdiasta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matdiasta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matdiasta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matdiasta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matdiasta_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .diagonal_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matdiaspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matdiaspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matdiaspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matdiaspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matdiaspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matdiaspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matdiaspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matdiaspa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .permutation_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matpersta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matpersta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matpersta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matpersta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matpersta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matpersta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matpersta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matpersta_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .permutation_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matperspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matperspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matperspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matperspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matperspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matperspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matperspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matsymspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matsymspa_matperspa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    else => unreachable,
+                },
+                .vector => switch (comptime meta.domain(Y)) {
+                    .matrix => switch (comptime meta.matrixType(Y)) {
+                        .builder_sparse => unreachable,
+                        else => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                    },
+                    .vector => @compileError("zsl.linalg.matmulInto: vector × vector outer products are not supported by matmulInto; use linalg.outer instead\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                    else => unreachable,
+                },
+                else => unreachable,
+            },
+            .hermitian_static => switch (comptime meta.domain(X)) {
+                .matrix => switch (comptime meta.matrixType(X)) {
+                    .general_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgensta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgensta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgensta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgensta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgensta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgensta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgensta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgensta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgensta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgensta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgensta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgensta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgensta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgensta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgensta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgensta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .general_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgenden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgenden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgenden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgenden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgenden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgenden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgenden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgenden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgenden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgenden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgenden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgenden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgenden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgenden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgenden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgenden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .general_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgenspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgenspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgenspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgenspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgenspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgenspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgenspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgenspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgenspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgenspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgenspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgenspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgenspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgenspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgenspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matgenspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .symmetric_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymsta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymsta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymsta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymsta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymsta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymsta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymsta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymsta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymsta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymsta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymsta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymsta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymsta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymsta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymsta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymsta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .symmetric_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .symmetric_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matsymspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .hermitian_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mathersta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mathersta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mathersta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mathersta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mathersta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mathersta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mathersta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mathersta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mathersta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mathersta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mathersta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mathersta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mathersta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mathersta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mathersta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mathersta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .hermitian_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matherden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matherden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matherden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matherden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matherden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matherden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matherden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matherden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matherden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matherden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matherden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matherden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matherden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matherden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matherden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matherden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .hermitian_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matherspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matherspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matherspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matherspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matherspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matherspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matherspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matherspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matherspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matherspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matherspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matherspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matherspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matherspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matherspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matherspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .triangular_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattrista_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattrista_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattrista_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattrista_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattrista_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattrista_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattrista_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattrista_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattrista_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattrista_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattrista_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattrista_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattrista_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattrista_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattrista_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattrista_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .triangular_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattriden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattriden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattriden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattriden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattriden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattriden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattriden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattriden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattriden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattriden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattriden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattriden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattriden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattriden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattriden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattriden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .triangular_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattrispa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattrispa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattrispa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattrispa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattrispa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattrispa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattrispa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattrispa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattrispa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattrispa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattrispa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattrispa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattrispa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattrispa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattrispa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_mattrispa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .diagonal_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matdiasta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matdiasta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matdiasta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matdiasta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matdiasta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matdiasta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matdiasta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matdiasta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matdiasta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matdiasta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matdiasta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matdiasta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matdiasta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matdiasta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matdiasta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matdiasta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .diagonal_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matdiaspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matdiaspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matdiaspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matdiaspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matdiaspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matdiaspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matdiaspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matdiaspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matdiaspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matdiaspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matdiaspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matdiaspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matdiaspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matdiaspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matdiaspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matdiaspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .permutation_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matpersta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matpersta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matpersta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matpersta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matpersta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matpersta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matpersta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matpersta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matpersta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matpersta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matpersta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matpersta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matpersta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matpersta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matpersta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matpersta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .permutation_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matperspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matperspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matperspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matperspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matperspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matperspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matperspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matperspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matperspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matperspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matperspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matperspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matperspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matperspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matperspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mathersta_slow.zig").matmulInto(o, x, y), // return @import("matmul/mathersta_matperspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    else => unreachable,
+                },
+                .vector => switch (comptime meta.domain(Y)) {
+                    .matrix => switch (comptime meta.matrixType(Y)) {
+                        .builder_sparse => unreachable,
+                        else => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                    },
+                    .vector => @compileError("zsl.linalg.matmulInto: vector × vector outer products are not supported by matmulInto; use linalg.outer instead\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                    else => unreachable,
+                },
+                else => unreachable,
+            },
+            .hermitian_dense => switch (comptime meta.domain(X)) {
+                .matrix => switch (comptime meta.matrixType(X)) {
+                    .general_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgensta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgensta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgensta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgensta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgensta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgensta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgensta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgensta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgensta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgensta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgensta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgensta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgensta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgensta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgensta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgensta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .general_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgenden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgenden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgenden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgenden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgenden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgenden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgenden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgenden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgenden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgenden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgenden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgenden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgenden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgenden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgenden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgenden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .general_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgenspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgenspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgenspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgenspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgenspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgenspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgenspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgenspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgenspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgenspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgenspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgenspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgenspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgenspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgenspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matgenspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .symmetric_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymsta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymsta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymsta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymsta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymsta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymsta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymsta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymsta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymsta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymsta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymsta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymsta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymsta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymsta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymsta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymsta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .symmetric_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .symmetric_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matsymspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .hermitian_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mathersta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mathersta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mathersta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mathersta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mathersta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mathersta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mathersta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mathersta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mathersta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mathersta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mathersta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mathersta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mathersta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mathersta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mathersta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mathersta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .hermitian_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matherden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matherden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matherden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matherden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matherden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matherden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matherden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matherden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matherden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matherden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matherden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matherden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matherden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matherden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matherden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matherden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .hermitian_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matherspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matherspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matherspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matherspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matherspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matherspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matherspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matherspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matherspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matherspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matherspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matherspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matherspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matherspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matherspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matherspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .triangular_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattrista_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattrista_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattrista_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattrista_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattrista_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattrista_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattrista_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattrista_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattrista_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattrista_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattrista_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattrista_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattrista_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattrista_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattrista_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattrista_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .triangular_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattriden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattriden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattriden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattriden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattriden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattriden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattriden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattriden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattriden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattriden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattriden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattriden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattriden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattriden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattriden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattriden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .triangular_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattrispa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattrispa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattrispa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattrispa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattrispa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattrispa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattrispa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattrispa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattrispa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattrispa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattrispa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattrispa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattrispa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattrispa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattrispa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_mattrispa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .diagonal_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matdiasta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matdiasta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matdiasta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matdiasta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matdiasta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matdiasta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matdiasta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matdiasta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matdiasta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matdiasta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matdiasta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matdiasta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matdiasta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matdiasta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matdiasta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matdiasta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .diagonal_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matdiaspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matdiaspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matdiaspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matdiaspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matdiaspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matdiaspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matdiaspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matdiaspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matdiaspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matdiaspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matdiaspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matdiaspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matdiaspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matdiaspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matdiaspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matdiaspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .permutation_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matpersta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matpersta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matpersta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matpersta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matpersta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matpersta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matpersta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matpersta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matpersta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matpersta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matpersta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matpersta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matpersta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matpersta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matpersta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matpersta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .permutation_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matperspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matperspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matperspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matperspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matperspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matperspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matperspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matperspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matperspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matperspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matperspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matperspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matperspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matperspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matperspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matherden_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherden_matperspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    else => unreachable,
+                },
+                .vector => switch (comptime meta.domain(Y)) {
+                    .matrix => switch (comptime meta.matrixType(Y)) {
+                        .builder_sparse => unreachable,
+                        else => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                    },
+                    .vector => @compileError("zsl.linalg.matmulInto: vector × vector outer products are not supported by matmulInto; use linalg.outer instead\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                    else => unreachable,
+                },
+                else => unreachable,
+            },
+            .hermitian_sparse => switch (comptime meta.domain(X)) {
+                .matrix => switch (comptime meta.matrixType(X)) {
+                    .general_static, .general_dense, .symmetric_static, .symmetric_dense, .hermitian_static, .hermitian_dense, .triangular_static, .triangular_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .general_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matgenspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matgenspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matgenspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matgenspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matgenspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matgenspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matgenspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matgenspa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .symmetric_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matsymspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matsymspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matsymspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matsymspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matsymspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matsymspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matsymspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matsymspa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .hermitian_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matherspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matherspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matherspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matherspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matherspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matherspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matherspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matherspa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .triangular_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_mattrispa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_mattrispa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_mattrispa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_mattrispa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_mattrispa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_mattrispa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_mattrispa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_mattrispa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .diagonal_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matdiasta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matdiasta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matdiasta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matdiasta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matdiasta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matdiasta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matdiasta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matdiasta_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .diagonal_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matdiaspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matdiaspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matdiaspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matdiaspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matdiaspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matdiaspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matdiaspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matdiaspa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .permutation_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matpersta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matpersta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matpersta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matpersta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matpersta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matpersta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matpersta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matpersta_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .permutation_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matperspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matperspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matperspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matperspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matperspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matperspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matperspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matherspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matherspa_matperspa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    else => unreachable,
+                },
+                .vector => switch (comptime meta.domain(Y)) {
+                    .matrix => switch (comptime meta.matrixType(Y)) {
+                        .builder_sparse => unreachable,
+                        else => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                    },
+                    .vector => @compileError("zsl.linalg.matmulInto: vector × vector outer products are not supported by matmulInto; use linalg.outer instead\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                    else => unreachable,
+                },
+                else => unreachable,
+            },
+            .triangular_static => switch (comptime meta.domain(X)) {
+                .matrix => switch (comptime meta.matrixType(X)) {
+                    .general_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgensta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgensta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgensta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgensta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgensta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgensta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgensta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgensta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgensta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgensta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgensta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgensta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgensta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgensta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgensta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgensta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .general_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgenden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgenden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgenden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgenden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgenden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgenden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgenden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgenden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgenden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgenden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgenden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgenden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgenden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgenden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgenden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgenden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .general_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgenspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgenspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgenspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgenspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgenspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgenspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgenspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgenspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgenspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgenspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgenspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgenspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgenspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgenspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgenspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matgenspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .symmetric_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymsta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymsta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymsta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymsta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymsta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymsta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymsta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymsta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymsta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymsta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymsta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymsta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymsta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymsta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymsta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymsta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .symmetric_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .symmetric_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matsymspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .hermitian_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mathersta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mathersta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mathersta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mathersta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mathersta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mathersta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mathersta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mathersta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mathersta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mathersta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mathersta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mathersta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mathersta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mathersta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mathersta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mathersta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .hermitian_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matherden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matherden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matherden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matherden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matherden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matherden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matherden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matherden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matherden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matherden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matherden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matherden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matherden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matherden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matherden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matherden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .hermitian_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matherspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matherspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matherspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matherspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matherspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matherspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matherspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matherspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matherspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matherspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matherspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matherspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matherspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matherspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matherspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matherspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .triangular_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrista_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrista_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrista_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrista_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrista_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrista_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrista_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrista_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrista_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => {
+                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
+                                return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattrista_mattrista_mattrista.zig").matmulInto(o, x, y);
+                            },
+                            .triangular_dense => {
+                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
+                                return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattrista_mattrista_mattriden.zig").matmulInto(o, x, y);
+                            },
+                            .triangular_sparse => {
+                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
+                                return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattrista_mattrista_mattrispa.zig").matmulInto(o, x, y);
+                            },
+                            .diagonal_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrista_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrista_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrista_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrista_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .triangular_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattriden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattriden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattriden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattriden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattriden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattriden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattriden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattriden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattriden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => {
+                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
+                                return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattrista_mattriden_mattrista.zig").matmulInto(o, x, y);
+                            },
+                            .triangular_dense => {
+                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
+                                return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattrista_mattriden_mattriden.zig").matmulInto(o, x, y);
+                            },
+                            .triangular_sparse => {
+                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
+                                return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattrista_mattriden_mattrispa.zig").matmulInto(o, x, y);
+                            },
+                            .diagonal_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattriden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattriden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattriden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattriden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .triangular_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrispa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrispa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrispa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrispa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrispa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrispa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrispa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrispa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrispa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => {
+                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
+                                return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattrista_mattrispa_mattrista.zig").matmulInto(o, x, y);
+                            },
+                            .triangular_dense => {
+                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
+                                return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattrista_mattrispa_mattriden.zig").matmulInto(o, x, y);
+                            },
+                            .triangular_sparse => {
+                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
+                                return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattrista_mattrispa_mattrispa.zig").matmulInto(o, x, y);
+                            },
+                            .diagonal_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrispa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrispa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrispa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrispa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .diagonal_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matdiasta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matdiasta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matdiasta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matdiasta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matdiasta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matdiasta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matdiasta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matdiasta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matdiasta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matdiasta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matdiasta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matdiasta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matdiasta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matdiasta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matdiasta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matdiasta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .diagonal_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matdiaspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matdiaspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matdiaspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matdiaspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matdiaspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matdiaspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matdiaspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matdiaspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matdiaspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matdiaspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matdiaspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matdiaspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matdiaspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matdiaspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matdiaspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matdiaspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .permutation_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matpersta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matpersta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matpersta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matpersta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matpersta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matpersta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matpersta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matpersta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matpersta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matpersta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matpersta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matpersta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matpersta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matpersta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matpersta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matpersta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .permutation_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matperspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matperspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matperspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matperspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matperspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matperspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matperspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matperspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matperspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matperspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matperspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matperspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matperspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matperspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matperspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_matperspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    else => unreachable,
+                },
+                .vector => switch (comptime meta.domain(Y)) {
+                    .matrix => switch (comptime meta.matrixType(Y)) {
+                        .builder_sparse => unreachable,
+                        else => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                    },
+                    .vector => @compileError("zsl.linalg.matmulInto: vector × vector outer products are not supported by matmulInto; use linalg.outer instead\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                    else => unreachable,
+                },
+                else => unreachable,
+            },
+            .triangular_dense => switch (comptime meta.domain(X)) {
+                .matrix => switch (comptime meta.matrixType(X)) {
+                    .general_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgensta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgensta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgensta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgensta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgensta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgensta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgensta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgensta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgensta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgensta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgensta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgensta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgensta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgensta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgensta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgensta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .general_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgenden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgenden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgenden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgenden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgenden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgenden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgenden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgenden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgenden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgenden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgenden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgenden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgenden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgenden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgenden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgenden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .general_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgenspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgenspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgenspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgenspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgenspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgenspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgenspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgenspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgenspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgenspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgenspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgenspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgenspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgenspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgenspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matgenspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .symmetric_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymsta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymsta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymsta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymsta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymsta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymsta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymsta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymsta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymsta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymsta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymsta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymsta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymsta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymsta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymsta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymsta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .symmetric_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .symmetric_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matsymspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .hermitian_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mathersta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mathersta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mathersta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mathersta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mathersta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mathersta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mathersta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mathersta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mathersta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mathersta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mathersta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mathersta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mathersta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mathersta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mathersta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mathersta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .hermitian_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matherden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matherden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matherden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matherden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matherden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matherden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matherden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matherden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matherden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matherden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matherden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matherden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matherden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matherden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matherden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matherden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .hermitian_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matherspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matherspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matherspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matherspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matherspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matherspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matherspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matherspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matherspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matherspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matherspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matherspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matherspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matherspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matherspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matherspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .triangular_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrista_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrista_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrista_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrista_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrista_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrista_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrista_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrista_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrista_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => {
+                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
+                                return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattriden_mattrista_mattrista.zig").matmulInto(o, x, y);
+                            },
+                            .triangular_dense => {
+                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
+                                return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattriden_mattrista_mattriden.zig").matmulInto(o, x, y);
+                            },
+                            .triangular_sparse => {
+                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
+                                return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattriden_mattrista_mattrispa.zig").matmulInto(o, x, y);
+                            },
+                            .diagonal_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrista_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrista_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrista_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrista_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .triangular_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattriden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattriden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattriden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattriden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattriden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattriden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattriden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattriden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattriden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => {
+                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
+                                return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattriden_mattriden_mattrista.zig").matmulInto(o, x, y);
+                            },
+                            .triangular_dense => {
+                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
+                                return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattriden_mattriden_mattriden.zig").matmulInto(o, x, y);
+                            },
+                            .triangular_sparse => {
+                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
+                                return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattriden_mattriden_mattrispa.zig").matmulInto(o, x, y);
+                            },
+                            .diagonal_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattriden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattriden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattriden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattriden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .triangular_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrispa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrispa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrispa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrispa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrispa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrispa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrispa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrispa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrispa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => {
+                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
+                                return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattriden_mattrispa_mattrista.zig").matmulInto(o, x, y);
+                            },
+                            .triangular_dense => {
+                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
+                                return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattriden_mattrispa_mattriden.zig").matmulInto(o, x, y);
+                            },
+                            .triangular_sparse => {
+                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
+                                return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattriden_mattrispa_mattrispa.zig").matmulInto(o, x, y);
+                            },
+                            .diagonal_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrispa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrispa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrispa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrispa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .diagonal_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matdiasta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matdiasta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matdiasta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matdiasta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matdiasta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matdiasta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matdiasta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matdiasta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matdiasta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matdiasta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matdiasta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matdiasta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matdiasta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matdiasta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matdiasta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matdiasta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .diagonal_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matdiaspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matdiaspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matdiaspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matdiaspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matdiaspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matdiaspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matdiaspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matdiaspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matdiaspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matdiaspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matdiaspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matdiaspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matdiaspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matdiaspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matdiaspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matdiaspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .permutation_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matpersta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matpersta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matpersta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matpersta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matpersta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matpersta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matpersta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matpersta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matpersta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matpersta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matpersta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matpersta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matpersta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matpersta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matpersta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matpersta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .permutation_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matperspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matperspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matperspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matperspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matperspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matperspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matperspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matperspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matperspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matperspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matperspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matperspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matperspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matperspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matperspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_matperspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    else => unreachable,
+                },
+                .vector => switch (comptime meta.domain(Y)) {
+                    .matrix => switch (comptime meta.matrixType(Y)) {
+                        .builder_sparse => unreachable,
+                        else => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                    },
+                    .vector => @compileError("zsl.linalg.matmulInto: vector × vector outer products are not supported by matmulInto; use linalg.outer instead\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                    else => unreachable,
+                },
+                else => unreachable,
+            },
+            .triangular_sparse => switch (comptime meta.domain(X)) {
+                .matrix => switch (comptime meta.matrixType(X)) {
+                    .general_static, .general_dense, .symmetric_static, .symmetric_dense, .hermitian_static, .hermitian_dense, .triangular_static, .triangular_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .general_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matgenspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matgenspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matgenspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matgenspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matgenspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matgenspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matgenspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matgenspa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .symmetric_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matsymspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matsymspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matsymspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matsymspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matsymspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matsymspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matsymspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matsymspa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .hermitian_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matherspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matherspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matherspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matherspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matherspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matherspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matherspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matherspa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .triangular_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_mattrispa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_mattrispa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_mattrispa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => {
+                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
+                                return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattrispa_mattrispa_mattrispa.zig").matmulInto(o, x, y);
+                            },
+                            .diagonal_static => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_mattrispa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_mattrispa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_mattrispa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_mattrispa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .diagonal_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matdiasta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matdiasta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matdiasta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matdiasta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matdiasta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matdiasta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matdiasta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matdiasta_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .diagonal_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matdiaspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matdiaspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matdiaspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matdiaspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matdiaspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matdiaspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matdiaspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matdiaspa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .permutation_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matpersta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matpersta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matpersta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matpersta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matpersta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matpersta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matpersta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matpersta_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .permutation_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matperspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matperspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matperspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matperspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matperspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matperspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matperspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_matperspa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    else => unreachable,
+                },
+                .vector => switch (comptime meta.domain(Y)) {
+                    .matrix => switch (comptime meta.matrixType(Y)) {
+                        .builder_sparse => unreachable,
+                        else => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                    },
+                    .vector => @compileError("zsl.linalg.matmulInto: vector × vector outer products are not supported by matmulInto; use linalg.outer instead\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                    else => unreachable,
+                },
+                else => unreachable,
+            },
+            .diagonal_static => switch (comptime meta.domain(X)) {
+                .matrix => switch (comptime meta.matrixType(X)) {
+                    .general_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgensta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgensta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgensta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgensta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgensta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgensta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgensta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgensta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgensta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgensta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgensta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgensta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgensta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgensta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgensta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgensta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .general_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgenden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgenden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgenden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgenden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgenden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgenden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgenden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgenden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgenden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgenden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgenden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgenden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgenden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgenden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgenden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgenden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .general_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgenspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgenspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgenspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgenspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgenspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgenspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgenspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgenspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgenspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgenspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgenspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgenspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgenspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgenspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgenspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matgenspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .symmetric_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymsta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymsta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymsta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymsta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymsta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymsta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymsta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymsta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymsta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymsta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymsta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymsta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymsta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymsta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymsta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymsta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .symmetric_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .symmetric_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matsymspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .hermitian_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mathersta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mathersta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mathersta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mathersta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mathersta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mathersta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mathersta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mathersta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mathersta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mathersta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mathersta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mathersta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mathersta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mathersta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mathersta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mathersta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .hermitian_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matherden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matherden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matherden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matherden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matherden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matherden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matherden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matherden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matherden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matherden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matherden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matherden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matherden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matherden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matherden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matherden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .hermitian_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matherspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matherspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matherspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matherspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matherspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matherspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matherspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matherspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matherspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matherspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matherspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matherspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matherspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matherspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matherspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matherspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .triangular_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattrista_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattrista_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattrista_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattrista_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattrista_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattrista_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattrista_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattrista_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattrista_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattrista_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattrista_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattrista_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattrista_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattrista_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattrista_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattrista_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .triangular_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattriden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattriden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattriden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattriden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattriden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattriden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattriden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattriden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattriden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattriden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattriden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattriden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattriden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattriden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattriden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattriden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .triangular_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattrispa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattrispa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattrispa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattrispa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattrispa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattrispa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattrispa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattrispa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattrispa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattrispa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattrispa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattrispa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattrispa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattrispa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattrispa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_mattrispa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .diagonal_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matdiasta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matdiasta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matdiasta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matdiasta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matdiasta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matdiasta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matdiasta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matdiasta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matdiasta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matdiasta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matdiasta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matdiasta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matdiasta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matdiasta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matdiasta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matdiasta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .diagonal_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matdiaspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matdiaspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matdiaspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matdiaspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matdiaspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matdiaspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matdiaspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matdiaspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matdiaspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matdiaspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matdiaspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matdiaspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matdiaspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matdiaspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matdiaspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matdiaspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .permutation_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matpersta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matpersta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matpersta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matpersta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matpersta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matpersta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matpersta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matpersta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matpersta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matpersta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matpersta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matpersta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matpersta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matpersta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matpersta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matpersta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .permutation_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matperspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matperspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matperspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matperspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matperspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matperspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matperspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matperspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matperspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matperspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matperspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matperspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matperspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matperspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matperspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matdiasta_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiasta_matperspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    else => unreachable,
+                },
+                .vector => switch (comptime meta.domain(Y)) {
+                    .matrix => switch (comptime meta.matrixType(Y)) {
+                        .builder_sparse => unreachable,
+                        else => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                    },
+                    .vector => @compileError("zsl.linalg.matmulInto: vector × vector outer products are not supported by matmulInto; use linalg.outer instead\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                    else => unreachable,
+                },
+                else => unreachable,
+            },
+            .diagonal_sparse => switch (comptime meta.domain(X)) {
+                .matrix => switch (comptime meta.matrixType(X)) {
+                    .general_static, .general_dense, .symmetric_static, .symmetric_dense, .hermitian_static, .hermitian_dense, .triangular_static, .triangular_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .general_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matgenspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matgenspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matgenspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matgenspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matgenspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matgenspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matgenspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matgenspa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .symmetric_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matsymspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matsymspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matsymspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matsymspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matsymspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matsymspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matsymspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matsymspa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .hermitian_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matherspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matherspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matherspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matherspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matherspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matherspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matherspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matherspa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .triangular_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_mattrispa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_mattrispa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_mattrispa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_mattrispa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_mattrispa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_mattrispa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_mattrispa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_mattrispa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .diagonal_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matdiasta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matdiasta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matdiasta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matdiasta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matdiasta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matdiasta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matdiasta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matdiasta_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .diagonal_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matdiaspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matdiaspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matdiaspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matdiaspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matdiaspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matdiaspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matdiaspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matdiaspa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .permutation_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matpersta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matpersta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matpersta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matpersta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matpersta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matpersta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matpersta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matpersta_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .permutation_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matperspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matperspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matperspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matperspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matperspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matperspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matperspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matdiaspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matdiaspa_matperspa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    else => unreachable,
+                },
+                .vector => switch (comptime meta.domain(Y)) {
+                    .matrix => switch (comptime meta.matrixType(Y)) {
+                        .builder_sparse => unreachable,
+                        else => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                    },
+                    .vector => @compileError("zsl.linalg.matmulInto: vector × vector outer products are not supported by matmulInto; use linalg.outer instead\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                    else => unreachable,
+                },
+                else => unreachable,
+            },
+            .permutation_static => switch (comptime meta.domain(X)) {
+                .matrix => switch (comptime meta.matrixType(X)) {
+                    .general_static, .general_dense, .general_sparse, .symmetric_static, .symmetric_dense, .symmetric_sparse, .hermitian_static, .hermitian_dense, .hermitian_sparse, .triangular_static, .triangular_dense, .triangular_sparse, .diagonal_static, .diagonal_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: permutation output requires permutation × permutation inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .permutation_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .permutation_static => return @import("matmul/matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matpersta.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: permutation output requires permutation × permutation inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .permutation_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .permutation_static => return @import("matmul/matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matpersta.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: permutation output requires permutation × permutation inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    else => unreachable,
+                },
+                .vector => switch (comptime meta.domain(Y)) {
+                    .matrix => switch (comptime meta.matrixType(Y)) {
+                        .builder_sparse => unreachable,
+                        else => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                    },
+                    .vector => @compileError("zsl.linalg.matmulInto: vector × vector outer products are not supported by matmulInto; use linalg.outer instead\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                    else => unreachable,
+                },
+                else => unreachable,
+            },
+            .permutation_sparse => switch (comptime meta.domain(X)) {
+                .matrix => switch (comptime meta.matrixType(X)) {
+                    .general_static, .general_dense, .general_sparse, .symmetric_static, .symmetric_dense, .symmetric_sparse, .hermitian_static, .hermitian_dense, .hermitian_sparse, .triangular_static, .triangular_dense, .triangular_sparse, .diagonal_static, .diagonal_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: permutation output requires permutation × permutation inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .permutation_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .permutation_static => return @import("matmul/matperspa.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: permutation output requires permutation × permutation inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .permutation_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .permutation_static => return @import("matmul/matperspa.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: permutation output requires permutation × permutation inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    else => unreachable,
+                },
+                .vector => switch (comptime meta.domain(Y)) {
+                    .matrix => switch (comptime meta.matrixType(Y)) {
+                        .builder_sparse => unreachable,
+                        else => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                    },
+                    .vector => @compileError("zsl.linalg.matmulInto: vector × vector outer products are not supported by matmulInto; use linalg.outer instead\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                    else => unreachable,
+                },
+                else => unreachable,
+            },
+            .builder_sparse => switch (comptime meta.domain(X)) {
+                .matrix => switch (comptime meta.matrixType(X)) {
+                    .general_static, .general_dense, .symmetric_static, .symmetric_dense, .hermitian_static, .hermitian_dense, .triangular_static, .triangular_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .general_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matgenspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matgenspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matgenspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matgenspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matgenspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matgenspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matgenspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matgenspa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .symmetric_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matsymspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matsymspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matsymspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matsymspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matsymspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matsymspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matsymspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matsymspa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .hermitian_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matherspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matherspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matherspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matherspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matherspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matherspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matherspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matherspa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .triangular_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_mattrispa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_mattrispa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_mattrispa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_mattrispa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_mattrispa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_mattrispa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_mattrispa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_mattrispa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .diagonal_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matdiasta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matdiasta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matdiasta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matdiasta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matdiasta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matdiasta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matdiasta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matdiasta_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .diagonal_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matdiaspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matdiaspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matdiaspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matdiaspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matdiaspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matdiaspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matdiaspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matdiaspa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .permutation_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matpersta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matpersta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matpersta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matpersta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matpersta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matpersta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matpersta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matpersta_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .permutation_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matperspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matperspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matperspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matperspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matperspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matperspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matperspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/matbuispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/matbuispa_matperspa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    else => unreachable,
+                },
+                .vector => switch (comptime meta.domain(Y)) {
+                    .matrix => switch (comptime meta.matrixType(Y)) {
+                        .builder_sparse => unreachable,
+                        else => @compileError("zsl.linalg.matmulInto: matrix output requires two matrix inputs (shape mismatch)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                    },
+                    .vector => @compileError("zsl.linalg.matmulInto: vector × vector outer products are not supported by matmulInto; use linalg.outer instead\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                    else => unreachable,
+                },
+                else => unreachable,
+            },
+            else => unreachable,
+        },
+        .vector => switch (comptime meta.vectorType(O)) {
+            .static => switch (comptime meta.domain(X)) {
+                .matrix => switch (comptime meta.matrixType(X)) {
+                    .general_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matgensta_vecsta.zig").matmulInto(o, x, y),
+                            .dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matgensta_vecden.zig").matmulInto(o, x, y),
+                            .sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matgensta_vecspa.zig").matmulInto(o, x, y),
+                        },
+                        else => unreachable,
+                    },
+                    .general_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matgenden_vecsta.zig").matmulInto(o, x, y),
+                            .dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matgenden_vecden.zig").matmulInto(o, x, y),
+                            .sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matgenden_vecspa.zig").matmulInto(o, x, y),
+                        },
+                        else => unreachable,
+                    },
+                    .general_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matgenspa_vecsta.zig").matmulInto(o, x, y),
+                            .dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matgenspa_vecden.zig").matmulInto(o, x, y),
+                            .sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matgenspa_vecspa.zig").matmulInto(o, x, y),
+                        },
+                        else => unreachable,
+                    },
+                    .symmetric_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matsymsta_vecsta.zig").matmulInto(o, x, y),
+                            .dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matsymsta_vecden.zig").matmulInto(o, x, y),
+                            .sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matsymsta_vecspa.zig").matmulInto(o, x, y),
+                        },
+                        else => unreachable,
+                    },
+                    .symmetric_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matsymden_vecsta.zig").matmulInto(o, x, y),
+                            .dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matsymden_vecden.zig").matmulInto(o, x, y),
+                            .sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matsymden_vecspa.zig").matmulInto(o, x, y),
+                        },
+                        else => unreachable,
+                    },
+                    .symmetric_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matsymspa_vecsta.zig").matmulInto(o, x, y),
+                            .dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matsymspa_vecden.zig").matmulInto(o, x, y),
+                            .sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matsymspa_vecspa.zig").matmulInto(o, x, y),
+                        },
+                        else => unreachable,
+                    },
+                    .hermitian_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_mathersta_vecsta.zig").matmulInto(o, x, y),
+                            .dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_mathersta_vecden.zig").matmulInto(o, x, y),
+                            .sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_mathersta_vecspa.zig").matmulInto(o, x, y),
+                        },
+                        else => unreachable,
+                    },
+                    .hermitian_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matherden_vecsta.zig").matmulInto(o, x, y),
+                            .dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matherden_vecden.zig").matmulInto(o, x, y),
+                            .sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matherden_vecspa.zig").matmulInto(o, x, y),
+                        },
+                        else => unreachable,
+                    },
+                    .hermitian_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matherspa_vecsta.zig").matmulInto(o, x, y),
+                            .dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matherspa_vecden.zig").matmulInto(o, x, y),
+                            .sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matherspa_vecspa.zig").matmulInto(o, x, y),
+                        },
+                        else => unreachable,
+                    },
+                    .triangular_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_mattrista_vecsta.zig").matmulInto(o, x, y),
+                            .dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_mattrista_vecden.zig").matmulInto(o, x, y),
+                            .sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_mattrista_vecspa.zig").matmulInto(o, x, y),
+                        },
+                        else => unreachable,
+                    },
+                    .triangular_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_mattriden_vecsta.zig").matmulInto(o, x, y),
+                            .dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_mattriden_vecden.zig").matmulInto(o, x, y),
+                            .sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_mattriden_vecspa.zig").matmulInto(o, x, y),
+                        },
+                        else => unreachable,
+                    },
+                    .triangular_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_mattrispa_vecsta.zig").matmulInto(o, x, y),
+                            .dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_mattrispa_vecden.zig").matmulInto(o, x, y),
+                            .sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_mattrispa_vecspa.zig").matmulInto(o, x, y),
+                        },
+                        else => unreachable,
+                    },
+                    .diagonal_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matdiasta_vecsta.zig").matmulInto(o, x, y),
+                            .dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matdiasta_vecden.zig").matmulInto(o, x, y),
+                            .sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matdiasta_vecspa.zig").matmulInto(o, x, y),
+                        },
+                        else => unreachable,
+                    },
+                    .diagonal_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matdiaspa_vecsta.zig").matmulInto(o, x, y),
+                            .dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matdiaspa_vecden.zig").matmulInto(o, x, y),
+                            .sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matdiaspa_vecspa.zig").matmulInto(o, x, y),
+                        },
+                        else => unreachable,
+                    },
+                    .permutation_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matpersta_vecsta.zig").matmulInto(o, x, y),
+                            .dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matpersta_vecden.zig").matmulInto(o, x, y),
+                            .sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matpersta_vecspa.zig").matmulInto(o, x, y),
+                        },
+                        else => unreachable,
+                    },
+                    .permutation_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matperspa_vecsta.zig").matmulInto(o, x, y),
+                            .dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matperspa_vecden.zig").matmulInto(o, x, y),
+                            .sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matperspa_vecspa.zig").matmulInto(o, x, y),
+                        },
+                        else => unreachable,
+                    },
+                    else => unreachable,
+                },
+                .vector => switch (comptime meta.vectorType(X)) {
+                    .static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecsta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecsta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecsta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecsta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecsta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecsta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecsta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecsta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecsta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecsta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecsta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecsta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecsta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecsta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecsta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecsta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_vecspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                },
+                else => unreachable,
+            },
+            .dense => switch (comptime meta.domain(X)) {
+                .matrix => switch (comptime meta.matrixType(X)) {
+                    .general_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matgensta_vecsta.zig").matmulInto(o, x, y),
+                            .dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matgensta_vecden.zig").matmulInto(o, x, y),
+                            .sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matgensta_vecspa.zig").matmulInto(o, x, y),
+                        },
+                        else => unreachable,
+                    },
+                    .general_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matgenden_vecsta.zig").matmulInto(o, x, y),
+                            .dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matgenden_vecden.zig").matmulInto(o, x, y),
+                            .sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matgenden_vecspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        else => unreachable,
+                    },
+                    .general_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matgenspa_vecsta.zig").matmulInto(o, x, y),
+                            .dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matgenspa_vecden.zig").matmulInto(o, x, y),
+                            .sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matgenspa_vecspa.zig").matmulInto(o, x, y),
+                        },
+                        else => unreachable,
+                    },
+                    .symmetric_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matsymsta_vecsta.zig").matmulInto(o, x, y),
+                            .dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matsymsta_vecden.zig").matmulInto(o, x, y),
+                            .sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matsymsta_vecspa.zig").matmulInto(o, x, y),
+                        },
+                        else => unreachable,
+                    },
+                    .symmetric_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matsymden_vecsta.zig").matmulInto(o, x, y),
+                            .dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matsymden_vecden.zig").matmulInto(o, x, y),
+                            .sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matsymden_vecspa.zig").matmulInto(o, x, y),
+                        },
+                        else => unreachable,
+                    },
+                    .symmetric_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matsymspa_vecsta.zig").matmulInto(o, x, y),
+                            .dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matsymspa_vecden.zig").matmulInto(o, x, y),
+                            .sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matsymspa_vecspa.zig").matmulInto(o, x, y),
+                        },
+                        else => unreachable,
+                    },
+                    .hermitian_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_mathersta_vecsta.zig").matmulInto(o, x, y),
+                            .dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_mathersta_vecden.zig").matmulInto(o, x, y),
+                            .sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_mathersta_vecspa.zig").matmulInto(o, x, y),
+                        },
+                        else => unreachable,
+                    },
+                    .hermitian_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matherden_vecsta.zig").matmulInto(o, x, y),
+                            .dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matherden_vecden.zig").matmulInto(o, x, y),
+                            .sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matherden_vecspa.zig").matmulInto(o, x, y),
+                        },
+                        else => unreachable,
+                    },
+                    .hermitian_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matherspa_vecsta.zig").matmulInto(o, x, y),
+                            .dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matherspa_vecden.zig").matmulInto(o, x, y),
+                            .sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matherspa_vecspa.zig").matmulInto(o, x, y),
+                        },
+                        else => unreachable,
+                    },
+                    .triangular_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_mattrista_vecsta.zig").matmulInto(o, x, y),
+                            .dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_mattrista_vecden.zig").matmulInto(o, x, y),
+                            .sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_mattrista_vecspa.zig").matmulInto(o, x, y),
+                        },
+                        else => unreachable,
+                    },
+                    .triangular_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_mattriden_vecsta.zig").matmulInto(o, x, y),
+                            .dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_mattriden_vecden.zig").matmulInto(o, x, y),
+                            .sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_mattriden_vecspa.zig").matmulInto(o, x, y),
+                        },
+                        else => unreachable,
+                    },
+                    .triangular_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_mattrispa_vecsta.zig").matmulInto(o, x, y),
+                            .dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_mattrispa_vecden.zig").matmulInto(o, x, y),
+                            .sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_mattrispa_vecspa.zig").matmulInto(o, x, y),
+                        },
+                        else => unreachable,
+                    },
+                    .diagonal_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matdiasta_vecsta.zig").matmulInto(o, x, y),
+                            .dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matdiasta_vecden.zig").matmulInto(o, x, y),
+                            .sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matdiasta_vecspa.zig").matmulInto(o, x, y),
+                        },
+                        else => unreachable,
+                    },
+                    .diagonal_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matdiaspa_vecsta.zig").matmulInto(o, x, y),
+                            .dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matdiaspa_vecden.zig").matmulInto(o, x, y),
+                            .sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matdiaspa_vecspa.zig").matmulInto(o, x, y),
+                        },
+                        else => unreachable,
+                    },
+                    .permutation_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matpersta_vecsta.zig").matmulInto(o, x, y),
+                            .dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matpersta_vecden.zig").matmulInto(o, x, y),
+                            .sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matpersta_vecspa.zig").matmulInto(o, x, y),
+                        },
+                        else => unreachable,
+                    },
+                    .permutation_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matperspa_vecsta.zig").matmulInto(o, x, y),
+                            .dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matperspa_vecden.zig").matmulInto(o, x, y),
+                            .sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matperspa_vecspa.zig").matmulInto(o, x, y),
+                        },
+                        else => unreachable,
+                    },
+                    else => unreachable,
+                },
+                .vector => switch (comptime meta.vectorType(X)) {
+                    .static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecsta_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecsta_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecsta_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecsta_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecsta_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecsta_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecsta_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecsta_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecsta_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecsta_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecsta_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecsta_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecsta_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecsta_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecsta_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecsta_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecden_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecden_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecden_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecden_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecden_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecden_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecden_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecden_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecden_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecden_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecden_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecden_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecden_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecden_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecspa_matgensta.zig").matmulInto(o, x, y),
+                            .general_dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecspa_matgenden.zig").matmulInto(o, x, y),
+                            .general_sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecspa_matsymsta.zig").matmulInto(o, x, y),
+                            .symmetric_dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecspa_matsymden.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecspa_mathersta.zig").matmulInto(o, x, y),
+                            .hermitian_dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecspa_matherden.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecspa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecspa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_vecspa_matperspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    else => unreachable,
+                },
+                else => unreachable,
+            },
+            .sparse => switch (comptime meta.domain(X)) {
+                .matrix => switch (comptime meta.matrixType(X)) {
+                    .general_static, .general_dense, .symmetric_static, .symmetric_dense, .hermitian_static, .hermitian_dense, .triangular_static, .triangular_dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .general_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .sparse => return @import("matmul/vecspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecspa_matgenspa_vecspa.zig").matmulInto(o, x, y),
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        else => unreachable,
+                    },
+                    .symmetric_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .sparse => return @import("matmul/vecspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecspa_matsymspa_vecspa.zig").matmulInto(o, x, y),
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        else => unreachable,
+                    },
+                    .hermitian_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .sparse => return @import("matmul/vecspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecspa_matherspa_vecspa.zig").matmulInto(o, x, y),
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        else => unreachable,
+                    },
+                    .triangular_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .sparse => return @import("matmul/vecspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecspa_mattrispa_vecspa.zig").matmulInto(o, x, y),
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        else => unreachable,
+                    },
+                    .diagonal_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .sparse => return @import("matmul/vecspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecspa_matdiasta_vecspa.zig").matmulInto(o, x, y),
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        else => unreachable,
+                    },
+                    .diagonal_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .sparse => return @import("matmul/vecspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecspa_matdiaspa_vecspa.zig").matmulInto(o, x, y),
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        else => unreachable,
+                    },
+                    .permutation_static => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .sparse => return @import("matmul/vecspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecspa_matpersta_vecspa.zig").matmulInto(o, x, y),
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        else => unreachable,
+                    },
+                    .permutation_sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => switch (comptime meta.vectorType(Y)) {
+                            .sparse => return @import("matmul/vecspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecspa_matperspa_vecspa.zig").matmulInto(o, x, y),
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        else => unreachable,
+                    },
+                    else => unreachable,
+                },
+                .vector => switch (comptime meta.vectorType(X)) {
+                    .static, .dense => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                    .sparse => switch (comptime meta.domain(Y)) {
+                        .matrix => switch (comptime meta.matrixType(Y)) {
+                            .general_sparse => return @import("matmul/vecspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecspa_vecspa_matgenspa.zig").matmulInto(o, x, y),
+                            .symmetric_sparse => return @import("matmul/vecspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecspa_vecspa_matsymspa.zig").matmulInto(o, x, y),
+                            .hermitian_sparse => return @import("matmul/vecspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecspa_vecspa_matherspa.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/vecspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecspa_vecspa_mattrispa.zig").matmulInto(o, x, y),
+                            .diagonal_static => return @import("matmul/vecspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecspa_vecspa_matdiasta.zig").matmulInto(o, x, y),
+                            .diagonal_sparse => return @import("matmul/vecspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecspa_vecspa_matdiaspa.zig").matmulInto(o, x, y),
+                            .permutation_static => return @import("matmul/vecspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecspa_vecspa_matpersta.zig").matmulInto(o, x, y),
+                            .permutation_sparse => return @import("matmul/vecspa_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecspa_vecspa_matperspa.zig").matmulInto(o, x, y),
+                            .builder_sparse => unreachable,
+                            else => @compileError("zsl.linalg.matmulInto: sparse output requires sparse, diagonal, or permutation inputs (no dense or static operand)\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        },
+                        .vector => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
+                        else => unreachable,
+                    },
+                },
+                else => unreachable,
+            },
+            else => unreachable,
+        },
+        else => unreachable,
     }
 }

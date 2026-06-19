@@ -28,7 +28,10 @@ pub const norm = @import("linalg/norm.zig").norm;
 pub const normAlloc = @import("linalg/norm.zig").normAlloc;
 // pub const normInto = @import("linalg/norm.zig").normInto;
 
-// pub const matmul = @import("linalg/matmul.zig").matmul;
+pub const Matmul = @import("linalg/matmul.zig").Matmul;
+pub const matmul = @import("linalg/matmul.zig").matmul;
+pub const matmulAlloc = @import("linalg/matmul.zig").matmulAlloc;
+pub const matmulInto = @import("linalg/matmul.zig").matmulInto;
 
 // solve (with SolveMethod, to choose decomposition, and optional out parameter to save it)
 // Allow vector and matrix rhs
@@ -40,6 +43,10 @@ pub const normAlloc = @import("linalg/norm.zig").normAlloc;
 // trace
 
 // det
+
+// cond (condition number)
+
+// gram (Xᴴ X)
 
 // inv
 
@@ -146,6 +153,7 @@ pub const Side = enum(u1) {
 
 pub const Error = error{
     DimensionMismatch,
+    InsufficientSpace,
     FactorizationFailed,
     SingularMatrix,
     IndefiniteMatrix,

@@ -53,7 +53,8 @@ Zsl lets you write numerical code once and run it over whatever numeric type you
   - BLAS routines (`blas`)
   - Select LAPACK routines (`lapack`)
 - Automatic Differentiation (`autodiff`):
-  - Dual numbers
+  - Dual numbers (forward)
+  - Tape and Var numbers (backward)
 - Symbolic System:
   - Nothing implemented yet
 

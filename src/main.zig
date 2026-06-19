@@ -7,29 +7,23 @@ pub fn main(init: std.process.Init) !void {
     // try blas_lv1_threshold_calibration(init);
     // try blas_lv2_threshold_calibration(init);
 
-    const allocator = init.gpa;
+    const arena = init.arena.allocator();
+    // const gpa = init.gpa;
 
-    var tape = try zsl.autodiff.Tape(f64).init(allocator, 16);
-    defer tape.deinit(allocator);
+    const io = init.io;
 
-    const x = zsl.autodiff.Var(f64).init(&tape, 3.0);
-    const y = zsl.autodiff.Var(f64).init(&tape, 2.0);
+    var xoshiro = std.Random.DefaultPrng.init(@bitCast(std.Io.Clock.real.now(io).toMicroseconds()));
+    const prng = xoshiro.random();
+    const normal = zsl.stats.Normal(f64).init(0.0, 0.01);
 
-    // z = x*y + x/y - 2
-    const z = zsl.numeric.sub(
-        zsl.numeric.add(
-            zsl.numeric.mul(x, y),
-            zsl.numeric.div(x, y),
-        ),
-        2.0,
-    );
+    const x: zsl.matrix.general.Dense(f64, .col_major) = try .initFn(arena, 8, 6, zsl.stats.Normal(f64).sample, .{ normal, prng });
+    const y: zsl.vector.Dense(f64) = try .initFn(arena, 6, zsl.stats.Normal(f64).sample, .{ normal, prng });
 
-    std.debug.print("z: {d}\n", .{z.val()});
+    const z = try zsl.linalg.matmulAlloc(arena, x, y);
 
-    z.backward();
-
-    std.debug.print("dz/dx: {d}\n", .{x.grad()});
-    std.debug.print("dz/dy: {d}\n", .{y.grad()});
+    printMatrix("X", x);
+    printVector("Y", y);
+    printVector("Z", z);
 }
 
 pub fn blas_lv1_threshold_calibration(init: std.process.Init) !void {
