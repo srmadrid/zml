@@ -12,18 +12,22 @@ pub const Add = vecops.Add;
 pub const add = vecops.add;
 pub const addAlloc = vecops.addAlloc;
 pub const addInto = vecops.addInto;
+pub const addIntoUnchecked = vecops.addIntoUnchecked;
 pub const Sub = vecops.Sub;
 pub const sub = vecops.sub;
 pub const subAlloc = vecops.subAlloc;
 pub const subInto = vecops.subInto;
+pub const subIntoUnchecked = vecops.subIntoUnchecked;
 pub const Mul = vecops.Mul;
 pub const mul = vecops.mul;
 pub const mulAlloc = vecops.mulAlloc;
 pub const mulInto = vecops.mulInto;
+pub const mulIntoUnchecked = vecops.mulIntoUnchecked;
 pub const Div = vecops.Div;
 pub const div = vecops.div;
 pub const divAlloc = vecops.divAlloc;
 pub const divInto = vecops.divInto;
+pub const divIntoUnchecked = vecops.divIntoUnchecked;
 
 pub const Error = error{
     ZeroLength,
@@ -32,6 +36,7 @@ pub const Error = error{
     NonContiguousData,
     ZeroDimension,
     DataNotOwned,
+    InsufficientSpace,
 };
 
 pub const Flags = packed struct {

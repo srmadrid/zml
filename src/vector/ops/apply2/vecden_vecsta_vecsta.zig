@@ -1,6 +1,6 @@
 const numeric = @import("../../../numeric.zig");
 
-pub fn apply2Into(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) void {
+pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) void {
     if (o.inc == 1) {
         inline for (0..@TypeOf(x).len) |i| {
             opInto(&o.data[i], x.data[i], y.data[i]);

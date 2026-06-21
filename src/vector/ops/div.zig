@@ -65,8 +65,7 @@ pub fn divAlloc(allocator: std.mem.Allocator, x: anytype, y: anytype) !vector.Di
 /// a vector `o`.
 ///
 /// Exact aliasing (in-place modification) between the output and an input is
-/// permitted and often more efficient. Any other form of memory overlap might
-/// yield incorrect results.
+/// permitted . Any other form of memory overlap might yield incorrect results.
 ///
 /// For a static output vector, an input static vector and an input numeric, the
 /// function cannot return an error.
@@ -89,4 +88,26 @@ pub fn divAlloc(allocator: std.mem.Allocator, x: anytype, y: anytype) !vector.Di
 ///   same length.
 pub fn divInto(o: anytype, x: anytype, y: anytype) !void {
     return vecops.apply2Into(o, x, y, numeric.divInto);
+}
+
+/// Performs computation of the division of a vector `x` and a numeric `y` into
+/// a vector `o`, without performing any dimension checks.
+///
+/// Exact aliasing (in-place modification) between the output and an input is
+/// permitted . Any other form of memory overlap might yield incorrect results.
+///
+/// ## Signature
+/// ```zig
+/// vector.divIntoUnchecked(o: *O, x: X, y: Y) void
+/// ```
+///
+/// ## Arguments
+/// * `o` (`anytype`): The output vector operand.
+/// * `x` (`anytype`): The left vector operand.
+/// * `y` (`anytype`): The right numeric operand.
+///
+/// ## Returns
+/// `void`
+pub fn divIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
+    return vecops.apply2IntoUnchecked(o, x, y, numeric.divInto);
 }

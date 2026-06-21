@@ -1,13 +1,12 @@
 const meta = @import("../../../meta.zig");
-
 const numeric = @import("../../../numeric.zig");
 
-pub fn apply2Into(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) void {
+pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) void {
     const X = @TypeOf(x);
 
-    var i: usize = 0;
     if (o.inc == 1) {
         var ix: usize = 0;
+        var i: usize = 0;
         while (ix < x.nnz) : (ix += 1) {
             while (i < x.idx[ix]) : (i += 1) {
                 opInto(&o.data[i], numeric.zero(meta.Numeric(X)), y.data[i]);
@@ -24,7 +23,7 @@ pub fn apply2Into(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) 
     } else {
         var io: isize = if (o.inc < 0) (-numeric.cast(isize, o.len) + 1) * o.inc else 0;
         var ix: usize = 0;
-
+        var i: usize = 0;
         while (ix < x.nnz) : (ix += 1) {
             while (i < x.idx[ix]) : (i += 1) {
                 opInto(&o.data[numeric.cast(usize, io)], numeric.zero(meta.Numeric(X)), y.data[i]);

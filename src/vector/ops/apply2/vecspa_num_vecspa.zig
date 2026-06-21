@@ -1,9 +1,4 @@
-const vector = @import("../../../vector.zig");
-
-pub fn apply2Into(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) !void {
-    if (o._dlen < y.nnz or o._ilen < y.nnz)
-        return vector.Error.DimensionMismatch;
-
+pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) void {
     o.nnz = y.nnz;
 
     var i: usize = 0;

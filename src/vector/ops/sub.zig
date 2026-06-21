@@ -70,8 +70,8 @@ pub fn subAlloc(allocator: std.mem.Allocator, x: anytype, y: anytype) !vector.Su
 /// vector `o`.
 ///
 /// Exact aliasing (in-place modification) between the output and an input is
-/// permitted and often more efficient. Any other form of memory overlap might
-/// yield incorrect results.
+/// permitted for static or dense outputs. Any other form of memory overlap
+/// might yield incorrect results.
 ///
 /// For three static vectors, or a static output vector, an input static vector
 /// and an input numeric, the function cannot return an error.
@@ -94,4 +94,27 @@ pub fn subAlloc(allocator: std.mem.Allocator, x: anytype, y: anytype) !vector.Su
 ///   same length.
 pub fn subInto(o: anytype, x: anytype, y: anytype) !void {
     return vecops.apply2Into(o, x, y, numeric.subInto);
+}
+
+/// Performs computation of the subtraction of two vectors `x` and `y` into a
+/// vector `o`, without performing any dimension checks.
+///
+/// Exact aliasing (in-place modification) between the output and an input is
+/// permitted for static or dense outputs. Any other form of memory overlap
+/// might yield incorrect results.
+///
+/// ## Signature
+/// ```zig
+/// vector.subIntoUnchecked(o: *O, x: X, y: Y) void
+/// ```
+///
+/// ## Arguments
+/// * `o` (`anytype`): The output vector operand.
+/// * `x` (`anytype`): The left vector operand.
+/// * `y` (`anytype`): The right vector operand.
+///
+/// ## Returns
+/// `void`
+pub fn subIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
+    return vecops.apply2IntoUnchecked(o, x, y, numeric.subInto);
 }

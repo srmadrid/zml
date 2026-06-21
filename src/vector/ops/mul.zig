@@ -66,8 +66,7 @@ pub fn mulAlloc(allocator: std.mem.Allocator, x: anytype, y: anytype) !vector.Mu
 /// and `y`, into a vector `o`.
 ///
 /// Exact aliasing (in-place modification) between the output and an input is
-/// permitted and often more efficient. Any other form of memory overlap might
-/// yield incorrect results.
+/// permitted . Any other form of memory overlap might yield incorrect results.
 ///
 /// For a static output vector, an input static vector and an input numeric, the
 /// function cannot return an error.
@@ -90,4 +89,26 @@ pub fn mulAlloc(allocator: std.mem.Allocator, x: anytype, y: anytype) !vector.Mu
 ///   length.
 pub fn mulInto(o: anytype, x: anytype, y: anytype) !void {
     return vecops.apply2Into(o, x, y, numeric.mulInto);
+}
+
+/// Performs computation of the multiplication of a vectors and a numeric, `x`
+/// and `y`, into a vector `o`, without performing any dimension checks.
+///
+/// Exact aliasing (in-place modification) between the output and an input is
+/// permitted . Any other form of memory overlap might yield incorrect results.
+///
+/// ## Signature
+/// ```zig
+/// vector.mulIntoUnchecked(o: *O, x: X, y: Y) void
+/// ```
+///
+/// ## Arguments
+/// * `o` (`anytype`): The output vector operand.
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `void`
+pub fn mulIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
+    return vecops.apply2IntoUnchecked(o, x, y, numeric.mulInto);
 }

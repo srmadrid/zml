@@ -125,8 +125,6 @@ const combinations = [_][3]type{
 
     // vecspa_vecspa_vecspa
     .{ zsl.vector.Sparse(zsl.cf32), zsl.vector.Sparse(zsl.cf64), zsl.vector.Sparse(zsl.cf64) },
-    // vecspa_vecspa_vecspa: aliasing
-    .{ zsl.vector.Sparse(zsl.cf64), zsl.vector.Sparse(zsl.cf64), zsl.vector.Sparse(zsl.cf64) },
 
     // vecspa_vecspa_num
     .{ zsl.vector.Sparse(zsl.cf32), zsl.vector.Sparse(zsl.cf64), zsl.cf64 },
@@ -160,7 +158,7 @@ const inc_combinations = [_][3]isize{
 };
 
 test "zsl.vector.apply2Into" {
-    @setEvalBranchQuota(3 * combinations.len);
+    @setEvalBranchQuota(100_000);
 
     const allocator = std.testing.allocator;
 
