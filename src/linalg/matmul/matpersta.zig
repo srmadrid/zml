@@ -21,20 +21,19 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) void {
                     const MSB: usize = @as(usize, 1) << (@bitSizeOf(usize) - 1);
 
                     inline for (0..O.rows) |i| {
-                        if ((o.data[i] & MSB) != 0)
-                            continue;
+                        if ((o.data[i] & MSB) == 0) {
+                            const temp = o.data[i];
+                            var curr = i;
+                            var next = x.data[curr];
 
-                        const temp = o.data[i];
-                        var curr = i;
-                        var next = x.data[curr];
+                            while (next != i) {
+                                o.data[curr] = o.data[next] | MSB;
+                                curr = next;
+                                next = x.data[curr];
+                            }
 
-                        while (next != i) {
-                            o.data[curr] = o.data[next] | MSB;
-                            curr = next;
-                            next = x.data[curr];
+                            o.data[curr] = temp | MSB;
                         }
-
-                        o.data[curr] = temp | MSB;
                     }
 
                     inline for (0..O.rows) |i| {
@@ -70,20 +69,19 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) void {
                     const MSB: usize = @as(usize, 1) << (@bitSizeOf(usize) - 1);
 
                     inline for (0..O.rows) |j| {
-                        if ((o.data[j] & MSB) != 0)
-                            continue;
+                        if ((o.data[j] & MSB) == 0) {
+                            const temp = o.data[j];
+                            var curr = j;
+                            var next = y.data[curr];
 
-                        const temp = o.data[j];
-                        var curr = j;
-                        var next = y.data[curr];
+                            while (next != j) {
+                                o.data[curr] = o.data[next] | MSB;
+                                curr = next;
+                                next = y.data[curr];
+                            }
 
-                        while (next != j) {
-                            o.data[curr] = o.data[next] | MSB;
-                            curr = next;
-                            next = y.data[curr];
+                            o.data[curr] = temp | MSB;
                         }
-
-                        o.data[curr] = temp | MSB;
                     }
 
                     inline for (0..O.rows) |j| {

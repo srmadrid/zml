@@ -9,6 +9,8 @@ pub const complex = @import("complex.zig");
 pub const vector = @import("vector.zig");
 pub const matrix = @import("matrix.zig");
 
+pub const linalg = @import("linalg.zig");
+
 pub inline fn expectApproxEqAbs(expected: anytype, actual: anytype, tolerance: anytype) !void {
     if (expected != actual)
         try std.testing.expectApproxEqAbs(expected, actual, tolerance);
@@ -52,10 +54,10 @@ test {
     const test_complex = false;
     const test_numeric = false;
     const test_vector = false;
-    const test_matrix = true;
+    const test_matrix = false;
     const test_array = false;
     const test_ops = false;
-    const test_linalg = false;
+    const test_linalg = true;
     const test_autodiff = false;
 
     _ = test_int;

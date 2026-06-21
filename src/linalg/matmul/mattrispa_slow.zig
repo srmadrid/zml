@@ -12,17 +12,21 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
     const x_cols = if (comptime meta.isStaticMatrix(X)) X.cols else x.cols;
 
     const x_nnz = switch (comptime meta.matrixKind(X)) {
-        .triangular => if (comptime meta.diagOf(X) == .non_unit) x.nnz else x.nnz + int.min(o.rows, o.cols),
-        .diagonal => int.min(o.rows, o.cols),
+        .general => x.nnz,
+        .symmetric, .hermitian => 2 * x.nnz,
+        .triangular => if (comptime meta.diagOf(X) == .non_unit) x.nnz else x.nnz + int.min(x.rows, x.cols),
+        .diagonal, .permutation => if (comptime meta.isStaticMatrix(X)) int.min(X.rows, X.cols) else int.min(x.rows, x.cols),
+        .builder => unreachable,
         .numeric => 0,
-        else => unreachable,
     };
 
     const y_nnz = switch (comptime meta.matrixKind(Y)) {
-        .triangular => if (comptime meta.diagOf(Y) == .non_unit) y.nnz else y.nnz + int.min(o.rows, o.cols),
-        .diagonal => int.min(o.rows, o.cols),
+        .general => y.nnz,
+        .symmetric, .hermitian => 2 * y.nnz,
+        .triangular => if (comptime meta.diagOf(Y) == .non_unit) y.nnz else y.nnz + int.min(y.rows, y.cols),
+        .diagonal, .permutation => if (comptime meta.isStaticMatrix(Y)) int.min(Y.rows, Y.cols) else int.min(y.rows, y.cols),
         .numeric => 0,
-        else => unreachable,
+        .builder => unreachable,
     };
 
     if (o._dlen < int.min(o.rows * o.cols, x_nnz * y_nnz) or
@@ -37,7 +41,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
         while (j < o.cols) : (j += 1) {
             if (comptime meta.uploOf(O) == .upper) {
                 var i: usize = 0;
-                while (i < int.min(if (comptime meta.uploOf(O).? == .non_unit) j + 1 else j, o.rows)) : (i += 1) {
+                while (i < int.min(if (comptime meta.diagOf(O) == .non_unit) j + 1 else j, o.rows)) : (i += 1) {
                     var sum = numeric.zero(meta.Accumulator(meta.Numeric(O)));
 
                     var k: usize = 0;
@@ -59,7 +63,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                     nnz += 1;
                 }
             } else {
-                var i: usize = int.min(if (comptime meta.uploOf(O).? == .non_unit) j else j + 1, o.rows);
+                var i: usize = int.min(if (comptime meta.diagOf(O) == .non_unit) j else j + 1, o.rows);
                 while (i < o.rows) : (i += 1) {
                     var sum = numeric.zero(meta.Accumulator(meta.Numeric(O)));
 
@@ -89,7 +93,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
         var i: usize = 0;
         while (i < o.rows) : (i += 1) {
             if (comptime meta.uploOf(O) == .upper) {
-                var j: usize = int.min(if (comptime meta.uploOf(O).? == .non_unit) i else i + 1, o.cols);
+                var j: usize = int.min(if (comptime meta.diagOf(O) == .non_unit) i else i + 1, o.cols);
                 while (j < o.cols) : (j += 1) {
                     var sum = numeric.zero(meta.Accumulator(meta.Numeric(O)));
 
@@ -113,7 +117,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                 }
             } else {
                 var j: usize = 0;
-                while (j < int.min(if (comptime meta.uploOf(O).? == .non_unit) i + 1 else i, o.cols)) : (j += 1) {
+                while (j < int.min(if (comptime meta.diagOf(O) == .non_unit) i + 1 else i, o.cols)) : (j += 1) {
                     var sum = numeric.zero(meta.Accumulator(meta.Numeric(O)));
 
                     var k: usize = 0;

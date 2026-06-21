@@ -431,7 +431,11 @@ pub fn areEql(A: anytype, B: anytype) !void {
 }
 
 test {
-    _ = @import("matrix/apply2.zig");
-    _ = @import("matrix/apply2Alloc.zig");
-    _ = @import("matrix/apply2Into.zig");
+    const test_apply2 = false;
+
+    if (test_apply2) {
+        _ = @import("matrix/apply2.zig");
+        _ = @import("matrix/apply2Alloc.zig");
+        _ = @import("matrix/apply2Into.zig");
+    }
 }

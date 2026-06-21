@@ -12,17 +12,21 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
     const x_cols = if (comptime meta.isStaticMatrix(X)) X.cols else x.cols;
 
     const x_nnz = switch (comptime meta.matrixKind(X)) {
-        .symmetric => x.nnz,
-        .diagonal => o.rows,
+        .general => x.nnz,
+        .symmetric, .hermitian => 2 * x.nnz,
+        .triangular => if (comptime meta.diagOf(X) == .non_unit) x.nnz else x.nnz + int.min(x.rows, x.cols),
+        .diagonal, .permutation => if (comptime meta.isStaticMatrix(X)) int.min(X.rows, X.cols) else int.min(x.rows, x.cols),
+        .builder => unreachable,
         .numeric => 0,
-        else => unreachable,
     };
 
     const y_nnz = switch (comptime meta.matrixKind(Y)) {
-        .symmetric => y.nnz,
-        .diagonal => o.rows,
+        .general => y.nnz,
+        .symmetric, .hermitian => 2 * y.nnz,
+        .triangular => if (comptime meta.diagOf(Y) == .non_unit) y.nnz else y.nnz + int.min(y.rows, y.cols),
+        .diagonal, .permutation => if (comptime meta.isStaticMatrix(Y)) int.min(Y.rows, Y.cols) else int.min(y.rows, y.cols),
         .numeric => 0,
-        else => unreachable,
+        .builder => unreachable,
     };
 
     if (o._dlen < int.min(o.rows * o.cols, x_nnz * y_nnz) or

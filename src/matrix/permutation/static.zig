@@ -42,7 +42,7 @@ pub fn Static(size_: comptime_int, N: type, direction_: matrix.permutation.Direc
             .data = undefined,
         };
 
-        pub const init = undefined;
+        pub const init = empty;
 
         /// Gets the element at the specified index.
         ///

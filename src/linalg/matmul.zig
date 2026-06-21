@@ -36,9 +36,9 @@ pub fn Matmul(comptime X: type, comptime Y: type) type {
                     else => return matrix.general.Dense(R, meta.layoutOf(X).?),
                 },
                 .general_dense, .symmetric_dense, .hermitian_dense => return matrix.general.Dense(R, meta.layoutOf(X).?),
-                .general_sparse, .symmetric_sparse, .hermitian_sparse => switch (comptime meta.matrixStorage(Y)) {
-                    .sparse => return matrix.general.Sparse(R, meta.layoutOf(X).?),
-                    else => return matrix.general.Dense(R, meta.layoutOf(X).?),
+                .general_sparse, .symmetric_sparse, .hermitian_sparse => switch (comptime meta.matrixStorage(Y) == .sparse or meta.matrixKind(Y) == .diagonal or meta.matrixKind(Y) == .permutation) {
+                    true => return matrix.general.Sparse(R, meta.layoutOf(X).?),
+                    false => return matrix.general.Dense(R, meta.layoutOf(X).?),
                 },
                 .triangular_static => switch (comptime meta.matrixKind(Y)) {
                     .triangular => switch (comptime meta.uploOf(X).? == meta.uploOf(Y).?) {
@@ -79,13 +79,10 @@ pub fn Matmul(comptime X: type, comptime Y: type) type {
                             else => return matrix.general.Dense(R, meta.layoutOf(X).?),
                         },
                     },
-                    .diagonal => switch (comptime meta.matrixStorage(Y)) {
-                        .sparse => return matrix.triangular.Sparse(R, meta.uploOf(X).?, .non_unit, meta.layoutOf(X).?),
-                        else => return matrix.triangular.Dense(R, meta.uploOf(X).?, .non_unit, meta.layoutOf(X).?),
-                    },
-                    else => switch (comptime meta.matrixStorage(Y)) {
-                        .sparse => return matrix.general.Sparse(R, meta.layoutOf(X).?),
-                        else => return matrix.general.Dense(R, meta.layoutOf(X).?),
+                    .diagonal => return matrix.triangular.Sparse(R, meta.uploOf(X).?, .non_unit, meta.layoutOf(X).?),
+                    else => switch (comptime meta.matrixStorage(Y) == .sparse or meta.matrixKind(Y) == .diagonal or meta.matrixKind(Y) == .permutation) {
+                        true => return matrix.general.Sparse(R, meta.layoutOf(X).?),
+                        false => return matrix.general.Dense(R, meta.layoutOf(X).?),
                     },
                 },
                 .diagonal_static => switch (comptime meta.matrixKind(Y)) {
@@ -95,10 +92,12 @@ pub fn Matmul(comptime X: type, comptime Y: type) type {
                     },
                     .triangular => switch (comptime meta.matrixStorage(Y)) {
                         .static => return matrix.triangular.Static(X.rows, Y.cols, R, meta.uploOf(Y).?, .non_unit, meta.layoutOf(Y).?),
+                        .sparse => return matrix.triangular.Sparse(R, meta.uploOf(Y).?, .non_unit, meta.layoutOf(Y).?),
                         else => return matrix.triangular.Dense(R, meta.uploOf(Y).?, .non_unit, meta.layoutOf(Y).?),
                     },
                     else => switch (comptime meta.matrixStorage(Y)) {
                         .static => return matrix.general.Static(X.rows, Y.cols, R, meta.layoutOf(Y) orelse matrix.Layout.default),
+                        .sparse => return matrix.general.Sparse(R, meta.layoutOf(Y) orelse matrix.Layout.default),
                         else => return matrix.general.Dense(R, meta.layoutOf(Y) orelse matrix.Layout.default),
                     },
                 },
@@ -108,9 +107,9 @@ pub fn Matmul(comptime X: type, comptime Y: type) type {
                         .sparse => return matrix.triangular.Sparse(R, meta.uploOf(Y).?, .non_unit, meta.layoutOf(Y).?),
                         else => return matrix.triangular.Dense(R, meta.uploOf(Y).?, .non_unit, meta.layoutOf(Y).?),
                     },
-                    else => switch (comptime meta.matrixStorage(Y)) {
-                        .sparse => return matrix.general.Sparse(R, meta.layoutOf(Y) orelse matrix.Layout.default),
-                        else => return matrix.general.Dense(R, meta.layoutOf(Y) orelse matrix.Layout.default),
+                    else => switch (comptime meta.matrixStorage(Y) == .sparse or meta.matrixKind(Y) == .permutation) {
+                        true => return matrix.general.Sparse(R, meta.layoutOf(Y) orelse matrix.Layout.default),
+                        false => return matrix.general.Dense(R, meta.layoutOf(Y) orelse matrix.Layout.default),
                     },
                 },
                 .permutation_static => switch (comptime meta.matrixKind(Y)) {
@@ -120,12 +119,16 @@ pub fn Matmul(comptime X: type, comptime Y: type) type {
                     },
                     else => switch (comptime meta.matrixStorage(Y)) {
                         .static => return matrix.general.Static(X.rows, Y.cols, R, meta.layoutOf(Y) orelse matrix.Layout.default),
+                        .sparse => return matrix.general.Sparse(R, meta.layoutOf(Y) orelse matrix.Layout.default),
                         else => return matrix.general.Dense(R, meta.layoutOf(Y) orelse matrix.Layout.default),
                     },
                 },
                 .permutation_sparse => switch (comptime meta.matrixKind(Y)) {
                     .permutation => return matrix.permutation.Sparse(R, X.direction),
-                    else => return matrix.general.Sparse(R, meta.layoutOf(Y) orelse matrix.Layout.default),
+                    else => switch (comptime meta.matrixStorage(Y) == .sparse or meta.matrixKind(Y) == .diagonal) {
+                        true => return matrix.general.Sparse(R, meta.layoutOf(Y) orelse matrix.Layout.default),
+                        false => return matrix.general.Dense(R, meta.layoutOf(Y) orelse matrix.Layout.default),
+                    },
                 },
                 else => unreachable,
             },
@@ -133,7 +136,7 @@ pub fn Matmul(comptime X: type, comptime Y: type) type {
                 .static => return vector.Static(X.rows, R),
                 .dense => return vector.Dense(R),
                 .sparse => switch (comptime meta.vectorType(Y)) {
-                    .vector_sparse => return vector.Sparse(R),
+                    .sparse => return vector.Sparse(R),
                     else => return vector.Dense(R),
                 },
                 else => unreachable,
@@ -145,7 +148,7 @@ pub fn Matmul(comptime X: type, comptime Y: type) type {
                 .static => return vector.Static(Y.cols, R),
                 .dense => return vector.Dense(R),
                 .sparse => switch (comptime meta.vectorType(X)) {
-                    .vector_sparse => return vector.Sparse(R),
+                    .sparse => return vector.Sparse(R),
                     else => return vector.Dense(R),
                 },
                 else => unreachable,
@@ -278,31 +281,32 @@ pub fn matmulAlloc(allocator: std.mem.Allocator, x: anytype, y: anytype) !linalg
                 .general, .triangular => try R.init(allocator, x_rows, y_cols),
                 else => unreachable,
             },
-            .sparse => blk: {
-                // Change nnz estimation to a two pass: to get exact nnz, for instance Gustavson's algorithm
-                const x_nnz = switch (comptime meta.matrixKind(X)) {
-                    .general => x.nnz,
-                    .symmetric, .hermitian => 2 * x.nnz,
-                    .triangular => if (comptime meta.diagOf(X).? == .non_unit) x.nnz else x.nnz + int.min(x_rows, x_cols),
-                    .diagonal, .permutation => int.min(x_rows, x_cols),
-                    .builder, .numeric => unreachable,
-                };
+            .sparse => switch (comptime meta.matrixKind(R)) {
+                .general, .triangular => blk: {
+                    // Change nnz estimation to a two pass: to get exact nnz, for instance Gustavson's algorithm
+                    const x_nnz = switch (comptime meta.matrixKind(X)) {
+                        .general => x.nnz,
+                        .symmetric, .hermitian => 2 * x.nnz,
+                        .triangular => if (comptime meta.diagOf(X).? == .non_unit) x.nnz else x.nnz + int.min(x_rows, x_cols),
+                        .diagonal, .permutation => int.min(x_rows, x_cols),
+                        .builder, .numeric => unreachable,
+                    };
 
-                const y_nnz = switch (comptime meta.matrixKind(Y)) {
-                    .general => y.nnz,
-                    .symmetric, .hermitian => 2 * y.nnz,
-                    .triangular => if (comptime meta.diagOf(Y).? == .non_unit) y.nnz else y.nnz + int.min(y_rows, y_cols),
-                    .diagonal, .permutation => int.min(y_rows, y_cols),
-                    .builder, .numeric => unreachable,
-                };
+                    const y_nnz = switch (comptime meta.matrixKind(Y)) {
+                        .general => y.nnz,
+                        .symmetric, .hermitian => 2 * y.nnz,
+                        .triangular => if (comptime meta.diagOf(Y).? == .non_unit) y.nnz else y.nnz + int.min(y_rows, y_cols),
+                        .diagonal, .permutation => int.min(y_rows, y_cols),
+                        .builder, .numeric => unreachable,
+                    };
 
-                switch (comptime meta.matrixKind(R)) {
-                    .general, .triangular => break :blk try R.init(allocator, x_rows, y_cols, int.min(x_rows * y_cols, x_nnz * y_nnz)),
-                    .diagonal => break :blk try R.init(allocator, x_rows, y_cols),
-                    .permutation => break :blk try R.init(allocator, x_rows),
-                    else => unreachable,
-                }
+                    break :blk try R.init(allocator, x_rows, y_cols, int.max(1, int.min(x_rows * y_cols, x_nnz * y_nnz)));
+                },
+                .diagonal => try R.init(allocator, x_rows, y_cols),
+                .permutation => try R.init(allocator, x_rows),
+                else => unreachable,
             },
+
             .numeric => unreachable,
         },
         .vector => switch (comptime meta.vectorType(R)) {
@@ -331,7 +335,7 @@ pub fn matmulAlloc(allocator: std.mem.Allocator, x: anytype, y: anytype) !linalg
                     .builder, .numeric => unreachable,
                 };
 
-                break :blk try R.init(allocator, r_len, int.min(r_len, x_nnz * y_nnz));
+                break :blk try R.init(allocator, r_len, int.max(1, int.min(r_len, x_nnz * y_nnz)));
             },
             else => unreachable,
         },
@@ -3412,18 +3416,9 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .hermitian_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrista_mathersta.zig").matmulInto(o, x, y),
                             .hermitian_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrista_matherden.zig").matmulInto(o, x, y),
                             .hermitian_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrista_matherspa.zig").matmulInto(o, x, y),
-                            .triangular_static => {
-                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
-                                return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattrista_mattrista_mattrista.zig").matmulInto(o, x, y);
-                            },
-                            .triangular_dense => {
-                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
-                                return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattrista_mattrista_mattriden.zig").matmulInto(o, x, y);
-                            },
-                            .triangular_sparse => {
-                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
-                                return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattrista_mattrista_mattrispa.zig").matmulInto(o, x, y);
-                            },
+                            .triangular_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrista_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrista_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrista_mattrispa.zig").matmulInto(o, x, y),
                             .diagonal_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrista_matdiasta.zig").matmulInto(o, x, y),
                             .diagonal_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrista_matdiaspa.zig").matmulInto(o, x, y),
                             .permutation_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrista_matpersta.zig").matmulInto(o, x, y),
@@ -3444,18 +3439,9 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .hermitian_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattriden_mathersta.zig").matmulInto(o, x, y),
                             .hermitian_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattriden_matherden.zig").matmulInto(o, x, y),
                             .hermitian_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattriden_matherspa.zig").matmulInto(o, x, y),
-                            .triangular_static => {
-                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
-                                return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattrista_mattriden_mattrista.zig").matmulInto(o, x, y);
-                            },
-                            .triangular_dense => {
-                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
-                                return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattrista_mattriden_mattriden.zig").matmulInto(o, x, y);
-                            },
-                            .triangular_sparse => {
-                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
-                                return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattrista_mattriden_mattrispa.zig").matmulInto(o, x, y);
-                            },
+                            .triangular_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattriden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattriden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattriden_mattrispa.zig").matmulInto(o, x, y),
                             .diagonal_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattriden_matdiasta.zig").matmulInto(o, x, y),
                             .diagonal_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattriden_matdiaspa.zig").matmulInto(o, x, y),
                             .permutation_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattriden_matpersta.zig").matmulInto(o, x, y),
@@ -3476,18 +3462,9 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .hermitian_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrispa_mathersta.zig").matmulInto(o, x, y),
                             .hermitian_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrispa_matherden.zig").matmulInto(o, x, y),
                             .hermitian_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrispa_matherspa.zig").matmulInto(o, x, y),
-                            .triangular_static => {
-                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
-                                return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattrista_mattrispa_mattrista.zig").matmulInto(o, x, y);
-                            },
-                            .triangular_dense => {
-                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
-                                return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattrista_mattrispa_mattriden.zig").matmulInto(o, x, y);
-                            },
-                            .triangular_sparse => {
-                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
-                                return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattrista_mattrispa_mattrispa.zig").matmulInto(o, x, y);
-                            },
+                            .triangular_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrispa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrispa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrispa_mattrispa.zig").matmulInto(o, x, y),
                             .diagonal_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrispa_matdiasta.zig").matmulInto(o, x, y),
                             .diagonal_sparse => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrispa_matdiaspa.zig").matmulInto(o, x, y),
                             .permutation_static => return @import("matmul/mattrista_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrista_mattrispa_matpersta.zig").matmulInto(o, x, y),
@@ -3821,18 +3798,9 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .hermitian_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrista_mathersta.zig").matmulInto(o, x, y),
                             .hermitian_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrista_matherden.zig").matmulInto(o, x, y),
                             .hermitian_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrista_matherspa.zig").matmulInto(o, x, y),
-                            .triangular_static => {
-                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
-                                return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattriden_mattrista_mattrista.zig").matmulInto(o, x, y);
-                            },
-                            .triangular_dense => {
-                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
-                                return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattriden_mattrista_mattriden.zig").matmulInto(o, x, y);
-                            },
-                            .triangular_sparse => {
-                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
-                                return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattriden_mattrista_mattrispa.zig").matmulInto(o, x, y);
-                            },
+                            .triangular_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrista_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrista_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrista_mattrispa.zig").matmulInto(o, x, y),
                             .diagonal_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrista_matdiasta.zig").matmulInto(o, x, y),
                             .diagonal_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrista_matdiaspa.zig").matmulInto(o, x, y),
                             .permutation_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrista_matpersta.zig").matmulInto(o, x, y),
@@ -3853,18 +3821,9 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .hermitian_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattriden_mathersta.zig").matmulInto(o, x, y),
                             .hermitian_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattriden_matherden.zig").matmulInto(o, x, y),
                             .hermitian_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattriden_matherspa.zig").matmulInto(o, x, y),
-                            .triangular_static => {
-                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
-                                return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattriden_mattriden_mattrista.zig").matmulInto(o, x, y);
-                            },
-                            .triangular_dense => {
-                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
-                                return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattriden_mattriden_mattriden.zig").matmulInto(o, x, y);
-                            },
-                            .triangular_sparse => {
-                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
-                                return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattriden_mattriden_mattrispa.zig").matmulInto(o, x, y);
-                            },
+                            .triangular_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattriden_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattriden_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattriden_mattrispa.zig").matmulInto(o, x, y),
                             .diagonal_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattriden_matdiasta.zig").matmulInto(o, x, y),
                             .diagonal_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattriden_matdiaspa.zig").matmulInto(o, x, y),
                             .permutation_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattriden_matpersta.zig").matmulInto(o, x, y),
@@ -3885,18 +3844,9 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .hermitian_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrispa_mathersta.zig").matmulInto(o, x, y),
                             .hermitian_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrispa_matherden.zig").matmulInto(o, x, y),
                             .hermitian_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrispa_matherspa.zig").matmulInto(o, x, y),
-                            .triangular_static => {
-                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
-                                return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattriden_mattrispa_mattrista.zig").matmulInto(o, x, y);
-                            },
-                            .triangular_dense => {
-                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
-                                return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattriden_mattrispa_mattriden.zig").matmulInto(o, x, y);
-                            },
-                            .triangular_sparse => {
-                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
-                                return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattriden_mattrispa_mattrispa.zig").matmulInto(o, x, y);
-                            },
+                            .triangular_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrispa_mattrista.zig").matmulInto(o, x, y),
+                            .triangular_dense => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrispa_mattriden.zig").matmulInto(o, x, y),
+                            .triangular_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrispa_mattrispa.zig").matmulInto(o, x, y),
                             .diagonal_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrispa_matdiasta.zig").matmulInto(o, x, y),
                             .diagonal_sparse => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrispa_matdiaspa.zig").matmulInto(o, x, y),
                             .permutation_static => return @import("matmul/mattriden_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattriden_mattrispa_matpersta.zig").matmulInto(o, x, y),
@@ -4073,10 +4023,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .general_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_mattrispa_matgenspa.zig").matmulInto(o, x, y),
                             .symmetric_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_mattrispa_matsymspa.zig").matmulInto(o, x, y),
                             .hermitian_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_mattrispa_matherspa.zig").matmulInto(o, x, y),
-                            .triangular_sparse => {
-                                comptime if (meta.uploOf(O) != meta.uploOf(X) or meta.uploOf(O) != meta.uploOf(Y)) @compileError("zsl.linalg.matmulInto: triangular operands must share uplo, and output must not be unit-diagonal\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
-                                return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y); // return @import("matmul/mattrispa_mattrispa_mattrispa.zig").matmulInto(o, x, y);
-                            },
+                            .triangular_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_mattrispa_mattrispa.zig").matmulInto(o, x, y),
                             .diagonal_static => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_mattrispa_matdiasta.zig").matmulInto(o, x, y),
                             .diagonal_sparse => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_mattrispa_matdiaspa.zig").matmulInto(o, x, y),
                             .permutation_static => return @import("matmul/mattrispa_slow.zig").matmulInto(o, x, y), // return @import("matmul/mattrispa_mattrispa_matpersta.zig").matmulInto(o, x, y),
@@ -4943,6 +4890,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matgensta_vecsta.zig").matmulInto(o, x, y),
                             .dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matgensta_vecden.zig").matmulInto(o, x, y),
                             .sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matgensta_vecspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
                         },
                         else => unreachable,
                     },
@@ -4955,6 +4903,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matgenden_vecsta.zig").matmulInto(o, x, y),
                             .dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matgenden_vecden.zig").matmulInto(o, x, y),
                             .sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matgenden_vecspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
                         },
                         else => unreachable,
                     },
@@ -4967,6 +4916,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matgenspa_vecsta.zig").matmulInto(o, x, y),
                             .dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matgenspa_vecden.zig").matmulInto(o, x, y),
                             .sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matgenspa_vecspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
                         },
                         else => unreachable,
                     },
@@ -4979,6 +4929,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matsymsta_vecsta.zig").matmulInto(o, x, y),
                             .dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matsymsta_vecden.zig").matmulInto(o, x, y),
                             .sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matsymsta_vecspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
                         },
                         else => unreachable,
                     },
@@ -4991,6 +4942,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matsymden_vecsta.zig").matmulInto(o, x, y),
                             .dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matsymden_vecden.zig").matmulInto(o, x, y),
                             .sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matsymden_vecspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
                         },
                         else => unreachable,
                     },
@@ -5003,6 +4955,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matsymspa_vecsta.zig").matmulInto(o, x, y),
                             .dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matsymspa_vecden.zig").matmulInto(o, x, y),
                             .sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matsymspa_vecspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
                         },
                         else => unreachable,
                     },
@@ -5015,6 +4968,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_mathersta_vecsta.zig").matmulInto(o, x, y),
                             .dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_mathersta_vecden.zig").matmulInto(o, x, y),
                             .sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_mathersta_vecspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
                         },
                         else => unreachable,
                     },
@@ -5027,6 +4981,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matherden_vecsta.zig").matmulInto(o, x, y),
                             .dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matherden_vecden.zig").matmulInto(o, x, y),
                             .sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matherden_vecspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
                         },
                         else => unreachable,
                     },
@@ -5039,6 +4994,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matherspa_vecsta.zig").matmulInto(o, x, y),
                             .dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matherspa_vecden.zig").matmulInto(o, x, y),
                             .sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matherspa_vecspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
                         },
                         else => unreachable,
                     },
@@ -5051,6 +5007,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_mattrista_vecsta.zig").matmulInto(o, x, y),
                             .dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_mattrista_vecden.zig").matmulInto(o, x, y),
                             .sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_mattrista_vecspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
                         },
                         else => unreachable,
                     },
@@ -5063,6 +5020,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_mattriden_vecsta.zig").matmulInto(o, x, y),
                             .dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_mattriden_vecden.zig").matmulInto(o, x, y),
                             .sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_mattriden_vecspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
                         },
                         else => unreachable,
                     },
@@ -5075,6 +5033,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_mattrispa_vecsta.zig").matmulInto(o, x, y),
                             .dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_mattrispa_vecden.zig").matmulInto(o, x, y),
                             .sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_mattrispa_vecspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
                         },
                         else => unreachable,
                     },
@@ -5087,6 +5046,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matdiasta_vecsta.zig").matmulInto(o, x, y),
                             .dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matdiasta_vecden.zig").matmulInto(o, x, y),
                             .sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matdiasta_vecspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
                         },
                         else => unreachable,
                     },
@@ -5099,6 +5059,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matdiaspa_vecsta.zig").matmulInto(o, x, y),
                             .dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matdiaspa_vecden.zig").matmulInto(o, x, y),
                             .sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matdiaspa_vecspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
                         },
                         else => unreachable,
                     },
@@ -5111,6 +5072,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matpersta_vecsta.zig").matmulInto(o, x, y),
                             .dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matpersta_vecden.zig").matmulInto(o, x, y),
                             .sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matpersta_vecspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
                         },
                         else => unreachable,
                     },
@@ -5123,6 +5085,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .static => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matperspa_vecsta.zig").matmulInto(o, x, y),
                             .dense => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matperspa_vecden.zig").matmulInto(o, x, y),
                             .sparse => return @import("matmul/vecsta_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecsta_matperspa_vecspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
                         },
                         else => unreachable,
                     },
@@ -5198,6 +5161,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                         .vector => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
                         else => unreachable,
                     },
+                    else => numeric,
                 },
                 else => unreachable,
             },
@@ -5212,6 +5176,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matgensta_vecsta.zig").matmulInto(o, x, y),
                             .dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matgensta_vecden.zig").matmulInto(o, x, y),
                             .sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matgensta_vecspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
                         },
                         else => unreachable,
                     },
@@ -5237,6 +5202,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matgenspa_vecsta.zig").matmulInto(o, x, y),
                             .dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matgenspa_vecden.zig").matmulInto(o, x, y),
                             .sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matgenspa_vecspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
                         },
                         else => unreachable,
                     },
@@ -5249,6 +5215,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matsymsta_vecsta.zig").matmulInto(o, x, y),
                             .dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matsymsta_vecden.zig").matmulInto(o, x, y),
                             .sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matsymsta_vecspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
                         },
                         else => unreachable,
                     },
@@ -5261,6 +5228,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matsymden_vecsta.zig").matmulInto(o, x, y),
                             .dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matsymden_vecden.zig").matmulInto(o, x, y),
                             .sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matsymden_vecspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
                         },
                         else => unreachable,
                     },
@@ -5273,6 +5241,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matsymspa_vecsta.zig").matmulInto(o, x, y),
                             .dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matsymspa_vecden.zig").matmulInto(o, x, y),
                             .sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matsymspa_vecspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
                         },
                         else => unreachable,
                     },
@@ -5285,6 +5254,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_mathersta_vecsta.zig").matmulInto(o, x, y),
                             .dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_mathersta_vecden.zig").matmulInto(o, x, y),
                             .sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_mathersta_vecspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
                         },
                         else => unreachable,
                     },
@@ -5297,6 +5267,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matherden_vecsta.zig").matmulInto(o, x, y),
                             .dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matherden_vecden.zig").matmulInto(o, x, y),
                             .sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matherden_vecspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
                         },
                         else => unreachable,
                     },
@@ -5309,6 +5280,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matherspa_vecsta.zig").matmulInto(o, x, y),
                             .dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matherspa_vecden.zig").matmulInto(o, x, y),
                             .sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matherspa_vecspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
                         },
                         else => unreachable,
                     },
@@ -5321,6 +5293,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_mattrista_vecsta.zig").matmulInto(o, x, y),
                             .dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_mattrista_vecden.zig").matmulInto(o, x, y),
                             .sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_mattrista_vecspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
                         },
                         else => unreachable,
                     },
@@ -5333,6 +5306,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_mattriden_vecsta.zig").matmulInto(o, x, y),
                             .dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_mattriden_vecden.zig").matmulInto(o, x, y),
                             .sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_mattriden_vecspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
                         },
                         else => unreachable,
                     },
@@ -5345,6 +5319,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_mattrispa_vecsta.zig").matmulInto(o, x, y),
                             .dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_mattrispa_vecden.zig").matmulInto(o, x, y),
                             .sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_mattrispa_vecspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
                         },
                         else => unreachable,
                     },
@@ -5357,6 +5332,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matdiasta_vecsta.zig").matmulInto(o, x, y),
                             .dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matdiasta_vecden.zig").matmulInto(o, x, y),
                             .sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matdiasta_vecspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
                         },
                         else => unreachable,
                     },
@@ -5369,6 +5345,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matdiaspa_vecsta.zig").matmulInto(o, x, y),
                             .dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matdiaspa_vecden.zig").matmulInto(o, x, y),
                             .sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matdiaspa_vecspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
                         },
                         else => unreachable,
                     },
@@ -5381,6 +5358,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matpersta_vecsta.zig").matmulInto(o, x, y),
                             .dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matpersta_vecden.zig").matmulInto(o, x, y),
                             .sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matpersta_vecspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
                         },
                         else => unreachable,
                     },
@@ -5393,6 +5371,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                             .static => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matperspa_vecsta.zig").matmulInto(o, x, y),
                             .dense => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matperspa_vecden.zig").matmulInto(o, x, y),
                             .sparse => return @import("matmul/vecden_slow.zig").matmulInto(o, x, y), // return @import("matmul/vecden_matperspa_vecspa.zig").matmulInto(o, x, y),
+                            else => unreachable,
                         },
                         else => unreachable,
                     },
@@ -5597,6 +5576,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
                         .vector => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
                         else => unreachable,
                     },
+                    else => unreachable,
                 },
                 else => unreachable,
             },

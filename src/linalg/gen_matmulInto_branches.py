@@ -5,60 +5,6 @@ Generate the full comptime switch dispatch body for linalg.matmulInto.
 
   python3 gen_matmulInto_branches.py            # Zig switch body to stdout
   python3 gen_matmulInto_branches.py --stats    # also print statistics
-
-Shape rules that determine (O, X, Y) validity
-----------------------------------------------
-A. O is any matrix (including builder_sparse, excluding permutation):
-     * (X=matrix, Y=matrix): structural constraints per O kind (see below)
-     * (X=vector, Y=vector): Rejected. Vector × vector outer products /
-       rank-1 updates are handled by the separate linalg.outer function,
-       not matmulInto, regardless of O's kind.
-     * mixed (one matrix + one vector) -> compile error (shape mismatch)
-
-B. O is builder_sparse matrix:
-     Accepts any (matrix × matrix); no structural constraints beyond that
-     (builder accumulates whatever is computed). Vector × vector is still
-     rejected per rule A.
-
-C. O is permutation:
-     Only valid for (permutation × permutation) -> composition is a permutation.
-     Everything else is a compile error (including vector × vector).
-
-D. O is a vector:
-     Exactly one of (X, Y) must be a matrix and the other a vector.
-     Any matrix kind is valid on the matrix side (covers GEMV, left-multiply,
-     SYMV, HEMV, TRMV, etc.).
-     (matrix × matrix) or (vector × vector) -> compile error.
-
-Structural constraints for matrix O × matrix inputs
-----------------------------------------------------
-  general, symmetric, hermitian, triangular, diagonal: any matrix × any matrix.
-  (The caller is responsible for ensuring the result mathematically fits the output structure.
-  Inline guards such as isComplex or uplo checks are still generated where appropriate).
-  permutation: permutation × permutation only (composition).
-
-Sparse-output density constraint (matrix O only)
----------------------------------------------------
-  A sparse output rejects a truly-dense input. Diagonal and
-  permutation inputs are O(n)/O(1) and stay sparse-compatible,
-  so they never trigger this. Checked last, after the kind-specific
-  structural check has already accepted the combination structurally.
-
-Comptime guards (inline in the returned arm)
----------------------------------------------
-  hermitian O + symmetric or diagonal X/Y -> isComplex(meta.Numeric(X/Y)) guard
-  triangular O + triangular X or Y       -> uploOf(O) != uploOf(X/Y) guard
-  triangular O always                    -> diagOf(O) == .unit guard
-
-  Since vector × vector never reaches a matrix output (rule A), X and Y are
-  always matrix-domain by the time these guards run; no vector special-casing
-  is needed here.
-
-builder_sparse and numeric inputs
------------------------------------
-  builder_sparse as X or Y -> unreachable (it is an output-only accumulator).
-  numeric is caught by `else => unreachable` at the meta.domain level and is
-  never emitted explicitly in the switch.
 """
 
 from __future__ import annotations
@@ -180,9 +126,9 @@ def _imp(o: str, x: str, y: str) -> str:
     """
     Final gate before returning a valid 'imp:' dispatch for an output (matrix
     or vector) that has already passed its kind/shape-specific structural
-    check. Mirrors apply2Into rule 7, extended to vectors: a sparse output
-    — any *_sparse matrix kind (including builder_sparse and
-    permutation_sparse), or vector_sparse — rejects a truly-dense operand on
+    check. Mirrors apply2Into rule 7, extended to vectors: a sparse output;
+    any *_sparse matrix kind (including builder_sparse and
+    permutation_sparse), or vector_sparse; rejects a truly-dense operand on
     either side, matrix or vector. Diagonal and permutation matrix operands
     (any variant) are exempt, same as in apply2Into.
     """

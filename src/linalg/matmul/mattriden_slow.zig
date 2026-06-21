@@ -13,7 +13,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) void {
         while (j < o.cols) : (j += 1) {
             if (comptime meta.uploOf(O) == .upper) {
                 var i: usize = 0;
-                while (i < int.min(if (comptime meta.uploOf(O).? == .non_unit) j + 1 else j, o.rows)) : (i += 1) {
+                while (i < int.min(if (comptime meta.diagOf(O) == .non_unit) j + 1 else j, o.rows)) : (i += 1) {
                     var sum = numeric.zero(meta.Accumulator(meta.Numeric(O)));
 
                     var k: usize = 0;
@@ -29,7 +29,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) void {
                     numeric.set(&o.data[o._index(i, j)], sum);
                 }
             } else {
-                var i: usize = int.min(if (comptime meta.uploOf(O).? == .non_unit) j else j + 1, o.rows);
+                var i: usize = int.min(if (comptime meta.diagOf(O) == .non_unit) j else j + 1, o.rows);
                 while (i < o.rows) : (i += 1) {
                     var sum = numeric.zero(meta.Accumulator(meta.Numeric(O)));
 
@@ -52,7 +52,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) void {
         while (i < o.rows) : (i += 1) {
             if (comptime meta.uploOf(O) == .lower) {
                 var j: usize = 0;
-                while (j < int.min(if (comptime meta.uploOf(O).? == .non_unit) i + 1 else i, o.cols)) : (j += 1) {
+                while (j < int.min(if (comptime meta.diagOf(O) == .non_unit) i + 1 else i, o.cols)) : (j += 1) {
                     var sum = numeric.zero(meta.Accumulator(meta.Numeric(O)));
 
                     var k: usize = 0;
@@ -68,7 +68,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) void {
                     numeric.set(&o.data[o._index(i, j)], sum);
                 }
             } else {
-                var j: usize = int.min(if (comptime meta.uploOf(O).? == .non_unit) i else i + 1, o.cols);
+                var j: usize = int.min(if (comptime meta.diagOf(O) == .non_unit) i else i + 1, o.cols);
                 while (j < o.cols) : (j += 1) {
                     var sum = numeric.zero(meta.Accumulator(meta.Numeric(O)));
 

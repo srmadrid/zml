@@ -11,7 +11,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) void {
     if (comptime meta.layoutOf(O) == .col_major) {
         inline for (0..O.cols) |j| {
             if (comptime meta.uploOf(O) == .upper) {
-                inline for (0..(comptime int.min(if (meta.uploOf(O).? == .non_unit) j + 1 else j, O.rows))) |i| {
+                inline for (0..(comptime int.min(if (meta.diagOf(O) == .non_unit) j + 1 else j, O.rows))) |i| {
                     var sum = numeric.zero(meta.Accumulator(meta.Numeric(O)));
 
                     var k: usize = 0;
@@ -27,7 +27,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) void {
                     numeric.set(&o.data[O._index(i, j)], sum);
                 }
             } else {
-                inline for ((comptime int.min(if (meta.uploOf(O).? == .non_unit) j else j + 1, O.rows))..O.rows) |i| {
+                inline for ((comptime int.min(if (meta.diagOf(O) == .non_unit) j else j + 1, O.rows))..O.rows) |i| {
                     var sum = numeric.zero(meta.Accumulator(meta.Numeric(O)));
 
                     var k: usize = 0;
@@ -47,7 +47,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) void {
     } else {
         inline for (0..O.rows) |i| {
             if (comptime meta.uploOf(O) == .lower) {
-                inline for (0..(comptime int.min(if (meta.uploOf(O).? == .non_unit) i + 1 else i, O.cols))) |j| {
+                inline for (0..(comptime int.min(if (meta.diagOf(O) == .non_unit) i + 1 else i, O.cols))) |j| {
                     var sum = numeric.zero(meta.Accumulator(meta.Numeric(O)));
 
                     var k: usize = 0;
@@ -63,7 +63,7 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) void {
                     numeric.set(&o.data[O._index(i, j)], sum);
                 }
             } else {
-                inline for ((comptime int.min(if (meta.uploOf(O).? == .non_unit) i else i + 1, O.cols))..O.cols) |j| {
+                inline for ((comptime int.min(if (meta.diagOf(O) == .non_unit) i else i + 1, O.cols))..O.cols) |j| {
                     var sum = numeric.zero(meta.Accumulator(meta.Numeric(O)));
 
                     var k: usize = 0;

@@ -16,8 +16,8 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
     const x_nnz = switch (comptime meta.matrixKind(X)) {
         .general => x.nnz,
         .symmetric, .hermitian => 2 * x.nnz,
-        .triangular => if (comptime meta.diagOf(X) == .non_unit) x.nnz else x.nnz + int.min(o.rows, o.cols),
-        .diagonal, .permutation => int.min(o.rows, o.cols),
+        .triangular => if (comptime meta.diagOf(X) == .non_unit) x.nnz else x.nnz + int.min(x.rows, x.cols),
+        .diagonal, .permutation => if (comptime meta.isStaticMatrix(X)) int.min(X.rows, X.cols) else int.min(x.rows, x.cols),
         .builder => unreachable,
         .numeric => 0,
     };
@@ -25,8 +25,8 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
     const y_nnz = switch (comptime meta.matrixKind(Y)) {
         .general => y.nnz,
         .symmetric, .hermitian => 2 * y.nnz,
-        .triangular => if (comptime meta.diagOf(Y) == .non_unit) y.nnz else y.nnz + int.min(o.rows, o.cols),
-        .diagonal, .permutation => int.min(o.rows, o.cols),
+        .triangular => if (comptime meta.diagOf(Y) == .non_unit) y.nnz else y.nnz + int.min(y.rows, y.cols),
+        .diagonal, .permutation => if (comptime meta.isStaticMatrix(Y)) int.min(Y.rows, Y.cols) else int.min(y.rows, y.cols),
         .numeric => 0,
         .builder => unreachable,
     };
