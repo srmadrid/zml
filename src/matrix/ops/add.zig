@@ -81,7 +81,7 @@ pub fn addAlloc(allocator: std.mem.Allocator, x: anytype, y: anytype) !matrix.Ad
 ///
 /// Exact aliasing (in-place modification) between the output and an input is
 /// permitted for static or dense outputs, or sparse outputs when both inputs
-/// are not matrices. Any other form of memory overlap might yield incorrect
+/// are not sparse. Any other form of memory overlap might yield incorrect
 /// results.
 ///
 /// For three static matrices, or a static output matrix, an input static matrix
@@ -105,4 +105,28 @@ pub fn addAlloc(allocator: std.mem.Allocator, x: anytype, y: anytype) !matrix.Ad
 ///   same dimension.
 pub fn addInto(o: anytype, x: anytype, y: anytype) !void {
     return matops.apply2Into(o, x, y, numeric.addInto);
+}
+
+/// Performs computation of the addition of two matrices `x` and `y` into a
+/// matrix `o`, without performing any dimension checks.
+///
+/// Exact aliasing (in-place modification) between the output and an input is
+/// permitted for static or dense outputs, or sparse outputs when both inputs
+/// are not sparse. Any other form of memory overlap might yield incorrect
+/// results.
+///
+/// ## Signature
+/// ```zig
+/// matrix.addIntoUnchecked(o: *O, x: X, y: Y) void
+/// ```
+///
+/// ## Arguments
+/// * `o` (`anytype`): The output matrix operand.
+/// * `x` (`anytype`): The left matrix operand.
+/// * `y` (`anytype`): The right matrix operand.
+///
+/// ## Returns
+/// `void`
+pub fn addIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
+    return matops.apply2IntoUnchecked(o, x, y, numeric.addInto);
 }

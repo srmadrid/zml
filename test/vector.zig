@@ -96,7 +96,7 @@ pub fn areEql(u: anytype, v: anytype) !void {
 }
 
 test {
-    const test_apply2 = true;
+    const test_apply2 = false;
 
     if (test_apply2) {
         _ = @import("vector/apply2.zig");

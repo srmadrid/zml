@@ -1,10 +1,8 @@
-const meta = @import("../../../meta.zig");
-
 const int = @import("../../../int.zig");
-
+const meta = @import("../../../meta.zig");
 const numeric = @import("../../../numeric.zig");
 
-pub fn apply2Into(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) void {
+pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) void {
     const O: type = meta.Child(@TypeOf(o));
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
@@ -18,7 +16,7 @@ pub fn apply2Into(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) 
             }
 
             if (j < o.rows) {
-                opInto(&o.data[o._index(i, j)], x.data[j], y.data[j]);
+                opInto(&o.data[o._index(j, j)], x.data[j], y.data[j]);
             }
 
             i = int.min(j + 1, o.rows);

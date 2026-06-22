@@ -1,31 +1,10 @@
-const std = @import("std");
-
 const meta = @import("../../../meta.zig");
 const numeric = @import("../../../numeric.zig");
-const int = @import("../../../int.zig");
-const matrix = @import("../../../matrix.zig");
 
-pub fn apply2Into(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) !void {
+pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) void {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
     const O: type = meta.Child(@TypeOf(o));
-
-    const x_nnz = switch (comptime meta.matrixKind(X)) {
-        .symmetric => x.nnz,
-        .diagonal => o.rows,
-        .numeric => 0,
-        else => unreachable,
-    };
-
-    const y_nnz = switch (comptime meta.matrixKind(Y)) {
-        .symmetric => y.nnz,
-        .diagonal => o.rows,
-        .numeric => 0,
-        else => unreachable,
-    };
-
-    if (o._dlen < x_nnz + y_nnz or o._ilen < x_nnz + y_nnz)
-        return matrix.Error.InsufficientSpace;
 
     var nnz: usize = 0;
     o.ptr[0] = 0;

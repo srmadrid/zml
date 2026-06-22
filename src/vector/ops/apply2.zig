@@ -164,7 +164,7 @@ pub fn apply2Alloc(allocator: std.mem.Allocator, x: anytype, y: anytype, comptim
     var result = switch (comptime meta.vectorType(R)) {
         .static => R.init,
         .dense => try R.init(allocator, x_len),
-        .sparse => try R.init(allocator, x_len, apply2NNZ(if (comptime meta.isSparseVector(X)) x.idx[0..x.nnz] else &.{}, if (comptime meta.isSparseVector(Y)) y.idx[0..y.nnz] else &.{})),
+        .sparse => try R.init(allocator, x_len, apply2NNZ(x, y)),
         .numeric => unreachable,
     };
 
@@ -264,10 +264,7 @@ pub fn apply2Into(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) 
             @compileError("zsl.vector.apply2Into: o cannot point to a sparse vector if the result is static or dense, got\n\to: *" ++
                 @typeName(O) ++ "x: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\topInto: " ++ @typeName(OpInto) ++ "\n");
 
-        const nnz = apply2NNZ(
-            if (comptime meta.isSparseVector(X)) x.idx[0..x.nnz] else &.{},
-            if (comptime meta.isSparseVector(Y)) y.idx[0..y.nnz] else &.{},
-        );
+        const nnz = apply2NNZ(x, y);
 
         if (o._dlen < nnz or o._ilen < nnz)
             return vector.Error.InsufficientSpace;
@@ -395,14 +392,23 @@ pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: 
     }
 }
 
-fn apply2NNZ(x_idx: []const usize, y_idx: []const usize) usize {
+fn apply2NNZ(x: anytype, y: anytype) usize {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+
+    if (comptime meta.isNumeric(X))
+        return y.nnz;
+
+    if (comptime meta.isNumeric(Y))
+        return x.nnz;
+
     var intersections: usize = 0;
     var px: usize = 0;
     var py: usize = 0;
 
-    while (px < x_idx.len and py < y_idx.len) {
-        const ix = x_idx[px];
-        const iy = y_idx[py];
+    while (px < x.nnz and py < y.nnz) {
+        const ix = x.idx[px];
+        const iy = y.idx[py];
 
         if (ix == iy) {
             intersections += 1;
@@ -415,5 +421,5 @@ fn apply2NNZ(x_idx: []const usize, y_idx: []const usize) usize {
         }
     }
 
-    return x_idx.len + y_idx.len - intersections;
+    return x.nnz + y.nnz - intersections;
 }

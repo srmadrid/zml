@@ -5,6 +5,8 @@ const meta = @import("../../meta.zig");
 const numeric = @import("../../numeric.zig");
 const matrix = @import("../../matrix.zig");
 
+const linalg = @import("../../linalg.zig");
+
 const matops = @import("../ops.zig");
 
 pub fn Mul(comptime X: type, comptime Y: type) type {
@@ -14,8 +16,7 @@ pub fn Mul(comptime X: type, comptime Y: type) type {
             @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n");
 
     return if (comptime meta.isMatrix(X) and meta.isMatrix(Y))
-        // linalg.MatMul(X, Y)
-        @compileError("zsl.matrix.Mul: matrix matrix multiplication not implemented yet")
+        linalg.Matmul(X, Y)
     else
         matops.Apply2(X, Y, numeric.mul);
 }
@@ -46,8 +47,7 @@ pub fn Mul(comptime X: type, comptime Y: type) type {
 /// `matrix.Mul(@TypeOf(x), @TypeOf(y))`: The result of the multiplication.
 pub fn mul(x: anytype, y: anytype) matrix.Mul(@TypeOf(x), @TypeOf(y)) {
     return if (comptime meta.isMatrix(@TypeOf(x)) and meta.isMatrix(@TypeOf(y)))
-        // linalg.matMul(x, y)
-        @compileError("zsl.matrix.mul: matrix matrix multiplication not implemented yet")
+        linalg.matmul(x, y)
     else
         matops.apply2(x, y, numeric.mul);
 }
@@ -83,8 +83,7 @@ pub fn mul(x: anytype, y: anytype) matrix.Mul(@TypeOf(x), @TypeOf(y)) {
 ///   compatible dimensions.
 pub fn mulAlloc(allocator: std.mem.Allocator, x: anytype, y: anytype) !matrix.Mul(@TypeOf(x), @TypeOf(y)) {
     return if (comptime meta.isMatrix(@TypeOf(x)) and meta.isMatrix(@TypeOf(y)))
-        // linalg.matMulAlloc(allocator, x, y)
-        @compileError("zsl.matrix.mul: matrix matrix multiplication not implemented yet")
+        linalg.matmulAlloc(allocator, x, y)
     else
         matops.apply2Alloc(allocator, x, y, numeric.mul);
 }
@@ -119,8 +118,34 @@ pub fn mulAlloc(allocator: std.mem.Allocator, x: anytype, y: anytype) !matrix.Mu
 ///   compatible dimensions.
 pub fn mulInto(o: anytype, x: anytype, y: anytype) !void {
     return if (comptime meta.isMatrix(@TypeOf(x)) and meta.isMatrix(@TypeOf(y)))
-        // linalg.matMulInto(o, x, y)
-        @compileError("zsl.matrix.mul: matrix matrix multiplication not implemented yet")
+        linalg.matmulInto(o, x, y)
     else
         matops.apply2Into(o, x, y, numeric.mulInto);
+}
+
+/// Performs computation of the multiplication two matrices, or a matrix and a
+/// numeric, `x` and `y`, into a matrix `o`, without performing any dimension
+/// checks.
+///
+/// Exact aliasing (in-place modification) between the output and an input, when
+/// only one input is a matrix, is permitted. Any other form of memory overlap
+/// might yield incorrect results.
+///
+/// ## Signature
+/// ```zig
+/// matrix.mulIntoUnchecked(o: *O, x: X, y: Y) void
+/// ```
+///
+/// ## Arguments
+/// * `o` (`anytype`): The output matrix operand.
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `void`
+pub fn mulIntoUnchecked(o: anytype, x: anytype, y: anytype) !void {
+    return if (comptime meta.isMatrix(@TypeOf(x)) and meta.isMatrix(@TypeOf(y)))
+        linalg.matmulIntoUnchecked(o, x, y)
+    else
+        matops.apply2IntoUnchecked(o, x, y, numeric.mulInto);
 }

@@ -381,7 +381,7 @@ pub fn randomMatrix(comptime M: type, allocator: std.mem.Allocator, rand: std.Ra
         .permutation_static => {
             var result: M = .init;
 
-            randomPermutation(rand, result.data[0..rows]);
+            randomPermutation(rand, result.idx[0..rows]);
 
             return result;
         },
@@ -389,7 +389,7 @@ pub fn randomMatrix(comptime M: type, allocator: std.mem.Allocator, rand: std.Ra
             var result: M = try .init(allocator, rows);
             errdefer result.deinit(allocator);
 
-            randomPermutation(rand, result.data[0..rows]);
+            randomPermutation(rand, result.idx[0..rows]);
 
             return result;
         },
@@ -431,7 +431,7 @@ pub fn areEql(A: anytype, B: anytype) !void {
 }
 
 test {
-    const test_apply2 = false;
+    const test_apply2 = true;
 
     if (test_apply2) {
         _ = @import("matrix/apply2.zig");

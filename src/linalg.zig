@@ -36,7 +36,7 @@ pub const matmulInto = @import("linalg/matmul.zig").matmulInto;
 // solve (with SolveMethod, to choose decomposition, and optional out parameter to save it)
 // Allow vector and matrix rhs
 
-// leastSquares
+// lstsq
 // Allow vector and matrix rhs
 
 // Matrix operations
@@ -46,7 +46,15 @@ pub const matmulInto = @import("linalg/matmul.zig").matmulInto;
 
 // cond (condition number)
 
-// gram (Xᴴ X)
+// gram (gramian matrix, Xᴴ X)
+
+// cong (matrix congruence, A X Aᴴ)
+
+// kron (A ⊗ B; (m × n) ⊗ (p × q) -> (mp × nq))
+
+// expm
+
+// sqrtm
 
 // inv
 
@@ -77,6 +85,14 @@ pub const matmulInto = @import("linalg/matmul.zig").matmulInto;
 // pub const qr = @import("linalg/qr.zig").qr;
 // pub const QRP = @import("linalg/qr.zig").QRP;
 // pub const qrp = @import("linalg/qr.zig").qrp;
+
+// rq
+
+// ql
+
+// lq
+
+// rz
 
 // svd
 

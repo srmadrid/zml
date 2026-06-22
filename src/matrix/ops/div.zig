@@ -89,3 +89,25 @@ pub fn divAlloc(allocator: std.mem.Allocator, x: anytype, y: anytype) !matrix.Di
 pub fn divInto(o: anytype, x: anytype, y: anytype) !void {
     return matops.apply2Into(o, x, y, numeric.divInto);
 }
+
+/// Performs computation of the division of a matrix `x` and a numeric `y` into
+/// a matrix `o`, without performing any dimension checks.
+///
+/// Exact aliasing (in-place modification) between the output and an input is
+/// permitted. Any other form of memory overlap might yield incorrect results.
+///
+/// ## Signature
+/// ```zig
+/// matrix.divIntoUnchecked(o: *O, x: X, y: Y) void
+/// ```
+///
+/// ## Arguments
+/// * `o` (`anytype`): The output matrix operand.
+/// * `x` (`anytype`): The left matrix operand.
+/// * `y` (`anytype`): The right numeric operand.
+///
+/// ## Returns
+/// `void`
+pub fn divIntoUnchecked(o: anytype, x: anytype, y: anytype) !void {
+    return matops.apply2IntoUnchecked(o, x, y, numeric.divInto);
+}

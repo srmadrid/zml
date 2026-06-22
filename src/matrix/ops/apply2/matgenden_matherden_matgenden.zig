@@ -1,8 +1,7 @@
 const meta = @import("../../../meta.zig");
-
 const numeric = @import("../../../numeric.zig");
 
-pub fn apply2Into(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) void {
+pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) void {
     const X: type = @TypeOf(x);
 
     if (comptime meta.layoutOf(meta.Child(@TypeOf(o))) == .col_major) {

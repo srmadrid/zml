@@ -1,6 +1,6 @@
 const meta = @import("../../../meta.zig");
 
-pub fn apply2Into(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) void {
+pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) void {
     const O: type = meta.Child(@TypeOf(o));
     const Y: type = @TypeOf(y);
 

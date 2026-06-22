@@ -1,6 +1,6 @@
 const meta = @import("../../../meta.zig");
 
-pub fn apply2Into(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) void {
+pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) void {
     if (comptime meta.layoutOf(meta.Child(@TypeOf(o))) == .col_major) {
         var j: usize = 0;
         while (j < o.cols) : (j += 1) {

@@ -20,7 +20,7 @@ pub fn Sparse(N: type, direction_: matrix.permutation.Direction) type {
         @compileError("zsl.matrix.permutation.Sparse: N must be a numeric type, got \n\tN = " ++ @typeName(N) ++ "\n");
 
     return struct {
-        data: [*]usize,
+        idx: [*]usize,
         rows: usize,
         cols: usize,
         flags: matrix.Flags,
@@ -38,7 +38,7 @@ pub fn Sparse(N: type, direction_: matrix.permutation.Direction) type {
         pub const Numeric = N;
 
         pub const empty: matrix.permutation.Sparse(N, direction) = .{
-            .data = &.{},
+            .idx = &.{},
             .rows = 0,
             .cols = 0,
             .flags = .{ .owns_data = false },
@@ -64,7 +64,7 @@ pub fn Sparse(N: type, direction_: matrix.permutation.Direction) type {
                 return matrix.Error.ZeroDimension;
 
             return .{
-                .data = (try allocator.alloc(usize, size)).ptr,
+                .idx = (try allocator.alloc(usize, size)).ptr,
                 .rows = size,
                 .cols = size,
                 .flags = .{ .owns_data = true },
@@ -91,7 +91,7 @@ pub fn Sparse(N: type, direction_: matrix.permutation.Direction) type {
 
             var i: usize = 0;
             while (i < size) : (i += 1) {
-                mat.data[i] = i;
+                mat.idx[i] = i;
             }
 
             return mat;
@@ -111,7 +111,7 @@ pub fn Sparse(N: type, direction_: matrix.permutation.Direction) type {
         /// `void`
         pub fn deinit(self: *matrix.permutation.Sparse(N, direction), allocator: std.mem.Allocator) void {
             if (self.flags.owns_data) {
-                allocator.free(self.data[0..self.rows]);
+                allocator.free(self.idx[0..self.rows]);
             }
 
             self.* = undefined;
@@ -136,13 +136,13 @@ pub fn Sparse(N: type, direction_: matrix.permutation.Direction) type {
                 return matrix.Error.PositionOutOfBounds;
 
             if (comptime direction == .forward) {
-                if (self.data[r] == c) {
+                if (self.idx[r] == c) {
                     return numeric.one(N);
                 } else {
                     return numeric.zero(N);
                 }
             } else {
-                if (self.data[c] == r) {
+                if (self.idx[c] == r) {
                     return numeric.one(N);
                 } else {
                     return numeric.zero(N);
@@ -164,13 +164,13 @@ pub fn Sparse(N: type, direction_: matrix.permutation.Direction) type {
         /// `N`: The element at the specified position.
         pub fn getAssumeInBounds(self: matrix.permutation.Sparse(N, direction), r: usize, c: usize) N {
             if (comptime direction == .forward) {
-                if (self.data[r] == c) {
+                if (self.idx[r] == c) {
                     return numeric.one(N);
                 } else {
                     return numeric.zero(N);
                 }
             } else {
-                if (self.data[c] == r) {
+                if (self.idx[c] == r) {
                     return numeric.one(N);
                 } else {
                     return numeric.zero(N);
@@ -205,7 +205,7 @@ pub fn Sparse(N: type, direction_: matrix.permutation.Direction) type {
         /// matrix.
         pub fn transposeView(self: matrix.permutation.Sparse(N, direction)) matrix.permutation.Sparse(N, direction.invert()) {
             return .{
-                .data = self.data,
+                .idx = self.idx,
                 .rows = self.cols,
                 .cols = self.rows,
                 .flags = self.flags,

@@ -20,7 +20,7 @@ pub fn Static(size_: comptime_int, N: type, direction_: matrix.permutation.Direc
         @compileError("zsl.matrix.permutation.Static: N must be a numeric type, got \n\tN = " ++ @typeName(N) ++ "\n");
 
     return struct {
-        data: [size]usize,
+        idx: [size]usize,
 
         // Type signatures
         pub const is_matrix = true;
@@ -39,7 +39,7 @@ pub fn Static(size_: comptime_int, N: type, direction_: matrix.permutation.Direc
         pub const Numeric = N;
 
         pub const empty: matrix.permutation.Static(size, N, direction) = .{
-            .data = undefined,
+            .idx = undefined,
         };
 
         pub const init = empty;
@@ -63,13 +63,13 @@ pub fn Static(size_: comptime_int, N: type, direction_: matrix.permutation.Direc
                 return matrix.Error.PositionOutOfBounds;
 
             if (comptime direction == .forward) {
-                if (self.data[r] == c) {
+                if (self.idx[r] == c) {
                     return numeric.one(N);
                 } else {
                     return numeric.zero(N);
                 }
             } else {
-                if (self.data[c] == r) {
+                if (self.idx[c] == r) {
                     return numeric.one(N);
                 } else {
                     return numeric.zero(N);
@@ -91,13 +91,13 @@ pub fn Static(size_: comptime_int, N: type, direction_: matrix.permutation.Direc
         /// `N`: The element at the specified position.
         pub fn getAssumeInBounds(self: matrix.permutation.Static(size, N, direction), r: usize, c: usize) N {
             if (comptime direction == .forward) {
-                if (self.data[r] == c) {
+                if (self.idx[r] == c) {
                     return numeric.one(N);
                 } else {
                     return numeric.zero(N);
                 }
             } else {
-                if (self.data[c] == r) {
+                if (self.idx[c] == r) {
                     return numeric.one(N);
                 } else {
                     return numeric.zero(N);
@@ -131,7 +131,7 @@ pub fn Static(size_: comptime_int, N: type, direction_: matrix.permutation.Direc
         /// `matrix.permutation.Static(size, N, direction.invert())`: The
         /// transposed matrix.
         pub fn transposeCopy(self: matrix.permutation.Static(size, N, direction)) matrix.permutation.Static(size, N, direction.invert()) {
-            return .{ .data = self.data };
+            return .{ .idx = self.idx };
         }
 
         /// Returns a transposed view of the matrix.
@@ -145,7 +145,7 @@ pub fn Static(size_: comptime_int, N: type, direction_: matrix.permutation.Direc
         /// matrix.
         pub fn transposeView(self: matrix.permutation.Static(size, N, direction)) matrix.permutation.Sparse(N, direction.invert()) {
             return .{
-                .data = &self.data,
+                .idx = &self.idx,
                 .rows = cols,
                 .cols = rows,
                 .flags = .{ .owns_data = false },

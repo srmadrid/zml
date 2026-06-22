@@ -16,18 +16,22 @@ pub const Add = matops.Add;
 pub const add = matops.add;
 pub const addAlloc = matops.addAlloc;
 pub const addInto = matops.addInto;
+pub const addIntoUnchecked = matops.addIntoUnchecked;
 pub const Sub = matops.Sub;
 pub const sub = matops.sub;
 pub const subAlloc = matops.subAlloc;
 pub const subInto = matops.subInto;
+pub const subIntoUnchecked = matops.subIntoUnchecked;
 pub const Mul = matops.Mul;
 pub const mul = matops.mul;
 pub const mulAlloc = matops.mulAlloc;
 pub const mulInto = matops.mulInto;
+pub const mulIntoUnchecked = matops.mulIntoUnchecked;
 pub const Div = matops.Div;
 pub const div = matops.div;
 pub const divAlloc = matops.divAlloc;
 pub const divInto = matops.divInto;
+pub const divIntoUnchecked = matops.divIntoUnchecked;
 
 pub const Layout = enum(u1) {
     row_major,
