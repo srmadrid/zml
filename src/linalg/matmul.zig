@@ -475,7 +475,151 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
             @compileError("zsl.linalg.matmulInto: o cannot point to a sparse vector if the result is static or dense, got\n\to: *" ++
                 @typeName(O) ++ "x: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
-        const nnz = matmulNNZ(O, o_rows, o_cols, x, y);
+        const nnz = matmulNNZ(O, o_rows, o_cols, x, y, null);
+
+        if (o._dlen < nnz or o._ilen < nnz)
+            return vector.Error.InsufficientSpace;
+    }
+
+    return matmulIntoUnchecked(o, x, y);
+}
+
+/// Performs matrix multiplication between two matrices, or between a matrix and
+/// a vector, storing the result in an output matrix or vector. Uses the
+/// provided allocator to create a temporary workspace buffer for a more
+/// efficient nnz check for sparse outputs.
+///
+/// Exact aliasing (in-place modification) between the output and an input is
+/// not permitted and might yield incorrect results.
+///
+/// For three static inputs, or a static output, a static matrix and any vector,
+/// the function cannot return an error.
+///
+/// For static or dense ouptuts the allocator is not used.
+///
+/// For sparse outputs, the operation is only applied to the indices where at
+/// least one of the inputs has a non-zero element.
+///
+/// ## Signature
+/// ```zig
+/// linalg.matmulIntoAlloc(allocator: std.mem.Allocator, o: *O, x: X, y: Y) !void
+/// ```
+///
+/// ## Arguments
+/// * `allocator` (`std.mem.Allocator`): The allocator to use for allocating the
+///   temporary workspace buffer.
+/// * `o` (`anytype`): The output operand.
+/// * `x` (`anytype`): The left input operand.
+/// * `y` (`anytype`): The right input operand.
+///
+/// ## Returns
+/// `void`
+///
+/// ## Errors
+/// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
+/// * `linalg.Error.DimensionMismatch`: If the matrices do not have the same
+///   dimensions.
+pub fn matmulIntoAlloc(allocator: std.mem.Allocator, o: anytype, x: anytype, y: anytype) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+
+    comptime if (!meta.isPointer(O) or meta.isConstPointer(O) or (!meta.isVector(meta.Child(O)) and !meta.isMatrix(meta.Child(O))) or
+        (!meta.isVector(X) and !meta.isMatrix(X)) or (!meta.isVector(Y) and !meta.isMatrix(Y)) or
+        (!meta.isMatrix(X) and !meta.isMatrix(Y)))
+        @compileError("zsl.linalg.matmulInto: o must be a mutable one-itme pointer to a matrix or vector, at least one of x or y must be a matrix, the other must be a matrix or a vector, got\n\to: " ++
+            @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+
+    O = meta.Child(O);
+
+    const o_rows = if (comptime meta.isVector(O))
+        (if (comptime meta.isVector(X)) 1 else (if (comptime meta.isStaticVector(O)) O.len else o.len))
+    else
+        (if (comptime meta.isStaticMatrix(O)) O.rows else o.rows);
+    const o_cols = if (comptime meta.isVector(O))
+        (if (comptime meta.isVector(Y)) 1 else (if (comptime meta.isStaticVector(O)) O.len else o.len))
+    else
+        (if (comptime meta.isStaticMatrix(O)) O.cols else o.cols);
+    const x_rows = if (comptime meta.isVector(X))
+        1
+    else
+        (if (comptime meta.isStaticMatrix(X)) X.rows else x.rows);
+    const x_cols = if (comptime meta.isVector(X))
+        (if (comptime meta.isStaticVector(X)) X.len else x.len)
+    else
+        (if (comptime meta.isStaticMatrix(X)) X.cols else x.cols);
+    const y_rows = if (comptime meta.isVector(Y))
+        (if (comptime meta.isStaticVector(Y)) Y.len else y.len)
+    else
+        (if (comptime meta.isStaticMatrix(Y)) Y.rows else y.rows);
+    const y_cols = if (comptime meta.isVector(Y))
+        1
+    else
+        (if (comptime meta.isStaticMatrix(Y)) Y.cols else y.cols);
+
+    if (comptime ((meta.isVector(X) and meta.isStaticVector(X)) or meta.isStaticMatrix(X)) and
+        ((meta.isVector(Y) and meta.isStaticVector(Y)) or meta.isStaticMatrix(Y)))
+    {
+        if (comptime x_cols != y_rows)
+            @compileError("zsl.linalg.matmulInto: inner dimensions mismatch (x cols != y rows), got\n\tx: " ++
+                @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+    } else {
+        if (x_cols != y_rows)
+            return linalg.Error.DimensionMismatch;
+    }
+
+    if (comptime ((meta.isVector(O) and (meta.isVector(X) or meta.isStaticVector(O))) or meta.isStaticMatrix(O)) and
+        (meta.isVector(X) or meta.isStaticMatrix(X)))
+    {
+        if (comptime o_rows != x_rows)
+            @compileError("zsl.linalg.matmulInto: output rows mismatch (o rows != x rows), got\n\to: *" ++
+                @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n");
+    } else {
+        if (o_rows != x_rows)
+            return linalg.Error.DimensionMismatch;
+    }
+
+    if (comptime ((meta.isVector(O) and (meta.isVector(Y) or meta.isStaticVector(O))) or meta.isStaticMatrix(O)) and
+        (meta.isVector(Y) or meta.isStaticMatrix(Y)))
+    {
+        if (comptime o_cols != y_cols)
+            @compileError("zsl.linalg.matmulInto: output cols mismatch (o cols != y cols), got\n\to: *" ++
+                @typeName(O) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+    } else {
+        if (o_cols != y_cols)
+            return linalg.Error.DimensionMismatch;
+    }
+
+    if (comptime meta.isSparseMatrix(O) and !meta.isDiagonalMatrix(O) and !meta.isPermutationMatrix(O)) {
+        if (comptime (meta.isStaticMatrix(X) and !meta.isDiagonalMatrix(X) and !meta.isPermutationMatrix(X)) or meta.isDenseMatrix(X) or
+            (meta.isStaticMatrix(Y) and !meta.isDiagonalMatrix(Y) and !meta.isPermutationMatrix(Y)) or meta.isDenseMatrix(Y))
+            @compileError("zsl.linalg.matmulInto: o cannot point to a sparse matrix if the result is static or dense, got\n\to: *" ++
+                @typeName(O) ++ "x: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+
+        const work = try allocator.alloc(usize, int.max(o_rows, o_cols));
+        defer allocator.free(work);
+
+        const nnz = matmulNNZ(O, o_rows, o_cols, x_cols, x, y, work);
+
+        if (comptime meta.isBuilderMatrix(O)) {
+            if (o._dlen < nnz or o._rlen < nnz or o._clen < nnz)
+                return matrix.Error.InsufficientSpace;
+        } else {
+            if (o._dlen < nnz or o._ilen < nnz)
+                return matrix.Error.InsufficientSpace;
+        }
+    }
+
+    if (comptime meta.isSparseVector(O)) {
+        if (comptime meta.isStaticVector(X) or meta.isDenseVector(X) or (meta.isStaticMatrix(X) and !meta.isDiagonalMatrix(X) and !meta.isPermutationMatrix(X)) or meta.isDenseMatrix(X) or
+            meta.isStaticVector(Y) or meta.isDenseVector(Y) or (meta.isStaticMatrix(Y) and !meta.isDiagonalMatrix(Y) and !meta.isPermutationMatrix(Y)) or meta.isDenseMatrix(Y))
+            @compileError("zsl.linalg.matmulInto: o cannot point to a sparse vector if the result is static or dense, got\n\to: *" ++
+                @typeName(O) ++ "x: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+
+        const work = try allocator.alloc(usize, int.max(o_rows, o_cols));
+        defer allocator.free(work);
+
+        const nnz = matmulNNZ(O, o_rows, o_cols, x, y, work);
 
         if (o._dlen < nnz or o._ilen < nnz)
             return vector.Error.InsufficientSpace;

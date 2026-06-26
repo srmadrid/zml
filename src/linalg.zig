@@ -38,6 +38,7 @@ pub const Matmul = @import("linalg/matmul.zig").Matmul;
 pub const matmul = @import("linalg/matmul.zig").matmul;
 pub const matmulAlloc = @import("linalg/matmul.zig").matmulAlloc;
 pub const matmulInto = @import("linalg/matmul.zig").matmulInto;
+pub const matmulIntoAlloc = @import("linalg/matmul.zig").matmulIntoAlloc;
 pub const matmulIntoUnchecked = @import("linalg/matmul.zig").matmulIntoUnchecked;
 
 // hadamard (also for vectors)
