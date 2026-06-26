@@ -168,14 +168,28 @@ def decide(o: str, x: str, y: str) -> str:
         if xd != "matrix" or yd != "matrix":
             return "err:matrix output requires two matrix inputs (shape mismatch)"
 
-        # C. permutation output: only permutation × permutation
-        if ob == "permutation":
-            if xb == "permutation" and yb == "permutation":
-                return _imp(o, x, y)
-            return "err:permutation output requires permutation × permutation inputs"
+        # Strict structural rules for matrix multiplication
+        if ob in ("symmetric", "hermitian"):
+            return f"err:{ob} output is mathematically unsafe for general multiplication; use a specialized kernel or a general output"
 
-        # All other matrix outputs (general, symmetric, hermitian, triangular,
-        # diagonal, builder_sparse) now allow any matrix × matrix input combination.
+        elif ob == "diagonal":
+            if xb != "diagonal" or yb != "diagonal":
+                return (
+                    "err:diagonal output requires both inputs to be diagonal matrices"
+                )
+
+        elif ob == "permutation":
+            if xb != "permutation" or yb != "permutation":
+                return (
+                    "err:permutation output requires permutation × permutation inputs"
+                )
+
+        elif ob == "triangular":
+            ok = frozenset({"triangular", "diagonal"})
+            if xb not in ok or yb not in ok:
+                return "err:triangular output requires both inputs to be triangular or diagonal"
+
+        # General and builder_sparse fall through to density checks
         return _imp(o, x, y)
 
     # O is a vector
@@ -198,47 +212,28 @@ def _cerr(msg: str) -> str:
     return f'@compileError("{NS}: {msg}{_TYPS})'
 
 
-def _iscomplex_cond(t: str, var: str) -> str | None:
-    """isComplex condition for matrix input `t` bound to `var`.
-    Returns None for hermitian (always OK) and any type that does not need
-    checking. `t` is always matrix-domain here: vector x vector is rejected
-    before a matrix output's guards are ever generated (see decide())."""
-    b = base(t)
-    if b in ("symmetric", "diagonal"):
-        return f"meta.isComplex(meta.Numeric({var}))"
-    return None  # hermitian, general: always structurally valid
-
-
 def comptime_guards(o: str, x: str, y: str) -> list[str]:
     """Single-line `comptime if` Zig statements to emit before the @import return."""
     ob = base(o)
     stmts: list[str] = []
 
-    # if ob == "hermitian":
-    #     cx = _iscomplex_cond(x, "X")
-    #     cy = _iscomplex_cond(y, "Y")
-    #     conds = [c for c in (cx, cy) if c is not None]
-    #     if conds:
-    #         stmts.append(
-    #             f"comptime if ({' or '.join(conds)}) "
-    #             f"{_cerr('hermitian output: symmetric and diagonal inputs must have a real element type')};"
-    #         )
-
     if ob == "triangular":
         conds: list[str] = []
-        # X, Y are always matrix-domain here (vector x vector is rejected
-        # before a matrix output's guards are generated, see decide()).
-        if base(x) == "triangular" and base(y) == "triangular":
-            conds.append("meta.uploOf(O) != meta.uploOf(X)")
-            conds.append("meta.uploOf(O) != meta.uploOf(Y)")
-        # conds.append("meta.diagOf(O) == .unit")
-        if len(conds) == 0:
-            return stmts
 
-        stmts.append(
-            f"comptime if ({' or '.join(conds)}) "
-            f"{_cerr('triangular operands must share uplo, and output must not be unit-diagonal')};"
-        )
+        # Enforce that uplo matches for any triangular inputs
+        if base(x) == "triangular":
+            conds.append("meta.uploOf(O) != meta.uploOf(X)")
+        if base(y) == "triangular":
+            conds.append("meta.uploOf(O) != meta.uploOf(Y)")
+
+        # Prevent unit-diagonal assumptions
+        conds.append("meta.diagOf(O) == .unit")
+
+        if conds:
+            stmts.append(
+                f"comptime if ({' or '.join(conds)}) "
+                f"{_cerr('triangular operands must share uplo, and output must not be unit-diagonal')};"
+            )
 
     return stmts
 

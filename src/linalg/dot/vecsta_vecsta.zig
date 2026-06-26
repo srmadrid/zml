@@ -11,11 +11,11 @@ pub fn dot(x: anytype, y: anytype) linalg.Dot(@TypeOf(x), @TypeOf(y)) {
     var sum = numeric.zero(meta.Accumulator(R));
 
     inline for (0..X.len) |i| {
-        // sum += x[i] * y[i]
+        // sum += x[i] * conj(y[i])
         numeric.fmaInto(
             &sum,
             x.data[i],
-            y.data[i],
+            numeric.conj(y.data[i]),
             sum,
         );
     }

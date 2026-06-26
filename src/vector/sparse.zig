@@ -52,13 +52,12 @@ pub fn Sparse(N: type) type {
         /// ## Errors
         /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
         /// * `vector.Error.ZeroLength`: If `len` is zero.
-        /// * `vector.Error.DimensionMismatch`: If `nnz` is zero or greater than
-        ///   `len`.
+        /// * `vector.Error.DimensionMismatch`: If `nnz` is greater than `len`.
         pub fn init(allocator: std.mem.Allocator, len: usize, nnz: usize) !vector.Sparse(N) {
             if (len == 0)
                 return vector.Error.ZeroLength;
 
-            if (nnz == 0 or nnz > len)
+            if (nnz > len)
                 return vector.Error.DimensionMismatch;
 
             const data: []N = try allocator.alloc(N, nnz);

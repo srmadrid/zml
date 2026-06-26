@@ -67,7 +67,7 @@ pub fn Sparse(N: type) type {
         /// ## Errors
         /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
         /// * `matrix.Error.ZeroDimension`: If either `rows` or `cols` is zero.
-        /// * `matrix.Error.DimensionMismatch`: If `nnz` is zero or greater than
+        /// * `matrix.Error.DimensionMismatch`: If `nnz` is greater than
         ///   `rows * cols`.
         pub fn init(allocator: std.mem.Allocator, rows: usize, cols: usize, nnz: usize) !matrix.builder.Sparse(N) {
             if (rows == 0 or cols == 0)

@@ -8,6 +8,7 @@ const numeric = @import("../../numeric.zig");
 const matrix = @import("../../matrix.zig");
 
 const matops = @import("../ops.zig");
+const matutils = @import("../utils.zig");
 
 pub fn Apply2(comptime X: type, comptime Y: type, comptime op: anytype) type {
     const Op = @TypeOf(op);
@@ -519,22 +520,20 @@ pub fn apply2Into(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) 
             return matrix.Error.DimensionMismatch;
     }
 
-    if (comptime meta.isSparseMatrix(O)) {
+    if (comptime meta.isSparseMatrix(O) and !meta.isDiagonalMatrix(O) and !meta.isPermutationMatrix(O)) {
         if (comptime (meta.isStaticMatrix(X) and !meta.isDiagonalMatrix(X) and !meta.isPermutationMatrix(X)) or meta.isDenseMatrix(X) or
             (meta.isStaticMatrix(Y) and !meta.isDiagonalMatrix(Y) and !meta.isPermutationMatrix(Y)) or meta.isDenseMatrix(Y))
-            @compileError("zsl.matrix.apply2Into: o cannot point to a sparse maatrix if the result is static or dense, got\n\to: *" ++
+            @compileError("zsl.matrix.apply2Into: o cannot point to a sparse matrix if the result is static or dense, got\n\to: *" ++
                 @typeName(O) ++ "x: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\topInto: " ++ @typeName(OpInto) ++ "\n");
 
-        if (comptime !meta.isDiagonalMatrix(O) and !meta.isPermutationMatrix(O)) {
-            const nnz = apply2NNZ(O, o_rows, o_cols, x, y);
+        const nnz = apply2NNZ(O, o_rows, o_cols, x, y);
 
-            if (comptime meta.isBuilderMatrix(O)) {
-                if (o._dlen < nnz or o._rlen < nnz or o._clen < nnz)
-                    return matrix.Error.InsufficientSpace;
-            } else {
-                if (o._dlen < nnz or o._ilen < nnz)
-                    return matrix.Error.InsufficientSpace;
-            }
+        if (comptime meta.isBuilderMatrix(O)) {
+            if (o._dlen < nnz or o._rlen < nnz or o._clen < nnz)
+                return matrix.Error.InsufficientSpace;
+        } else {
+            if (o._dlen < nnz or o._ilen < nnz)
+                return matrix.Error.InsufficientSpace;
         }
     }
 
@@ -3702,71 +3701,7 @@ pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: 
     }
 }
 
-/// Determines whether a matrix type utilizes compressed pointer-and-index
-/// storage (CSR or CSC).
-fn isCompressed(comptime M: type) bool {
-    return comptime switch (meta.matrixType(M)) {
-        .general_sparse, .symmetric_sparse, .hermitian_sparse, .triangular_sparse => true,
-        else => false,
-    };
-}
-
-/// Evaluates whether a triangular matrix type implicitly represents a unit
-/// diagonal.
-fn hasImplicitDiag(comptime M: type) bool {
-    return comptime meta.matrixType(M) == .triangular_sparse and meta.diagOf(M) == .unit;
-}
-
-/// Assesses whether a symmetric or Hermitian operand requires its implicit
-/// off-diagonal mirror materialized to satisfy the structure of `O`.
-fn needsMirror(comptime O: type, comptime M: type) bool {
-    const mt = comptime meta.matrixType(M);
-    if (comptime mt != .symmetric_sparse and mt != .hermitian_sparse)
-        return false;
-
-    return comptime meta.matrixType(O) == .general_sparse;
-}
-
-/// Performs an O(log K) binary search within a compressed storage line to
-/// verify the existence of an explicit coordinate.
-fn hasExplicit(m: anytype, row: usize, col: usize) bool {
-    const M = @TypeOf(m);
-
-    const row_major = comptime meta.layoutOf(M) == .row_major;
-    const line = if (row_major) row else col;
-    const target = if (row_major) col else row;
-
-    var lo: usize = m.ptr[line];
-    var hi: usize = m.ptr[line + 1];
-    while (lo < hi) {
-        const mid = lo + (hi - lo) / 2;
-        if (m.idx[mid] == target) return true;
-        if (m.idx[mid] < target) lo = mid + 1 else hi = mid;
-    }
-
-    return false;
-}
-
-/// Evaluates whether a matrix instance contains a mathematical non-zero at
-/// `(row, col)`, accounting for its specific storage layout and implicit
-/// properties.
-fn hasNZ(m: anytype, row: usize, col: usize) bool {
-    const M = @TypeOf(m);
-
-    return switch (comptime meta.matrixType(M)) {
-        .diagonal_static, .diagonal_sparse => row == col,
-        .permutation_static, .permutation_sparse => switch (comptime M.direction) {
-            .forward => m.idx[row] == col,
-            .backward => m.idx[col] == row,
-        },
-        .general_sparse => hasExplicit(m, row, col),
-        .symmetric_sparse, .hermitian_sparse => hasExplicit(m, row, col) or hasExplicit(m, col, row),
-        .triangular_sparse => ((comptime meta.diagOf(M) == .unit) and row == col) or hasExplicit(m, row, col),
-        else => @compileError("apply2NNZ: unsupported matrix kind for " ++ @typeName(M)),
-    };
-}
-
-/// Derives the non-zero capacity of a trivial matrix (Diagonal or Permutation)
+/// Derives the non-zero capacity of a trivial matrix (diagonal or permutation)
 /// bounded by the target output dimensions.
 fn trivialCount(t: anytype, o_rows: usize, o_cols: usize) usize {
     return switch (comptime meta.matrixType(@TypeOf(t))) {
@@ -3781,9 +3716,9 @@ fn trivialCount(t: anytype, o_rows: usize, o_cols: usize) usize {
 fn ownCount(comptime O: type, o_rows: usize, o_cols: usize, m: anytype) usize {
     const M = @TypeOf(m);
 
-    if (comptime !needsMirror(O, M)) {
+    if (comptime !matutils.needsMirror(O, M)) {
         var total: usize = m.nnz;
-        if (hasImplicitDiag(M)) total += int.min(o_rows, o_cols);
+        if (matutils.hasImplicitDiag(M)) total += int.min(o_rows, o_cols);
         return total;
     }
 
@@ -3808,7 +3743,9 @@ fn ownCount(comptime O: type, o_rows: usize, o_cols: usize, m: anytype) usize {
 /// Calculates the effective non-zero contribution of a single matrix operand
 /// when projected into the target output structure `O`.
 fn singleOperandCount(comptime O: type, o_rows: usize, o_cols: usize, m: anytype) usize {
-    if (comptime isCompressed(@TypeOf(m))) return ownCount(O, o_rows, o_cols, m);
+    if (comptime matutils.isCompressed(@TypeOf(m)))
+        return ownCount(O, o_rows, o_cols, m);
+
     return trivialCount(m, o_rows, o_cols);
 }
 
@@ -3864,14 +3801,14 @@ fn mergeCount(o_rows: usize, o_cols: usize, x: anytype, y: anytype) usize {
             .idx = x.idx,
             .p = x.ptr[line],
             .end = x.ptr[line + 1],
-            .diag = if (comptime hasImplicitDiag(X)) (if (line < other_dim) line else null) else null,
+            .diag = if (comptime matutils.hasImplicitDiag(X)) (if (line < other_dim) line else null) else null,
         };
 
         var cy = LineCursor{
             .idx = y.idx,
             .p = y.ptr[line],
             .end = y.ptr[line + 1],
-            .diag = if (comptime hasImplicitDiag(Y)) (if (line < other_dim) line else null) else null,
+            .diag = if (comptime matutils.hasImplicitDiag(Y)) (if (line < other_dim) line else null) else null,
         };
 
         while (true) {
@@ -3903,7 +3840,7 @@ fn compressedTrivialCount(comptime O: type, o_rows: usize, o_cols: usize, c: any
     const row_major = comptime meta.layoutOf(C) == .row_major;
     const lines: usize = if (row_major) o_rows else o_cols;
     const other_dim: usize = if (row_major) o_cols else o_rows;
-    const c_diag = comptime hasImplicitDiag(C);
+    const c_diag = comptime matutils.hasImplicitDiag(C);
 
     var own: usize = c.nnz;
     if (c_diag) own += int.min(o_rows, o_cols);
@@ -3917,14 +3854,14 @@ fn compressedTrivialCount(comptime O: type, o_rows: usize, o_cols: usize, c: any
             const other = c.idx[p];
             const row = if (row_major) line else other;
             const col = if (row_major) other else line;
-            if (hasNZ(t, row, col)) inter += 1;
-            if ((comptime needsMirror(O, C)) and row != col) {
+            if (matutils.hasNZ(t, row, col)) inter += 1;
+            if ((comptime matutils.needsMirror(O, C)) and row != col) {
                 own += 1;
-                if (hasNZ(t, col, row)) inter += 1;
+                if (matutils.hasNZ(t, col, row)) inter += 1;
             }
         }
 
-        if (c_diag and line < other_dim and hasNZ(t, line, line)) inter += 1;
+        if (c_diag and line < other_dim and matutils.hasNZ(t, line, line)) inter += 1;
     }
 
     return own + trivialCount(t, o_rows, o_cols) - inter;
@@ -3940,7 +3877,7 @@ fn trivialIntersect(o_rows: usize, o_cols: usize, small: anytype, big: anytype) 
             const n = int.min(o_rows, o_cols);
             var i: usize = 0;
             while (i < n) : (i += 1) {
-                if (hasNZ(big, i, i)) inter += 1;
+                if (matutils.hasNZ(big, i, i)) inter += 1;
             }
         },
         .permutation_static, .permutation_sparse => {
@@ -3948,7 +3885,7 @@ fn trivialIntersect(o_rows: usize, o_cols: usize, small: anytype, big: anytype) 
             while (i < o_rows) : (i += 1) {
                 const row = if (S.direction == .forward) i else small.idx[i];
                 const col = if (S.direction == .forward) small.idx[i] else i;
-                if (hasNZ(big, row, col)) inter += 1;
+                if (matutils.hasNZ(big, row, col)) inter += 1;
             }
         },
         else => unreachable,
@@ -3973,8 +3910,8 @@ fn visitCompressedPositions(comptime O: type, o_rows: usize, o_cols: usize, m: a
     const row_major = comptime meta.layoutOf(M) == .row_major;
     const lines: usize = if (row_major) o_rows else o_cols;
     const other_dim: usize = if (row_major) o_cols else o_rows;
-    const mirrored = comptime needsMirror(O, M);
-    const m_diag = comptime hasImplicitDiag(M);
+    const mirrored = comptime matutils.needsMirror(O, M);
+    const m_diag = comptime matutils.hasImplicitDiag(M);
 
     var line: usize = 0;
     while (line < lines) : (line += 1) {
@@ -3999,7 +3936,7 @@ fn intersectCompressed(comptime O: type, o_rows: usize, o_cols: usize, small: an
     var ctx = Ctx{ .big = big, .n = 0 };
     visitCompressedPositions(O, o_rows, o_cols, small, struct {
         fn cb(ctxp: *Ctx, row: usize, col: usize) void {
-            if (hasNZ(ctxp.big, row, col)) ctxp.n += 1;
+            if (matutils.hasNZ(ctxp.big, row, col)) ctxp.n += 1;
         }
     }.cb, &ctx);
     return ctx.n;
@@ -4023,11 +3960,11 @@ fn apply2NNZ(comptime O: type, o_rows: usize, o_cols: usize, x: anytype, y: anyt
     if (comptime meta.isNumeric(X)) return singleOperandCount(O, o_rows, o_cols, y);
     if (comptime meta.isNumeric(Y)) return singleOperandCount(O, o_rows, o_cols, x);
 
-    const x_compressed = comptime isCompressed(X);
-    const y_compressed = comptime isCompressed(Y);
+    const x_compressed = comptime matutils.isCompressed(X);
+    const y_compressed = comptime matutils.isCompressed(Y);
 
     if (comptime x_compressed and y_compressed) {
-        if (comptime meta.layoutOf(X) == meta.layoutOf(Y) and !needsMirror(O, X) and !needsMirror(O, Y))
+        if (comptime meta.layoutOf(X) == meta.layoutOf(Y) and !matutils.needsMirror(O, X) and !matutils.needsMirror(O, Y))
             return mergeCount(o_rows, o_cols, x, y);
 
         return inclusionExclusionCount(O, o_rows, o_cols, x, y);

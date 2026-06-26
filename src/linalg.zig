@@ -21,6 +21,12 @@ pub const normalize = @import("linalg/normalize.zig").normalize;
 pub const normalizeAlloc = @import("linalg/normalize.zig").normalizeAlloc;
 pub const normalizeInto = @import("linalg/normalize.zig").normalizeInto;
 
+// distance (with norm order)
+
+// project(x, y): ((x ⋅ y)/(y ⋅ y)) * y
+
+// reject(x, y): x - project(x, y)
+
 // Vector/matrix operations
 pub const Norm = @import("linalg/norm.zig").Norm;
 pub const NormOrder = @import("linalg/norm.zig").NormOrder;
@@ -32,6 +38,9 @@ pub const Matmul = @import("linalg/matmul.zig").Matmul;
 pub const matmul = @import("linalg/matmul.zig").matmul;
 pub const matmulAlloc = @import("linalg/matmul.zig").matmulAlloc;
 pub const matmulInto = @import("linalg/matmul.zig").matmulInto;
+pub const matmulIntoUnchecked = @import("linalg/matmul.zig").matmulIntoUnchecked;
+
+// hadamard (also for vectors)
 
 // solve (with SolveMethod, to choose decomposition, and optional out parameter to save it)
 // Allow vector and matrix rhs
@@ -105,7 +114,7 @@ pub const matmulInto = @import("linalg/matmul.zig").matmulInto;
 
 // einsum
 
-// tensorProduct (generalization of the outer product, A (shape i, j) ⊗ B (shape k, l) gives (shape i, j, k, l))
+// tensor (tensor product, generalization of the outer product, A (shape i, j) ⊗ B (shape k, l) gives (shape i, j, k, l))
 
 // Move to blas?
 pub const Transpose = enum(u2) {

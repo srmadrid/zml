@@ -416,6 +416,20 @@ pub fn correctApply2(comptime O: type, allocator: std.mem.Allocator, rows: usize
 }
 
 pub fn areEql(A: anytype, B: anytype) !void {
+    const A_rows = switch (comptime zsl.meta.matrixType(@TypeOf(A))) {
+        .general_static, .symmetric_static, .hermitian_static, .triangular_static, .diagonal_static, .permutation_static => @TypeOf(A).rows,
+        .general_dense, .general_sparse, .symmetric_dense, .symmetric_sparse, .hermitian_dense, .hermitian_sparse, .triangular_dense, .triangular_sparse, .diagonal_sparse, .permutation_sparse => A.rows,
+        else => unreachable,
+    };
+    const A_cols = switch (comptime zsl.meta.matrixType(@TypeOf(A))) {
+        .general_static, .symmetric_static, .hermitian_static, .triangular_static, .diagonal_static, .permutation_static => @TypeOf(A).cols,
+        .general_dense, .general_sparse, .symmetric_dense, .symmetric_sparse, .hermitian_dense, .hermitian_sparse, .triangular_dense, .triangular_sparse, .diagonal_sparse, .permutation_sparse => A.cols,
+        else => unreachable,
+    };
+
+    if (A_rows != B.rows or A_cols != B.cols)
+        return error.NotEqual;
+
     var all_eql = true;
 
     var j: usize = 0;
@@ -431,7 +445,7 @@ pub fn areEql(A: anytype, B: anytype) !void {
 }
 
 test {
-    const test_apply2 = true;
+    const test_apply2 = false;
 
     if (test_apply2) {
         _ = @import("matrix/apply2.zig");

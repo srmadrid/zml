@@ -85,6 +85,7 @@ test {
     }
 
     if (test_matmul) {
+        _ = @import("linalg/matmul.zig");
         _ = @import("linalg/matmulAlloc.zig");
     }
 }

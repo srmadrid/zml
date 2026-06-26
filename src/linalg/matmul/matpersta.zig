@@ -1,6 +1,6 @@
 const meta = @import("../../meta.zig");
 
-pub fn matmulInto(o: anytype, x: anytype, y: anytype) void {
+pub fn matmulIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
     const O = meta.Child(@TypeOf(o));
     const X = @TypeOf(x);
     const Y = @TypeOf(y);
@@ -10,46 +10,46 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) void {
             .forward => switch (comptime Y.direction) {
                 .forward => {
                     inline for (0..O.rows) |i| {
-                        o.data[i] = y.data[x.data[i]];
+                        o.idx[i] = y.idx[x.idx[i]];
                     }
                 },
                 .backward => {
                     inline for (0..O.rows) |j| {
-                        o.data[y.data[j]] = j;
+                        o.idx[y.idx[j]] = j;
                     }
 
                     const MSB: usize = @as(usize, 1) << (@bitSizeOf(usize) - 1);
 
                     inline for (0..O.rows) |i| {
-                        if ((o.data[i] & MSB) == 0) {
-                            const temp = o.data[i];
+                        if ((o.idx[i] & MSB) == 0) {
+                            const temp = o.idx[i];
                             var curr = i;
-                            var next = x.data[curr];
+                            var next = x.idx[curr];
 
                             while (next != i) {
-                                o.data[curr] = o.data[next] | MSB;
+                                o.idx[curr] = o.idx[next] | MSB;
                                 curr = next;
-                                next = x.data[curr];
+                                next = x.idx[curr];
                             }
 
-                            o.data[curr] = temp | MSB;
+                            o.idx[curr] = temp | MSB;
                         }
                     }
 
                     inline for (0..O.rows) |i| {
-                        o.data[i] &= ~MSB;
+                        o.idx[i] &= ~MSB;
                     }
                 },
             },
             .backward => switch (comptime Y.direction) {
                 .forward => {
                     inline for (0..O.rows) |i| {
-                        o.data[x.data[i]] = y.data[i];
+                        o.idx[x.idx[i]] = y.idx[i];
                     }
                 },
                 .backward => {
                     inline for (0..O.rows) |j| {
-                        o.data[x.data[y.data[j]]] = j;
+                        o.idx[x.idx[y.idx[j]]] = j;
                     }
                 },
             },
@@ -58,46 +58,46 @@ pub fn matmulInto(o: anytype, x: anytype, y: anytype) void {
             .forward => switch (comptime Y.direction) {
                 .forward => {
                     inline for (0..O.rows) |i| {
-                        o.data[y.data[x.data[i]]] = i;
+                        o.idx[y.idx[x.idx[i]]] = i;
                     }
                 },
                 .backward => {
                     inline for (0..O.rows) |i| {
-                        o.data[x.data[i]] = i;
+                        o.idx[x.idx[i]] = i;
                     }
 
                     const MSB: usize = @as(usize, 1) << (@bitSizeOf(usize) - 1);
 
                     inline for (0..O.rows) |j| {
-                        if ((o.data[j] & MSB) == 0) {
-                            const temp = o.data[j];
+                        if ((o.idx[j] & MSB) == 0) {
+                            const temp = o.idx[j];
                             var curr = j;
-                            var next = y.data[curr];
+                            var next = y.idx[curr];
 
                             while (next != j) {
-                                o.data[curr] = o.data[next] | MSB;
+                                o.idx[curr] = o.idx[next] | MSB;
                                 curr = next;
-                                next = y.data[curr];
+                                next = y.idx[curr];
                             }
 
-                            o.data[curr] = temp | MSB;
+                            o.idx[curr] = temp | MSB;
                         }
                     }
 
                     inline for (0..O.rows) |j| {
-                        o.data[j] &= ~MSB;
+                        o.idx[j] &= ~MSB;
                     }
                 },
             },
             .backward => switch (comptime Y.direction) {
                 .forward => {
                     inline for (0..O.rows) |i| {
-                        o.data[y.data[i]] = x.data[i];
+                        o.idx[y.idx[i]] = x.idx[i];
                     }
                 },
                 .backward => {
                     inline for (0..O.rows) |j| {
-                        o.data[j] = x.data[y.data[j]];
+                        o.idx[j] = x.idx[y.idx[j]];
                     }
                 },
             },

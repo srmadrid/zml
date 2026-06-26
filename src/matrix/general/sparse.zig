@@ -66,13 +66,13 @@ pub fn Sparse(N: type, layout: matrix.Layout) type {
         /// ## Errors
         /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
         /// * `matrix.Error.ZeroDimension`: If either `rows` or `cols` is zero.
-        /// * `matrix.Error.DimensionMismatch`: If `nnz` is zero or greater than
+        /// * `matrix.Error.DimensionMismatch`: If `nnz` is greater than
         ///   `rows * cols`.
         pub fn init(allocator: std.mem.Allocator, rows: usize, cols: usize, nnz: usize) !matrix.general.Sparse(N, layout) {
             if (rows == 0 or cols == 0)
                 return matrix.Error.ZeroDimension;
 
-            if (nnz == 0 or nnz > rows * cols)
+            if (nnz > rows * cols)
                 return matrix.Error.DimensionMismatch;
 
             const data: []N = try allocator.alloc(N, nnz);

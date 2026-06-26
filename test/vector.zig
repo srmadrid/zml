@@ -84,6 +84,15 @@ pub fn correctApply2(comptime O: type, allocator: std.mem.Allocator, len: usize,
 }
 
 pub fn areEql(u: anytype, v: anytype) !void {
+    const u_len = switch (comptime zsl.meta.vectorType(@TypeOf(u))) {
+        .static => @TypeOf(u).len,
+        .dense, .sparse => u.len,
+        else => unreachable,
+    };
+
+    if (u_len != v.len)
+        return error.NotEqual;
+
     var all_eql = true;
 
     var i: usize = 0;

@@ -3,34 +3,12 @@ const numeric = @import("../../numeric.zig");
 const int = @import("../../int.zig");
 const linalg = @import("../../linalg.zig");
 
-pub fn matmulInto(o: anytype, x: anytype, y: anytype) !void {
+pub fn matmulIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
     const O: type = meta.Child(@TypeOf(x));
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
     const x_cols = if (comptime meta.isStaticMatrix(X)) X.cols else x.cols;
-
-    const x_nnz = switch (comptime meta.matrixKind(X)) {
-        .general => x.nnz,
-        .symmetric, .hermitian => 2 * x.nnz,
-        .triangular => if (comptime meta.diagOf(X).? == .non_unit) x.nnz else x.nnz + int.min(o.rows, o.cols),
-        .diagonal, .permutation => int.min(o.rows, o.cols),
-        .builder => unreachable,
-        .numeric => 0,
-    };
-
-    const y_nnz = switch (comptime meta.matrixKind(Y)) {
-        .general => y.nnz,
-        .symmetric, .hermitian => 2 * y.nnz,
-        .triangular => if (comptime meta.diagOf(Y).? == .non_unit) y.nnz else y.nnz + int.min(o.rows, o.cols),
-        .diagonal, .permutation => int.min(o.rows, o.cols),
-        .builder => unreachable,
-        .numeric => 0,
-    };
-
-    if (o._dlen < int.min(o.rows * o.cols, x_nnz * y_nnz) or
-        o._ilen < int.min(o.rows * o.cols, x_nnz * y_nnz))
-        return linalg.Error.InsufficientSpace;
 
     var nnz: usize = 0;
 

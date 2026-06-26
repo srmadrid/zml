@@ -2,7 +2,7 @@ const meta = @import("../../meta.zig");
 const int = @import("../../int.zig");
 const numeric = @import("../../numeric.zig");
 
-pub fn matmulInto(o: anytype, x: anytype, y: anytype) void {
+pub fn matmulIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
     const O: type = meta.Child(@TypeOf(o));
     const X: type = @TypeOf(x);
 
