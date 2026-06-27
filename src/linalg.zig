@@ -4,7 +4,7 @@ const int = @import("int.zig");
 
 pub const cblas = @import("linalg/cblas.zig");
 pub const blas = @import("linalg/blas.zig");
-// pub const lapacke = @import("linalg/lapacke.zig");
+pub const lapacke = @import("linalg/lapacke.zig");
 // pub const lapack = @import("linalg/lapack.zig");
 
 // Vector operations

@@ -19,9 +19,6 @@ const linalg = @import("../../../linalg.zig");
 /// for `i in 0..n`. `c` is a real numeric, but `s` may be either a real or a
 /// complex numeric.
 ///
-/// If the `link_cblas` option is not `null`, the function will try to call the
-/// corresponding CBLAS function.
-///
 /// ## Signature
 /// ```zig
 /// linalg.blas.rot(n: usize, x: [*]X, incx: isize, y: [*]Y, incy: isize, c: C, s: S) !void
