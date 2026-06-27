@@ -177,15 +177,7 @@ pub fn Sparse(N: type) type {
             if (index >= self.len)
                 return vector.Error.PositionOutOfBounds;
 
-            var i: usize = 0;
-            while (i < self.nnz) : (i += 1) {
-                if (self.idx[i] == index)
-                    return self.data[i]
-                else if (self.idx[i] > index)
-                    break;
-            }
-
-            return numeric.zero(N);
+            return self.getAssumeInBounds(index);
         }
 
         /// Gets the element at the specified index without bounds checking.
@@ -202,7 +194,7 @@ pub fn Sparse(N: type) type {
             var i: usize = 0;
             while (i < self.nnz) : (i += 1) {
                 if (self.idx[i] == index)
-                    return self.data[i]
+                    return if (self.flags.noconj) self.data[i] else numeric.conj(self.data[i])
                 else if (self.idx[i] > index)
                     break;
             }
@@ -238,7 +230,7 @@ pub fn Sparse(N: type) type {
             var i: usize = 0;
             while (i < self.nnz) : (i += 1) {
                 if (self.idx[i] == index) {
-                    self.data[i] = value;
+                    self.data[i] = if (self.flags.noconj) value else numeric.conj(value);
 
                     return;
                 } else if (self.idx[i] > index) {
@@ -265,7 +257,7 @@ pub fn Sparse(N: type) type {
                 self.idx[j] = self.idx[j - 1];
             }
 
-            self.data[i] = value;
+            self.data[i] = if (self.flags.noconj) value else numeric.conj(value);
             self.idx[i] = index;
             self.nnz += 1;
         }
@@ -288,7 +280,7 @@ pub fn Sparse(N: type) type {
             var i: usize = 0;
             while (i < self.nnz) : (i += 1) {
                 if (self.idx[i] == index) {
-                    self.data[i] = value;
+                    self.data[i] = if (self.flags.noconj) value else numeric.conj(value);
                     return;
                 } else if (self.idx[i] > index) {
                     break;
@@ -302,7 +294,7 @@ pub fn Sparse(N: type) type {
                 self.idx[j] = self.idx[j - 1];
             }
 
-            self.data[i] = value;
+            self.data[i] = if (self.flags.noconj) value else numeric.conj(value);
             self.idx[i] = index;
             self.nnz += 1;
         }
@@ -334,7 +326,14 @@ pub fn Sparse(N: type) type {
             var i: usize = 0;
             while (i < self.nnz) : (i += 1) {
                 if (self.idx[i] == index) {
-                    numeric.addInto(&self.data[i], self.data[i], value);
+                    numeric.addInto(
+                        &self.data[i],
+                        self.data[i],
+                        if (self.flags.noconj)
+                            value
+                        else
+                            numeric.conj(value),
+                    );
 
                     return;
                 } else if (self.idx[i] > index) {
@@ -344,7 +343,7 @@ pub fn Sparse(N: type) type {
 
             if (self.nnz == self._dlen or self.nnz == self._ilen) {
                 if (!self.flags.owns_data)
-                    return;
+                    return vector.Error.DataNotOwned;
 
                 // Need more space
                 var new_nnz = if (self.nnz * 2 > self.len) self.len else self.nnz * 2;
@@ -361,7 +360,7 @@ pub fn Sparse(N: type) type {
                 self.idx[j] = self.idx[j - 1];
             }
 
-            self.data[i] = value;
+            self.data[i] = if (self.flags.noconj) value else numeric.conj(value);
             self.idx[i] = index;
             self.nnz += 1;
         }

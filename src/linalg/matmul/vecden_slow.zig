@@ -23,6 +23,11 @@ pub fn matmulIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
             }
 
             numeric.set(&o.data[o._index(j)], sum);
+
+            if (o.flags.noconj)
+                numeric.set(&o.data[o._index(j)], sum)
+            else
+                numeric.conjInto(&o.data[o._index(j)], sum);
         }
     } else {
         const x_cols = if (comptime meta.isStaticMatrix(X)) X.cols else x.cols;
@@ -42,6 +47,11 @@ pub fn matmulIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
             }
 
             numeric.set(&o.data[o._index(i)], sum);
+
+            if (o.flags.noconj)
+                numeric.set(&o.data[o._index(i)], sum)
+            else
+                numeric.conjInto(&o.data[o._index(i)], sum);
         }
     }
 }

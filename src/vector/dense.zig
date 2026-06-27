@@ -184,7 +184,7 @@ pub fn Dense(N: type) type {
             if (index >= self.len)
                 return vector.Error.PositionOutOfBounds;
 
-            return self.data[self._index(index)];
+            return self.getAssumeInBounds(index);
         }
 
         /// Gets the element at the specified index without bounds checking.
@@ -197,7 +197,10 @@ pub fn Dense(N: type) type {
         /// ## Returns
         /// `N`: The element at the specified index.
         pub fn getAssumeInBounds(self: vector.Dense(N), index: usize) N {
-            return self.data[self._index(index)];
+            return if (self.flags.noconj)
+                self.data[self._index(index)]
+            else
+                numeric.conj(self.data[self._index(index)]);
         }
 
         /// Sets the element at the specified index.
@@ -217,7 +220,7 @@ pub fn Dense(N: type) type {
             if (index >= self.len)
                 return vector.Error.PositionOutOfBounds;
 
-            self.data[self._index(index)] = value;
+            return self.setAssumeInBounds(index, value);
         }
 
         /// Sets the element at the specified index without bounds checking.
@@ -232,7 +235,7 @@ pub fn Dense(N: type) type {
         /// ## Returns
         /// `void`
         pub fn setAssumeInBounds(self: *vector.Dense(N), index: usize, value: N) void {
-            self.data[self._index(index)] = value;
+            self.data[self._index(index)] = if (self.flags.noconj) value else numeric.conj(value);
         }
 
         /// Creates a copy of the vector.
@@ -248,11 +251,11 @@ pub fn Dense(N: type) type {
         /// ## Errors
         /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
         pub fn clone(self: vector.Dense(N), allocator: std.mem.Allocator) !vector.Dense(N) {
-            const vec: vector.Dense(N) = try .init(allocator, self.len);
+            var vec: vector.Dense(N) = try .init(allocator, self.len);
 
             var i: usize = 0;
             while (i < vec.len) : (i += 1) {
-                vec.data[i] = self.data[self._index(i)];
+                vec.data[i] = self.getAssumeInBounds(i);
             }
 
             return vec;
@@ -275,7 +278,7 @@ pub fn Dense(N: type) type {
         ///   greater than the length of the vector.
         ///*  `vector.Error.NonContiguousData`: If the vector data is not
         ///   contiguous (`inc != 1`).
-        pub fn asDiagonal(self: vector.Dense(N), rows: usize, cols: usize) !matrix.Diagonal(N) {
+        pub fn asDiagonal(self: vector.Dense(N), rows: usize, cols: usize) !matrix.diagonal.Sparse(N) {
             if (rows == 0 or cols == 0)
                 return matrix.Error.ZeroDimension;
 
@@ -289,7 +292,7 @@ pub fn Dense(N: type) type {
                 .data = self.data,
                 .rows = rows,
                 .cols = cols,
-                .flags = .{ .owns_data = false },
+                .flags = .{ .owns_data = false, .noconj = self.flags.noconj },
             };
         }
 

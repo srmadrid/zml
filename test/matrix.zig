@@ -134,6 +134,7 @@ pub fn randomMatrix(comptime M: type, allocator: std.mem.Allocator, rand: std.Ra
         },
         .general_dense => {
             var result: M = try .init(allocator, rows, cols);
+            result.flags.noconj = rand.boolean();
 
             var i: usize = 0;
             while (i < rows) : (i += 1) {
@@ -150,8 +151,11 @@ pub fn randomMatrix(comptime M: type, allocator: std.mem.Allocator, rand: std.Ra
             return result;
         },
         .general_sparse => {
-            if (nnz == rows * cols)
-                return M.init(allocator, rows, cols, nnz);
+            if (nnz == rows * cols) {
+                var result: M = try .init(allocator, rows, cols, nnz);
+                result.flags.noconj = rand.boolean();
+                return result;
+            }
 
             var builder: zsl.matrix.builder.Sparse(zsl.meta.Numeric(M)) = try .init(allocator, rows, cols, nnz);
             errdefer builder.deinit(allocator);
@@ -165,7 +169,9 @@ pub fn randomMatrix(comptime M: type, allocator: std.mem.Allocator, rand: std.Ra
                 );
             }
 
-            return builder.compile(allocator, M);
+            var result = try builder.compile(allocator, M);
+            result.flags.noconj = rand.boolean();
+            return result;
         },
         .symmetric_static, .hermitian_static => {
             var result: M = .init;
@@ -190,6 +196,7 @@ pub fn randomMatrix(comptime M: type, allocator: std.mem.Allocator, rand: std.Ra
         },
         .symmetric_dense, .hermitian_dense => {
             var result: M = try .init(allocator, rows);
+            result.flags.noconj = rand.boolean();
 
             var i: usize = 0;
             while (i < rows) : (i += 1) {
@@ -212,8 +219,11 @@ pub fn randomMatrix(comptime M: type, allocator: std.mem.Allocator, rand: std.Ra
             return result;
         },
         .symmetric_sparse, .hermitian_sparse => {
-            if (nnz == rows * cols)
-                return M.init(allocator, rows, nnz);
+            if (nnz == rows * cols) {
+                var result: M = try .init(allocator, rows, nnz);
+                result.flags.noconj = rand.boolean();
+                return result;
+            }
 
             var builder: zsl.matrix.builder.Sparse(zsl.meta.Numeric(M)) = try .init(allocator, rows, rows, nnz);
             errdefer builder.deinit(allocator);
@@ -236,7 +246,9 @@ pub fn randomMatrix(comptime M: type, allocator: std.mem.Allocator, rand: std.Ra
                 );
             }
 
-            return builder.compile(allocator, M);
+            var result = try builder.compile(allocator, M);
+            result.flags.noconj = rand.boolean();
+            return result;
         },
         .triangular_static => {
             var result: M = .init;
@@ -283,6 +295,7 @@ pub fn randomMatrix(comptime M: type, allocator: std.mem.Allocator, rand: std.Ra
         },
         .triangular_dense => {
             var result: M = try M.init(allocator, rows, cols);
+            result.flags.noconj = rand.boolean();
 
             if (comptime zsl.meta.uploOf(M) == .upper) {
                 var i: usize = 0;
@@ -329,8 +342,11 @@ pub fn randomMatrix(comptime M: type, allocator: std.mem.Allocator, rand: std.Ra
             return result;
         },
         .triangular_sparse => {
-            if (nnz == rows * cols)
-                return M.init(allocator, rows, cols, nnz);
+            if (nnz == rows * cols) {
+                var result: M = try .init(allocator, rows, cols, nnz);
+                result.flags.noconj = rand.boolean();
+                return result;
+            }
 
             var builder: zsl.matrix.builder.Sparse(zsl.meta.Numeric(M)) = try .init(allocator, rows, cols, nnz);
             errdefer builder.deinit(allocator);
@@ -347,7 +363,9 @@ pub fn randomMatrix(comptime M: type, allocator: std.mem.Allocator, rand: std.Ra
                 );
             }
 
-            return builder.compile(allocator, M);
+            var result = try builder.compile(allocator, M);
+            result.flags.noconj = rand.boolean();
+            return result;
         },
         .diagonal_static => {
             var result: M = .init;
@@ -365,6 +383,7 @@ pub fn randomMatrix(comptime M: type, allocator: std.mem.Allocator, rand: std.Ra
         .diagonal_sparse => {
             var result: M = try .init(allocator, rows, cols);
             errdefer result.deinit(allocator);
+            result.flags.noconj = rand.boolean();
 
             var i: usize = 0;
             while (i < zsl.int.min(rows, cols)) : (i += 1) {

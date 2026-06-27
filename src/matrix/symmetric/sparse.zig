@@ -160,7 +160,7 @@ pub fn Sparse(N: type, uplo: matrix.Uplo, layout: matrix.Layout) type {
                 const mid_idx = self.idx[mid];
 
                 if (mid_idx == minor) {
-                    return self.data[mid];
+                    return if (self.flags.noconj) self.data[mid] else numeric.conj(self.data[mid]);
                 } else if (mid_idx < minor) {
                     left = mid + 1;
                 } else {
@@ -214,7 +214,7 @@ pub fn Sparse(N: type, uplo: matrix.Uplo, layout: matrix.Layout) type {
             var right: usize = self.ptr[major + 1];
             while (left < right) {
                 const mid = left + (right - left) / 2;
-                const mid_idx = self.idx[mid];
+                const mid_idx = if (self.flags.noconj) self.data[mid] else numeric.conj(self.data[mid]);
 
                 if (mid_idx == minor) {
                     self.data[mid] = value;

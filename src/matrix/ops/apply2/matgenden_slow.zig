@@ -1,4 +1,5 @@
 const meta = @import("../../../meta.zig");
+const numeric = @import("../../../numeric.zig");
 
 pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) void {
     const X: type = @TypeOf(x);
@@ -20,6 +21,9 @@ pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: 
                     else
                         y,
                 );
+
+                if (!o.flags.noconj)
+                    numeric.conjInto(&o.data[o._index(i, j)], o.data[o._index(i, j)]);
             }
         }
     } else {
@@ -38,6 +42,9 @@ pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: 
                     else
                         y,
                 );
+
+                if (!o.flags.noconj)
+                    numeric.conjInto(&o.data[o._index(i, j)], o.data[o._index(i, j)]);
             }
         }
     }

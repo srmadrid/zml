@@ -40,6 +40,7 @@ pub fn randomVector(comptime V: type, allocator: std.mem.Allocator, rand: std.Ra
         },
         .dense => {
             var result: V = try .init(allocator, len * zsl.numeric.cast(usize, zsl.int.abs(inc)));
+            result.flags.noconj = rand.boolean();
 
             var i: usize = 0;
             while (i < result.len) : (i += 1) {
@@ -54,6 +55,7 @@ pub fn randomVector(comptime V: type, allocator: std.mem.Allocator, rand: std.Ra
         .sparse => {
             var result: V = try .init(allocator, len, nnz);
             errdefer result.deinit(allocator);
+            result.flags.noconj = rand.boolean();
 
             // generate random indices
             var count: usize = 0;

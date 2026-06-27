@@ -1,5 +1,6 @@
 const int = @import("../../../int.zig");
 const meta = @import("../../../meta.zig");
+const numeric = @import("../../../numeric.zig");
 
 pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) void {
     const X: type = @TypeOf(x);
@@ -18,5 +19,8 @@ pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: 
             else
                 y,
         );
+
+        if (!o.flags.noconj)
+            numeric.conjInto(&o.data[i], o.data[i]);
     }
 }

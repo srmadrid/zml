@@ -14,16 +14,13 @@ pub fn main(init: std.process.Init) !void {
 
     var xoshiro = std.Random.DefaultPrng.init(@bitCast(std.Io.Clock.real.now(io).toMicroseconds()));
     const prng = xoshiro.random();
-    const normal = zsl.stats.Normal(f64).init(0.0, 0.01);
+    const normal = zsl.stats.Normal(zsl.cf16).init(.{ .re = 0.0, .im = 1.0 }, .{ .re = 0.01, .im = 1.0 });
 
-    const x: zsl.matrix.general.Dense(f64, .col_major) = try .initFn(arena, 8, 6, zsl.stats.Normal(f64).sample, .{ normal, prng });
-    const y: zsl.vector.Dense(f64) = try .initFn(arena, 6, zsl.stats.Normal(f64).sample, .{ normal, prng });
-
-    const z = try zsl.linalg.matmulAlloc(arena, x, y);
+    const x: zsl.matrix.hermitian.Dense(zsl.cf16, .upper, .col_major) = try .initFn(arena, 6, zsl.stats.Normal(zsl.cf16).sample, .{ normal, prng });
 
     printMatrix("X", x);
-    printVector("Y", y);
-    printVector("Z", z);
+    printMatrix("X^T", x.transposeView());
+    printMatrix("X^H", x.adjointView());
 }
 
 pub fn blas_lv1_threshold_calibration(init: std.process.Init) !void {

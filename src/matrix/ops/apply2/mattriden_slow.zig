@@ -1,4 +1,5 @@
 const meta = @import("../../../meta.zig");
+const numeric = @import("../../../numeric.zig");
 
 const int = @import("../../../int.zig");
 
@@ -24,6 +25,9 @@ pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: 
                         else
                             y,
                     );
+
+                    if (!o.flags.noconj)
+                        numeric.conjInto(&o.data[o._index(i, j)], o.data[o._index(i, j)]);
                 }
             } else {
                 var i: usize = int.min(if (comptime meta.diagOf(O) == .non_unit) j else j + 1, o.rows);
@@ -39,6 +43,9 @@ pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: 
                         else
                             y,
                     );
+
+                    if (!o.flags.noconj)
+                        numeric.conjInto(&o.data[o._index(i, j)], o.data[o._index(i, j)]);
                 }
             }
         }
@@ -59,6 +66,9 @@ pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: 
                         else
                             y,
                     );
+
+                    if (!o.flags.noconj)
+                        numeric.conjInto(&o.data[o._index(i, j)], o.data[o._index(i, j)]);
                 }
             } else {
                 var j: usize = int.min(if (comptime meta.diagOf(O) == .non_unit) i else i + 1, o.cols);
@@ -74,6 +84,9 @@ pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: 
                         else
                             y,
                     );
+
+                    if (!o.flags.noconj)
+                        numeric.conjInto(&o.data[o._index(i, j)], o.data[o._index(i, j)]);
                 }
             }
         }

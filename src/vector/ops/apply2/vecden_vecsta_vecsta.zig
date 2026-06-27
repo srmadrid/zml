@@ -1,14 +1,41 @@
 const numeric = @import("../../../numeric.zig");
 
 pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) void {
+    return switch (o.flags.noconj) {
+        true => k_apply2IntoUnchecked(o, x, y, opInto, true),
+        false => k_apply2IntoUnchecked(o, x, y, opInto, false),
+    };
+}
+
+fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: anytype, comptime noconj_o: bool) void {
     if (o.inc == 1) {
         inline for (0..@TypeOf(x).len) |i| {
-            opInto(&o.data[i], x.data[i], y.data[i]);
+            opInto(
+                &o.data[i],
+                if (comptime noconj_o)
+                    x.data[i]
+                else
+                    numeric.conj(x.data[i]),
+                if (comptime noconj_o)
+                    y.data[i]
+                else
+                    numeric.conj(y.data[i]),
+            );
         }
     } else {
         const io: isize = if (o.inc < 0) (-numeric.cast(isize, @TypeOf(x).len) + 1) * o.inc else 0;
         inline for (0..@TypeOf(x).len) |i| {
-            opInto(&o.data[numeric.cast(usize, io + numeric.cast(isize, i) * o.inc)], x.data[i], y.data[i]);
+            opInto(
+                &o.data[numeric.cast(usize, io + numeric.cast(isize, i) * o.inc)],
+                if (comptime noconj_o)
+                    x.data[i]
+                else
+                    numeric.conj(x.data[i]),
+                if (comptime noconj_o)
+                    y.data[i]
+                else
+                    numeric.conj(y.data[i]),
+            );
         }
     }
 }

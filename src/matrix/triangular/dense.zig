@@ -447,7 +447,7 @@ pub fn Dense(N: type, uplo: matrix.Uplo, diag: matrix.Diag, layout: matrix.Layou
                     return numeric.one(N);
             }
 
-            return self.data[self._index(r, c)];
+            return if (self.flags.noconj) self.data[self._index(r, c)] else numeric.conj(self.data[self._index(r, c)]);
         }
 
         /// Gets the element at the specified index without bounds checking.
@@ -465,7 +465,7 @@ pub fn Dense(N: type, uplo: matrix.Uplo, diag: matrix.Diag, layout: matrix.Layou
         /// ## Returns
         /// `N`: The element at the specified position.
         pub fn getAssumeInBounds(self: matrix.triangular.Dense(N, uplo, diag, layout), r: usize, c: usize) N {
-            return self.data[self._index(r, c)];
+            return if (self.flags.noconj) self.data[self._index(r, c)] else numeric.conj(self.data[self._index(r, c)]);
         }
 
         /// Sets the element at the specified index.
@@ -502,7 +502,7 @@ pub fn Dense(N: type, uplo: matrix.Uplo, diag: matrix.Diag, layout: matrix.Layou
                     return matrix.Error.BreaksStructure;
             }
 
-            self.data[self._index(r, c)] = value;
+            self.data[self._index(r, c)] = if (self.flags.noconj) value else numeric.conj(value);
         }
 
         /// Sets the element at the specified position without bounds checking.
@@ -521,7 +521,7 @@ pub fn Dense(N: type, uplo: matrix.Uplo, diag: matrix.Diag, layout: matrix.Layou
         /// ## Returns
         /// `void`
         pub fn setAssumeInBounds(self: *matrix.triangular.Dense(N, uplo, diag, layout), r: usize, c: usize, value: N) void {
-            self.data[self._index(r, c)] = value;
+            self.data[self._index(r, c)] = if (self.flags.noconj) value else numeric.conj(value);
         }
 
         /// Sets all elements of the stored triangle of the matrix.
@@ -541,7 +541,7 @@ pub fn Dense(N: type, uplo: matrix.Uplo, diag: matrix.Diag, layout: matrix.Layou
                         while (j < self.cols) : (j += 1) {
                             var i: usize = 0;
                             while (i < int.min(j, self.rows)) : (i += 1) {
-                                self.data[i + j * self.ld] = value;
+                                self.data[i + j * self.ld] = if (self.flags.noconj) value else numeric.conj(value);
                             }
                         }
                     } else { // cun
@@ -549,7 +549,7 @@ pub fn Dense(N: type, uplo: matrix.Uplo, diag: matrix.Diag, layout: matrix.Layou
                         while (j < self.cols) : (j += 1) {
                             var i: usize = 0;
                             while (i < int.min(j + 1, self.rows)) : (i += 1) {
-                                self.data[i + j * self.ld] = value;
+                                self.data[i + j * self.ld] = if (self.flags.noconj) value else numeric.conj(value);
                             }
                         }
                     }
@@ -559,7 +559,7 @@ pub fn Dense(N: type, uplo: matrix.Uplo, diag: matrix.Diag, layout: matrix.Layou
                         while (j < int.min(self.rows, self.cols)) : (j += 1) {
                             var i: usize = j + 1;
                             while (i < self.rows) : (i += 1) {
-                                self.data[i + j * self.ld] = value;
+                                self.data[i + j * self.ld] = if (self.flags.noconj) value else numeric.conj(value);
                             }
                         }
                     } else { // cln
@@ -567,7 +567,7 @@ pub fn Dense(N: type, uplo: matrix.Uplo, diag: matrix.Diag, layout: matrix.Layou
                         while (j < int.min(self.rows, self.cols)) : (j += 1) {
                             var i: usize = j;
                             while (i < self.rows) : (i += 1) {
-                                self.data[i + j * self.ld] = value;
+                                self.data[i + j * self.ld] = if (self.flags.noconj) value else numeric.conj(value);
                             }
                         }
                     }
@@ -579,7 +579,7 @@ pub fn Dense(N: type, uplo: matrix.Uplo, diag: matrix.Diag, layout: matrix.Layou
                         while (i < int.min(self.rows, self.cols)) : (i += 1) {
                             var j: usize = i + 1;
                             while (j < self.cols) : (j += 1) {
-                                self.data[i * self.ld + j] = value;
+                                self.data[i * self.ld + j] = if (self.flags.noconj) value else numeric.conj(value);
                             }
                         }
                     } else { // run
@@ -587,7 +587,7 @@ pub fn Dense(N: type, uplo: matrix.Uplo, diag: matrix.Diag, layout: matrix.Layou
                         while (i < int.min(self.rows, self.cols)) : (i += 1) {
                             var j: usize = i;
                             while (j < self.cols) : (j += 1) {
-                                self.data[i * self.ld + j] = value;
+                                self.data[i * self.ld + j] = if (self.flags.noconj) value else numeric.conj(value);
                             }
                         }
                     }
@@ -597,7 +597,7 @@ pub fn Dense(N: type, uplo: matrix.Uplo, diag: matrix.Diag, layout: matrix.Layou
                         while (i < self.rows) : (i += 1) {
                             var j: usize = 0;
                             while (j < int.min(i, self.cols)) : (j += 1) {
-                                self.data[i * self.ld + j] = value;
+                                self.data[i * self.ld + j] = if (self.flags.noconj) value else numeric.conj(value);
                             }
                         }
                     } else { // rln
@@ -605,7 +605,7 @@ pub fn Dense(N: type, uplo: matrix.Uplo, diag: matrix.Diag, layout: matrix.Layou
                         while (i < self.rows) : (i += 1) {
                             var j: usize = 0;
                             while (j < int.min(i + 1, self.cols)) : (j += 1) {
-                                self.data[i * self.ld + j] = value;
+                                self.data[i * self.ld + j] = if (self.flags.noconj) value else numeric.conj(value);
                             }
                         }
                     }
@@ -636,7 +636,7 @@ pub fn Dense(N: type, uplo: matrix.Uplo, diag: matrix.Diag, layout: matrix.Layou
                         while (j < mat.cols) : (j += 1) {
                             var i: usize = 0;
                             while (i < int.min(j, mat.rows)) : (i += 1) {
-                                mat.data[i + j * mat.ld] = self.data[i + j * self.ld];
+                                mat.data[i + j * mat.ld] = self.getAssumeInBounds(i, j);
                             }
                         }
                     } else { // cun
@@ -644,7 +644,7 @@ pub fn Dense(N: type, uplo: matrix.Uplo, diag: matrix.Diag, layout: matrix.Layou
                         while (j < mat.cols) : (j += 1) {
                             var i: usize = 0;
                             while (i < int.min(j + 1, mat.rows)) : (i += 1) {
-                                mat.data[i + j * mat.ld] = self.data[i + j * self.ld];
+                                mat.data[i + j * mat.ld] = self.getAssumeInBounds(i, j);
                             }
                         }
                     }
@@ -654,7 +654,7 @@ pub fn Dense(N: type, uplo: matrix.Uplo, diag: matrix.Diag, layout: matrix.Layou
                         while (j < int.min(mat.rows, mat.cols)) : (j += 1) {
                             var i: usize = j + 1;
                             while (i < mat.rows) : (i += 1) {
-                                mat.data[i + j * mat.ld] = self.data[i + j * self.ld];
+                                mat.data[i + j * mat.ld] = self.getAssumeInBounds(i, j);
                             }
                         }
                     } else { // cln
@@ -662,7 +662,7 @@ pub fn Dense(N: type, uplo: matrix.Uplo, diag: matrix.Diag, layout: matrix.Layou
                         while (j < int.min(mat.rows, mat.cols)) : (j += 1) {
                             var i: usize = j;
                             while (i < mat.rows) : (i += 1) {
-                                mat.data[i + j * mat.ld] = self.data[i + j * self.ld];
+                                mat.data[i + j * mat.ld] = self.getAssumeInBounds(i, j);
                             }
                         }
                     }
@@ -674,7 +674,7 @@ pub fn Dense(N: type, uplo: matrix.Uplo, diag: matrix.Diag, layout: matrix.Layou
                         while (i < int.min(mat.rows, mat.cols)) : (i += 1) {
                             var j: usize = i + 1;
                             while (j < mat.cols) : (j += 1) {
-                                mat.data[i * mat.ld + j] = self.data[i * self.ld + j];
+                                mat.data[i * mat.ld + j] = self.getAssumeInBounds(i, j);
                             }
                         }
                     } else { // run
@@ -682,7 +682,7 @@ pub fn Dense(N: type, uplo: matrix.Uplo, diag: matrix.Diag, layout: matrix.Layou
                         while (i < int.min(mat.rows, mat.cols)) : (i += 1) {
                             var j: usize = i;
                             while (j < mat.cols) : (j += 1) {
-                                mat.data[i * mat.ld + j] = self.data[i * self.ld + j];
+                                mat.data[i * mat.ld + j] = self.getAssumeInBounds(i, j);
                             }
                         }
                     }
@@ -692,7 +692,7 @@ pub fn Dense(N: type, uplo: matrix.Uplo, diag: matrix.Diag, layout: matrix.Layou
                         while (i < mat.rows) : (i += 1) {
                             var j: usize = 0;
                             while (j < int.min(i, mat.cols)) : (j += 1) {
-                                mat.data[i * mat.ld + j] = self.data[i * self.ld + j];
+                                mat.data[i * mat.ld + j] = self.getAssumeInBounds(i, j);
                             }
                         }
                     } else { // rln
@@ -700,7 +700,7 @@ pub fn Dense(N: type, uplo: matrix.Uplo, diag: matrix.Diag, layout: matrix.Layou
                         while (i < mat.rows) : (i += 1) {
                             var j: usize = 0;
                             while (j < int.min(i + 1, mat.cols)) : (j += 1) {
-                                mat.data[i * mat.ld + j] = self.data[i * self.ld + j];
+                                mat.data[i * mat.ld + j] = self.getAssumeInBounds(i, j);
                             }
                         }
                     }
@@ -725,7 +725,26 @@ pub fn Dense(N: type, uplo: matrix.Uplo, diag: matrix.Diag, layout: matrix.Layou
                 .rows = self.cols,
                 .cols = self.rows,
                 .ld = self.ld,
-                .flags = .{ .owns_data = false },
+                .flags = .{ .owns_data = false, .noconj = self.flags.noconj },
+            };
+        }
+
+        /// Returns an adjoint view of the matrix.
+        ///
+        /// ## Arguments
+        /// * `self` (`matrix.triangular.Dense(N, uplo, diag, layout)`): The
+        ///   matrix to get the adjoint of.
+        ///
+        /// ## Returns
+        /// `matrix.triangular.Dense(N, uplo.invert(), diag, layout.invert())`:
+        /// The adjoint matrix.
+        pub fn adjointView(self: matrix.triangular.Dense(N, uplo, diag, layout)) matrix.triangular.Dense(N, uplo.invert(), diag, layout.invert()) {
+            return .{
+                .data = self.data,
+                .rows = self.cols,
+                .cols = self.rows,
+                .ld = self.ld,
+                .flags = .{ .owns_data = false, .noconj = !self.flags.noconj },
             };
         }
 
@@ -757,109 +776,8 @@ pub fn Dense(N: type, uplo: matrix.Uplo, diag: matrix.Diag, layout: matrix.Layou
                 .rows = row_end - start,
                 .cols = col_end - start,
                 .ld = self.ld,
-                .flags = .{ .owns_data = false },
+                .flags = .{ .owns_data = false, .noconj = self.flags.noconj },
             };
-        }
-
-        /// Copies the triangular matrix to a general dense matrix.
-        ///
-        /// ## Arguments
-        /// * `self` (`matrix.triangular.Dense(N, uplo, diag, layout)`): The
-        ///   matrix to copy.
-        /// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
-        ///   allocations.
-        ///
-        /// ## Returns
-        /// `matrix.general.Dense(N, layour)`: The copied matrix.
-        ///
-        /// ## Errors
-        /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
-        pub fn cloneToGeneralDenseMatrix(self: matrix.triangular.Dense(N, uplo, diag, layout), allocator: std.mem.Allocator) !matrix.general.Dense(N, layout) {
-            const mat: matrix.general.Dense(N, layout) = try .init(allocator, self.rows, self.cols);
-
-            if (comptime layout == .col_major) {
-                if (comptime uplo == .upper) { // cu
-                    var j: usize = 0;
-                    while (j < mat.cols) : (j += 1) {
-                        var i: usize = 0;
-                        while (i < j) : (i += 1) {
-                            mat.data[i + j * mat.ld] = self.data[i + j * self.ld];
-                        }
-
-                        if (comptime diag == .unit) {
-                            mat.data[j + j * mat.ld] = numeric.one(N);
-                        } else {
-                            mat.data[j + j * mat.ld] = self.data[j + j * self.ld];
-                        }
-
-                        i = j + 1;
-                        while (i < mat.rows) : (i += 1) {
-                            mat.data[i + j * mat.ld] = numeric.zero(N);
-                        }
-                    }
-                } else { // cl
-                    var j: usize = 0;
-                    while (j < mat.cols) : (j += 1) {
-                        var i: usize = 0;
-                        while (i < j) : (i += 1) {
-                            mat.data[i + j * mat.ld] = numeric.zero(N);
-                        }
-
-                        if (comptime diag == .unit) {
-                            mat.data[j + j * mat.ld] = numeric.one(N);
-                        } else {
-                            mat.data[j + j * mat.ld] = self.data[j + j * self.ld];
-                        }
-
-                        i = j + 1;
-                        while (i < mat.rows) : (i += 1) {
-                            mat.data[i + j * mat.ld] = self.data[i + j * self.ld];
-                        }
-                    }
-                }
-            } else {
-                if (comptime uplo == .upper) { // ru
-                    var i: usize = 0;
-                    while (i < mat.rows) : (i += 1) {
-                        var j: usize = 0;
-                        while (j < i) : (j += 1) {
-                            mat.data[i * mat.ld + j] = numeric.zero(N);
-                        }
-
-                        if (comptime diag == .unit) {
-                            mat.data[i * mat.ld + i] = numeric.one(N);
-                        } else {
-                            mat.data[i * mat.ld + i] = self.data[i * self.ld + j];
-                        }
-
-                        j = i + 1;
-                        while (j < mat.cols) : (j += 1) {
-                            mat.data[i * mat.ld + j] = self.data[i * self.ld + j];
-                        }
-                    }
-                } else { // rl
-                    var i: usize = 0;
-                    while (i < mat.rows) : (i += 1) {
-                        var j: usize = 0;
-                        while (j < i) : (j += 1) {
-                            mat.data[i * mat.ld + j] = self.data[i * self.ld + j];
-                        }
-
-                        if (comptime diag == .unit) {
-                            mat.data[i * mat.ld + i] = numeric.one(N);
-                        } else {
-                            mat.data[i * mat.ld + i] = self.data[i * self.ld + i];
-                        }
-
-                        j = i + 1;
-                        while (j < mat.cols) : (j += 1) {
-                            mat.data[i * mat.ld + j] = numeric.zero(N);
-                        }
-                    }
-                }
-            }
-
-            return mat;
         }
 
         pub fn _index(self: *const Dense(N, uplo, diag, layout), r: usize, c: usize) usize {

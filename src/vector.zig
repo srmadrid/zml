@@ -41,4 +41,5 @@ pub const Error = error{
 
 pub const Flags = packed struct {
     owns_data: bool = true,
+    noconj: bool = true,
 };

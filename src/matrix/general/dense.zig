@@ -267,7 +267,10 @@ pub fn Dense(N: type, layout: matrix.Layout) type {
             if (r >= self.rows or c >= self.cols)
                 return matrix.Error.PositionOutOfBounds;
 
-            return self.data[self._index(r, c)];
+            return if (self.flags.noconj)
+                self.data[self._index(r, c)]
+            else
+                numeric.conj(self.data[self._index(r, c)]);
         }
 
         /// Gets the element at the specified index without bounds checking.
@@ -283,7 +286,10 @@ pub fn Dense(N: type, layout: matrix.Layout) type {
         /// ## Returns
         /// `N`: The element at the specified index.
         pub fn getAssumeInBounds(self: matrix.general.Dense(N, layout), r: usize, c: usize) N {
-            return self.data[self._index(r, c)];
+            return if (self.flags.noconj)
+                self.data[self._index(r, c)]
+            else
+                numeric.conj(self.data[self._index(r, c)]);
         }
 
         /// Sets the element at the specified index.
@@ -305,7 +311,7 @@ pub fn Dense(N: type, layout: matrix.Layout) type {
             if (r >= self.rows or c >= self.cols)
                 return matrix.Error.PositionOutOfBounds;
 
-            self.data[self._index(r, c)] = value;
+            return self.setAssumeInBounds(r, c, value);
         }
 
         /// Sets the element at the specified index without bounds checking.
@@ -322,7 +328,7 @@ pub fn Dense(N: type, layout: matrix.Layout) type {
         /// ## Returns
         /// `void`
         pub fn setAssumeInBounds(self: *matrix.general.Dense(N, layout), r: usize, c: usize, value: N) void {
-            self.data[self._index(r, c)] = value;
+            self.data[self._index(r, c)] = if (self.flags.noconj) value else numeric.conj(value);
         }
 
         /// Sets all elements of the matrix.
@@ -340,7 +346,7 @@ pub fn Dense(N: type, layout: matrix.Layout) type {
                 while (j < self.cols) : (j += 1) {
                     var i: usize = 0;
                     while (i < self.rows) : (i += 1) {
-                        self.data[i + j * self.ld] = value;
+                        self.data[i + j * self.ld] = if (self.flags.noconj) value else numeric.conj(value);
                     }
                 }
             } else {
@@ -348,7 +354,7 @@ pub fn Dense(N: type, layout: matrix.Layout) type {
                 while (i < self.rows) : (i += 1) {
                     var j: usize = 0;
                     while (j < self.cols) : (j += 1) {
-                        self.data[i * self.ld + j] = value;
+                        self.data[i * self.ld + j] = if (self.flags.noconj) value else numeric.conj(value);
                     }
                 }
             }
@@ -374,7 +380,7 @@ pub fn Dense(N: type, layout: matrix.Layout) type {
                 while (j < mat.cols) : (j += 1) {
                     var i: usize = 0;
                     while (i < mat.rows) : (i += 1) {
-                        mat.data[i + j * mat.ld] = self.data[i + j * self.ld];
+                        mat.data[i + j * mat.ld] = self.getAssumeInBounds(i, j);
                     }
                 }
             } else {
@@ -382,7 +388,7 @@ pub fn Dense(N: type, layout: matrix.Layout) type {
                 while (i < mat.rows) : (i += 1) {
                     var j: usize = 0;
                     while (j < mat.cols) : (j += 1) {
-                        mat.data[i * mat.ld + j] = self.data[i * self.ld + j];
+                        mat.data[i * mat.ld + j] = self.getAssumeInBounds(i, j);
                     }
                 }
             }
@@ -404,7 +410,25 @@ pub fn Dense(N: type, layout: matrix.Layout) type {
                 .rows = self.cols,
                 .cols = self.rows,
                 .ld = self.ld,
-                .flags = .{ .owns_data = false },
+                .flags = .{ .owns_data = false, .noconj = self.flags.noconj },
+            };
+        }
+
+        /// Returns an adjoint view of the matrix.
+        ///
+        /// ## Arguments
+        /// * `self` (`matrix.general.Dense(N, layout)`): The matrix to get the
+        ///   adjoint of.
+        ///
+        /// ## Returns
+        /// `matrix.general.Dense(N, layout.invert())`: The adjoint matrix.
+        pub fn adjointView(self: matrix.general.Dense(N, layout)) matrix.general.Dense(N, layout.invert()) {
+            return .{
+                .data = self.data,
+                .rows = self.cols,
+                .cols = self.rows,
+                .ld = self.ld,
+                .flags = .{ .owns_data = false, .noconj = !self.flags.noconj },
             };
         }
 
@@ -438,7 +462,7 @@ pub fn Dense(N: type, layout: matrix.Layout) type {
                 .rows = row_end - row_start,
                 .cols = col_end - col_start,
                 .ld = self.ld,
-                .flags = .{ .owns_data = false },
+                .flags = .{ .owns_data = false, .noconj = self.flags.noconj },
             };
         }
 
@@ -465,7 +489,7 @@ pub fn Dense(N: type, layout: matrix.Layout) type {
                     numeric.cast(isize, self.ld)
                 else
                     1,
-                .flags = .{ .owns_data = false },
+                .flags = .{ .owns_data = false, .noconj = self.flags.noconj },
             };
         }
 
@@ -492,7 +516,7 @@ pub fn Dense(N: type, layout: matrix.Layout) type {
                     1
                 else
                     numeric.cast(isize, self.ld),
-                .flags = .{ .owns_data = false },
+                .flags = .{ .owns_data = false, .noconj = self.flags.noconj },
             };
         }
 
@@ -520,7 +544,7 @@ pub fn Dense(N: type, layout: matrix.Layout) type {
                 .rows = self.rows,
                 .cols = self.cols,
                 .ld = self.ld,
-                .flags = .{ .owns_data = false },
+                .flags = .{ .owns_data = false, .noconj = self.flags.noconj },
             };
         }
 
@@ -548,7 +572,7 @@ pub fn Dense(N: type, layout: matrix.Layout) type {
                 .rows = self.rows,
                 .cols = self.cols,
                 .ld = self.ld,
-                .flags = .{ .owns_data = false },
+                .flags = .{ .owns_data = false, .noconj = self.flags.noconj },
             };
         }
 
@@ -573,9 +597,11 @@ pub fn Dense(N: type, layout: matrix.Layout) type {
                 .rows = self.rows,
                 .cols = self.cols,
                 .ld = self.ld,
-                .flags = .{ .owns_data = false },
+                .flags = .{ .owns_data = false, .noconj = self.flags.noconj },
             };
         }
+
+        // arrayView
 
         pub fn _index(self: matrix.general.Dense(N, layout), r: usize, c: usize) usize {
             return if (comptime layout == .col_major)

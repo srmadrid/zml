@@ -346,7 +346,10 @@ pub fn Dense(N: type, uplo: matrix.Uplo, layout: matrix.Layout) type {
                 }
             }
 
-            return self.data[self._index(i, j)];
+            return if (self.flags.noconj)
+                self.data[self._index(i, j)]
+            else
+                numeric.conj(self.data[self._index(i, j)]);
         }
 
         /// Gets the element at the specified index without bounds checking.
@@ -362,7 +365,10 @@ pub fn Dense(N: type, uplo: matrix.Uplo, layout: matrix.Layout) type {
         /// ## Returns
         /// `N`: The element at the specified index.
         pub fn getAssumeInBounds(self: matrix.symmetric.Dense(N, uplo, layout), r: usize, c: usize) N {
-            return self.data[self._index(r, c)];
+            return if (self.flags.noconj)
+                self.data[self._index(r, c)]
+            else
+                numeric.conj(self.data[self._index(r, c)]);
         }
 
         /// Sets the element at the specified index.
@@ -400,7 +406,7 @@ pub fn Dense(N: type, uplo: matrix.Uplo, layout: matrix.Layout) type {
                 }
             }
 
-            self.data[self._index(i, j)] = value;
+            self.data[self._index(i, j)] = if (self.flags.noconj) value else numeric.conj(value);
         }
 
         /// Sets the element at the specified index without bounds checking.
@@ -417,7 +423,7 @@ pub fn Dense(N: type, uplo: matrix.Uplo, layout: matrix.Layout) type {
         /// ## Returns
         /// `void`
         pub fn setAssumeInBounds(self: *matrix.symmetric.Dense(N, uplo, layout), r: usize, c: usize, value: N) void {
-            self.data[self._index(r, c)] = value;
+            self.data[self._index(r, c)] = if (self.flags.noconj) value else numeric.conj(value);
         }
 
         /// Sets all elements of the stored triangle of the matrix.
@@ -436,7 +442,7 @@ pub fn Dense(N: type, uplo: matrix.Uplo, layout: matrix.Layout) type {
                     while (j < self.cols) : (j += 1) {
                         var i: usize = 0;
                         while (i <= j) : (i += 1) {
-                            self.data[i + j * self.ld] = value;
+                            self.data[i + j * self.ld] = if (self.flags.noconj) value else numeric.conj(value);
                         }
                     }
                 } else { // cl
@@ -444,7 +450,7 @@ pub fn Dense(N: type, uplo: matrix.Uplo, layout: matrix.Layout) type {
                     while (j < self.cols) : (j += 1) {
                         var i: usize = j;
                         while (i < self.rows) : (i += 1) {
-                            self.data[i + j * self.ld] = value;
+                            self.data[i + j * self.ld] = if (self.flags.noconj) value else numeric.conj(value);
                         }
                     }
                 }
@@ -454,7 +460,7 @@ pub fn Dense(N: type, uplo: matrix.Uplo, layout: matrix.Layout) type {
                     while (i < self.rows) : (i += 1) {
                         var j: usize = i;
                         while (j < self.cols) : (j += 1) {
-                            self.data[i * self.ld + j] = value;
+                            self.data[i * self.ld + j] = if (self.flags.noconj) value else numeric.conj(value);
                         }
                     }
                 } else { // rl
@@ -462,7 +468,7 @@ pub fn Dense(N: type, uplo: matrix.Uplo, layout: matrix.Layout) type {
                     while (i < self.rows) : (i += 1) {
                         var j: usize = 0;
                         while (j <= i) : (j += 1) {
-                            self.data[i * self.ld + j] = value;
+                            self.data[i * self.ld + j] = if (self.flags.noconj) value else numeric.conj(value);
                         }
                     }
                 }
@@ -491,7 +497,7 @@ pub fn Dense(N: type, uplo: matrix.Uplo, layout: matrix.Layout) type {
                     while (j < mat.cols) : (j += 1) {
                         var i: usize = 0;
                         while (i <= j) : (i += 1) {
-                            mat.data[i + j * mat.ld] = self.data[i + j * self.ld];
+                            mat.data[i + j * mat.ld] = self.getAssumeInBounds(i, j);
                         }
                     }
                 } else { // cl
@@ -499,7 +505,7 @@ pub fn Dense(N: type, uplo: matrix.Uplo, layout: matrix.Layout) type {
                     while (j < mat.cols) : (j += 1) {
                         var i: usize = j;
                         while (i < mat.rows) : (i += 1) {
-                            mat.data[i + j * mat.ld] = self.data[i + j * self.ld];
+                            mat.data[i + j * mat.ld] = self.getAssumeInBounds(i, j);
                         }
                     }
                 }
@@ -509,7 +515,7 @@ pub fn Dense(N: type, uplo: matrix.Uplo, layout: matrix.Layout) type {
                     while (i < mat.rows) : (i += 1) {
                         var j: usize = i;
                         while (j < mat.cols) : (j += 1) {
-                            mat.data[i * mat.ld + j] = self.data[i * self.ld + j];
+                            mat.data[i * mat.ld + j] = self.getAssumeInBounds(i, j);
                         }
                     }
                 } else { // rl
@@ -517,7 +523,7 @@ pub fn Dense(N: type, uplo: matrix.Uplo, layout: matrix.Layout) type {
                     while (i < mat.rows) : (i += 1) {
                         var j: usize = 0;
                         while (j <= i) : (j += 1) {
-                            mat.data[i * mat.ld + j] = self.data[i * self.ld + j];
+                            mat.data[i * mat.ld + j] = self.getAssumeInBounds(i, j);
                         }
                     }
                 }
@@ -549,7 +555,7 @@ pub fn Dense(N: type, uplo: matrix.Uplo, layout: matrix.Layout) type {
                     while (j < mat.cols) : (j += 1) {
                         var i: usize = 0;
                         while (i <= j) : (i += 1) {
-                            mat.data[i + j * mat.ld] = self.data[j + i * self.ld];
+                            mat.data[i + j * mat.ld] = self.getAssumeInBounds(j, i);
                         }
                     }
                 } else { // cu -> cl
@@ -557,7 +563,7 @@ pub fn Dense(N: type, uplo: matrix.Uplo, layout: matrix.Layout) type {
                     while (j < mat.cols) : (j += 1) {
                         var i: usize = j;
                         while (i < mat.rows) : (i += 1) {
-                            mat.data[i + j * mat.ld] = self.data[j + i * self.ld];
+                            mat.data[i + j * mat.ld] = self.getAssumeInBounds(j, i);
                         }
                     }
                 }
@@ -567,7 +573,7 @@ pub fn Dense(N: type, uplo: matrix.Uplo, layout: matrix.Layout) type {
                     while (i < mat.rows) : (i += 1) {
                         var j: usize = i;
                         while (j < mat.cols) : (j += 1) {
-                            mat.data[i * mat.ld + j] = self.data[j * self.ld + i];
+                            mat.data[i * mat.ld + j] = self.getAssumeInBounds(j, i);
                         }
                     }
                 } else { // ru -> rl
@@ -575,7 +581,7 @@ pub fn Dense(N: type, uplo: matrix.Uplo, layout: matrix.Layout) type {
                     while (i < mat.rows) : (i += 1) {
                         var j: usize = 0;
                         while (j <= i) : (j += 1) {
-                            mat.data[i * mat.ld + j] = self.data[j * self.ld + i];
+                            mat.data[i * mat.ld + j] = self.getAssumeInBounds(j, i);
                         }
                     }
                 }
@@ -599,7 +605,26 @@ pub fn Dense(N: type, uplo: matrix.Uplo, layout: matrix.Layout) type {
                 .rows = self.cols,
                 .cols = self.cols,
                 .ld = self.ld,
-                .flags = .{ .owns_data = false },
+                .flags = .{ .owns_data = false, .noconj = self.flags.noconj },
+            };
+        }
+
+        /// Returns an adjoint view of the matrix.
+        ///
+        /// ## Arguments
+        /// * `self` (`matrix.symmetric.Dense(N, uplo, layout)`): The matrix to
+        ///   get the adjoint of.
+        ///
+        /// ##  Returns
+        /// `matrix.symmetric.Dense(N, uplo.invert(), layout.invert())`: The
+        /// adjoint matrix.
+        pub fn adjointView(self: matrix.symmetric.Dense(N, uplo, layout)) matrix.symmetric.Dense(N, uplo.invert(), layout.invert()) {
+            return .{
+                .data = self.data,
+                .rows = self.cols,
+                .cols = self.cols,
+                .ld = self.ld,
+                .flags = .{ .owns_data = false, .noconj = !self.flags.noconj },
             };
         }
 
@@ -624,77 +649,8 @@ pub fn Dense(N: type, uplo: matrix.Uplo, layout: matrix.Layout) type {
                 .rows = end - start,
                 .cols = end - start,
                 .ld = self.ld,
-                .flags = .{ .owns_data = false },
+                .flags = .{ .owns_data = false, .noconj = self.flags.noconj },
             };
-        }
-
-        /// Copies the symmetric matrix to a general dense matrix.
-        ///
-        /// ## Arguments
-        /// * `self` (`matrix.symmetric.Dense(N, uplo, layout)`): The matrix to
-        ///   copy.
-        /// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
-        ///   allocations.
-        ///
-        /// ## Returns
-        /// `matrix.general.Dense(N, layout)`: The copied matrix.
-        ///
-        /// ## Errors
-        /// `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
-        pub fn cloneToGeneralDenseMatrix(self: matrix.symmetric.Dense(N, uplo, layout), allocator: std.mem.Allocator) !matrix.general.Dense(N, layout) {
-            const mat: matrix.general.Dense(N, layout) = try .init(allocator, self.rows, self.cols);
-
-            if (comptime layout == .col_major) {
-                if (comptime uplo == .upper) { // cu
-                    var j: usize = 0;
-                    while (j < mat.cols) : (j += 1) {
-                        var i: usize = 0;
-                        while (i < j) : (i += 1) {
-                            mat.data[i + j * mat.ld] = self.data[i + j * self.ld];
-                            mat.data[j + i * mat.ld] = self.data[i + j * self.ld];
-                        }
-
-                        mat.data[j + j * mat.ld] = self.data[j + j * self.ld];
-                    }
-                } else { // cl
-                    var j: usize = 0;
-                    while (j < mat.cols) : (j += 1) {
-                        mat.data[j + j * mat.ld] = self.data[j + j * self.ld];
-
-                        var i: usize = j + 1;
-                        while (i < mat.rows) : (i += 1) {
-                            mat.data[i + j * mat.ld] = self.data[i + j * self.ld];
-                            mat.data[j + i * mat.ld] = self.data[i + j * self.ld];
-                        }
-                    }
-                }
-            } else {
-                if (comptime uplo == .upper) { // ru
-                    var i: usize = 0;
-                    while (i < mat.rows) : (i += 1) {
-                        mat.data[i * mat.ld + i] = self.data[i * self.ld + i];
-
-                        var j: usize = i + 1;
-                        while (j < mat.cols) : (j += 1) {
-                            mat.data[i * mat.ld + j] = self.data[i * self.ld + j];
-                            mat.data[j * mat.ld + i] = self.data[i * self.ld + j];
-                        }
-                    }
-                } else { // rl
-                    var i: usize = 0;
-                    while (i < mat.rows) : (i += 1) {
-                        var j: usize = 0;
-                        while (j < i) : (j += 1) {
-                            mat.data[i * mat.ld + j] = self.data[i * self.ld + j];
-                            mat.data[j * mat.ld + i] = self.data[i * self.ld + j];
-                        }
-
-                        mat.data[i * mat.ld + i] = self.data[i * self.ld + i];
-                    }
-                }
-            }
-
-            return mat;
         }
 
         pub fn _index(self: *const Dense(N, uplo, layout), r: usize, c: usize) usize {

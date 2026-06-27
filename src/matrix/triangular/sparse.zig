@@ -162,7 +162,7 @@ pub fn Sparse(N: type, uplo: matrix.Uplo, diag: matrix.Diag, layout: matrix.Layo
                 const mid_idx = self.idx[mid];
 
                 if (mid_idx == minor) {
-                    return self.data[mid];
+                    return if (self.flags.noconj) self.data[mid] else numeric.conj(self.data[mid]);
                 } else if (mid_idx < minor) {
                     left = mid + 1;
                 } else {
@@ -218,7 +218,7 @@ pub fn Sparse(N: type, uplo: matrix.Uplo, diag: matrix.Diag, layout: matrix.Layo
                 const mid_idx = self.idx[mid];
 
                 if (mid_idx == minor) {
-                    self.data[mid] = value;
+                    self.data[mid] = if (self.flags.noconj) value else numeric.conj(value);
                     return;
                 } else if (mid_idx < minor) {
                     left = mid + 1;

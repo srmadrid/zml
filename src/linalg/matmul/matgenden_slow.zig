@@ -26,6 +26,11 @@ pub fn matmulIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
                 }
 
                 numeric.set(&o.data[o._index(i, j)], sum);
+
+                if (o.flags.noconj)
+                    numeric.set(&o.data[o._index(i, j)], sum)
+                else
+                    numeric.conjInto(&o.data[o._index(i, j)], sum);
             }
         }
     } else {
@@ -46,6 +51,11 @@ pub fn matmulIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
                 }
 
                 numeric.set(&o.data[o._index(i, j)], sum);
+
+                if (o.flags.noconj)
+                    numeric.set(&o.data[o._index(i, j)], sum)
+                else
+                    numeric.conjInto(&o.data[o._index(i, j)], sum);
             }
         }
     }

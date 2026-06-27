@@ -27,6 +27,11 @@ pub fn matmulIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
                     }
 
                     numeric.set(&o.data[o._index(i, j)], sum);
+
+                    if (o.flags.noconj)
+                        numeric.set(&o.data[o._index(i, j)], sum)
+                    else
+                        numeric.conjInto(&o.data[o._index(i, j)], sum);
                 }
             } else {
                 var i: usize = int.min(if (comptime meta.diagOf(O) == .non_unit) j else j + 1, o.rows);
@@ -44,6 +49,11 @@ pub fn matmulIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
                     }
 
                     numeric.set(&o.data[o._index(i, j)], sum);
+
+                    if (o.flags.noconj)
+                        numeric.set(&o.data[o._index(i, j)], sum)
+                    else
+                        numeric.conjInto(&o.data[o._index(i, j)], sum);
                 }
             }
         }
@@ -66,6 +76,11 @@ pub fn matmulIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
                     }
 
                     numeric.set(&o.data[o._index(i, j)], sum);
+
+                    if (o.flags.noconj)
+                        numeric.set(&o.data[o._index(i, j)], sum)
+                    else
+                        numeric.conjInto(&o.data[o._index(i, j)], sum);
                 }
             } else {
                 var j: usize = int.min(if (comptime meta.diagOf(O) == .non_unit) i else i + 1, o.cols);
@@ -83,6 +98,11 @@ pub fn matmulIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
                     }
 
                     numeric.set(&o.data[o._index(i, j)], sum);
+
+                    if (o.flags.noconj)
+                        numeric.set(&o.data[o._index(i, j)], sum)
+                    else
+                        numeric.conjInto(&o.data[o._index(i, j)], sum);
                 }
             }
         }

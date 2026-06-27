@@ -2,6 +2,13 @@ const meta = @import("../../../meta.zig");
 const numeric = @import("../../../numeric.zig");
 
 pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) void {
+    return switch (y.flags.noconj) {
+        true => k_apply2IntoUnchecked(o, x, y, opInto, true),
+        false => k_apply2IntoUnchecked(o, x, y, opInto, false),
+    };
+}
+
+fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: anytype, comptime noconj_y: bool) void {
     const O = meta.Child(@TypeOf(o));
     const Y = @TypeOf(y);
 
@@ -12,7 +19,14 @@ pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: 
             opInto(&o.data[i], x, numeric.zero(meta.Numeric(Y)));
         }
 
-        opInto(&o.data[i], x, y.data[iy]);
+        opInto(
+            &o.data[i],
+            x,
+            if (comptime noconj_y)
+                y.data[iy]
+            else
+                numeric.conj(y.data[iy]),
+        );
 
         i += 1;
     }

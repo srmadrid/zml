@@ -1,4 +1,5 @@
 const meta = @import("../../../meta.zig");
+const numeric = @import("../../../numeric.zig");
 
 pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) void {
     const O: type = meta.Child(@TypeOf(o));
@@ -22,6 +23,9 @@ pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: 
                         else
                             y,
                     );
+
+                    if (!o.flags.noconj)
+                        numeric.conjInto(&o.data[o._index(i, j)], o.data[o._index(i, j)]);
                 }
 
                 opInto(
@@ -35,6 +39,9 @@ pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: 
                     else
                         y,
                 );
+
+                if (!o.flags.noconj)
+                    numeric.conjInto(&o.data[o._index(j, j)], o.data[o._index(j, j)]);
             } else {
                 opInto(
                     &o.data[o._index(j, j)],
@@ -47,6 +54,9 @@ pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: 
                     else
                         y,
                 );
+
+                if (!o.flags.noconj)
+                    numeric.conjInto(&o.data[o._index(j, j)], o.data[o._index(j, j)]);
 
                 var i: usize = j + 1;
                 while (i < o.rows) : (i += 1) {
@@ -61,6 +71,9 @@ pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: 
                         else
                             y,
                     );
+
+                    if (!o.flags.noconj)
+                        numeric.conjInto(&o.data[o._index(i, j)], o.data[o._index(i, j)]);
                 }
             }
         }
@@ -81,6 +94,9 @@ pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: 
                         else
                             y,
                     );
+
+                    if (!o.flags.noconj)
+                        numeric.conjInto(&o.data[o._index(i, j)], o.data[o._index(i, j)]);
                 }
 
                 opInto(
@@ -94,6 +110,9 @@ pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: 
                     else
                         y,
                 );
+
+                if (!o.flags.noconj)
+                    numeric.conjInto(&o.data[o._index(i, i)], o.data[o._index(i, i)]);
             } else {
                 opInto(
                     &o.data[o._index(i, i)],
@@ -106,6 +125,9 @@ pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: 
                     else
                         y,
                 );
+
+                if (!o.flags.noconj)
+                    numeric.conjInto(&o.data[o._index(i, i)], o.data[o._index(i, i)]);
 
                 var j: usize = i + 1;
                 while (j < o.cols) : (j += 1) {
@@ -120,6 +142,9 @@ pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: 
                         else
                             y,
                     );
+
+                    if (!o.flags.noconj)
+                        numeric.conjInto(&o.data[o._index(i, j)], o.data[o._index(i, j)]);
                 }
             }
         }

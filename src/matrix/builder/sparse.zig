@@ -25,7 +25,6 @@ pub fn Sparse(N: type) type {
         _dlen: usize,
         _rlen: usize,
         _clen: usize,
-        flags: matrix.Flags,
 
         // Type signatures
         pub const is_matrix = true;
@@ -48,7 +47,6 @@ pub fn Sparse(N: type) type {
             ._dlen = 0,
             ._rlen = 0,
             ._clen = 0,
-            .flags = .{ .owns_data = false },
         };
 
         /// Initializes a new `matrix.builder.Sparse(N)` with the specified rows
@@ -92,7 +90,6 @@ pub fn Sparse(N: type) type {
                 ._dlen = nnz,
                 ._rlen = nnz,
                 ._clen = nnz,
-                .flags = .{ .owns_data = true },
             };
         }
 
@@ -111,11 +108,9 @@ pub fn Sparse(N: type) type {
         /// ## Returns
         /// `void`
         pub fn deinit(self: *matrix.builder.Sparse(N), allocator: std.mem.Allocator) void {
-            if (self.flags.owns_data) {
-                allocator.free(self.data[0..self._dlen]);
-                allocator.free(self.ridx[0..self._rlen]);
-                allocator.free(self.cidx[0..self._clen]);
-            }
+            allocator.free(self.data[0..self._dlen]);
+            allocator.free(self.ridx[0..self._rlen]);
+            allocator.free(self.cidx[0..self._clen]);
 
             self.* = undefined;
         }
@@ -135,9 +130,6 @@ pub fn Sparse(N: type) type {
         /// ## Errors
         /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
         pub fn reserve(self: *matrix.builder.Sparse(N), allocator: std.mem.Allocator, new_nnz: usize) !void {
-            if (!self.flags.owns_data)
-                return;
-
             if (new_nnz <= self._dlen and new_nnz <= self._rlen and new_nnz <= self._clen)
                 return;
 
@@ -182,9 +174,6 @@ pub fn Sparse(N: type) type {
                 return matrix.Error.PositionOutOfBounds;
 
             if (self.nnz == self._dlen or self.nnz == self._rlen or self.nnz == self._clen) {
-                if (!self.flags.owns_data)
-                    return matrix.Error.DataNotOwned;
-
                 var new_nnz = self.nnz * 2;
                 if (new_nnz == 0)
                     new_nnz = 2;
@@ -259,7 +248,6 @@ pub fn Sparse(N: type) type {
                 ._dlen = self.nnz,
                 ._rlen = self.nnz,
                 ._clen = self.nnz,
-                .flags = .{ .owns_data = true },
             };
         }
 
@@ -360,11 +348,9 @@ pub fn Sparse(N: type) type {
                 ptr[i + 1] += ptr[i];
             }
 
-            if (self.flags.owns_data) {
-                allocator.free(self.data[0..self._dlen]);
-                allocator.free(self.ridx[0..self._rlen]);
-                allocator.free(self.cidx[0..self._clen]);
-            }
+            allocator.free(self.data[0..self._dlen]);
+            allocator.free(self.ridx[0..self._rlen]);
+            allocator.free(self.cidx[0..self._clen]);
 
             var mat: M = undefined;
             mat.data = data.ptr;
@@ -373,7 +359,7 @@ pub fn Sparse(N: type) type {
             mat._ilen = unique_nnz;
             mat.ptr = ptr.ptr;
             mat.nnz = unique_nnz;
-            mat.flags = .{ .owns_data = true };
+            mat.flags = .{};
 
             mat.rows = self.rows;
             mat.cols = self.cols;

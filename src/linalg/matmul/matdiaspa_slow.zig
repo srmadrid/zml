@@ -24,6 +24,9 @@ pub fn matmulIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
             );
         }
 
-        numeric.set(&o.data[i], sum);
+        if (o.flags.noconj)
+            numeric.set(&o.data[i], sum)
+        else
+            numeric.conjInto(&o.data[i], sum);
     }
 }

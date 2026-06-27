@@ -24,6 +24,9 @@ pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: 
 
                     opInto(&o.data[nnz], val_x, val_y);
 
+                    if (!o.flags.noconj)
+                        numeric.conjInto(&o.data[nnz], o.data[nnz]);
+
                     o.idx[nnz] = i;
                     nnz += 1;
                 }
@@ -38,6 +41,9 @@ pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: 
                         continue;
 
                     opInto(&o.data[nnz], val_x, val_y);
+
+                    if (!o.flags.noconj)
+                        numeric.conjInto(&o.data[nnz], o.data[nnz]);
 
                     o.idx[nnz] = i;
                     nnz += 1;
@@ -61,6 +67,9 @@ pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: 
 
                     opInto(&o.data[nnz], val_x, val_y);
 
+                    if (!o.flags.noconj)
+                        numeric.conjInto(&o.data[nnz], o.data[nnz]);
+
                     o.idx[nnz] = j;
                     nnz += 1;
                 }
@@ -75,6 +84,9 @@ pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: 
                         continue;
 
                     opInto(&o.data[nnz], val_x, val_y);
+
+                    if (!o.flags.noconj)
+                        numeric.conjInto(&o.data[nnz], o.data[nnz]);
 
                     o.idx[nnz] = j;
                     nnz += 1;

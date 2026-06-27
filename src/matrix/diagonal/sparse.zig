@@ -202,7 +202,10 @@ pub fn Sparse(N: type) type {
             if (r != c)
                 return numeric.zero(N);
 
-            return self.data[r];
+            return if (self.flags.noconj)
+                self.data[r]
+            else
+                numeric.conj(self.data[r]);
         }
 
         /// Gets the element at the specified index without bounds checking.
@@ -219,7 +222,10 @@ pub fn Sparse(N: type) type {
         /// `N`: The element at the specified index.
         pub fn getAssumeInBounds(self: matrix.diagonal.Sparse(N), r: usize, c: usize) N {
             _ = c;
-            return self.data[r];
+            return if (self.flags.noconj)
+                self.data[r]
+            else
+                numeric.conj(self.data[r]);
         }
 
         /// Sets the element at the specified index.
@@ -246,7 +252,7 @@ pub fn Sparse(N: type) type {
             if (r != c)
                 return matrix.Error.BreaksStructure;
 
-            self.data[r] = value;
+            self.data[r] = if (self.flags.noconj) value else numeric.conj(value);
         }
 
         /// Sets the element at the specified index without bounds checking.
@@ -264,7 +270,7 @@ pub fn Sparse(N: type) type {
         /// `void`
         pub fn setAssumeInBounds(self: *matrix.diagonal.Sparse(N), r: usize, c: usize, value: N) void {
             _ = c;
-            self.data[r] = value;
+            self.data[r] = if (self.flags.noconj) value else numeric.conj(value);
         }
 
         /// Creates a copy of the matrix.
@@ -284,7 +290,7 @@ pub fn Sparse(N: type) type {
 
             var i: usize = 0;
             while (i < int.min(mat.rows, mat.cols)) : (i += 1) {
-                mat.data[i] = self.data[i];
+                mat.data[i] = if (self.flags.noconj) self.data[i] else numeric.conj(self.data[i]);
             }
 
             return mat;
@@ -317,60 +323,8 @@ pub fn Sparse(N: type) type {
                 .data = self.data + start,
                 .rows = row_end - start,
                 .cols = col_end - start,
-                .flags = .{ .owns_data = false },
+                .flags = .{ .owns_data = false, .noconj = self.flags.noconj },
             };
-        }
-
-        /// Copies the symmetric matrix to a general dense matrix.
-        ///
-        /// ## Arguments
-        /// * `self` (`matrix.diagonal.Sparse(N)`): The matrix to copy.
-        /// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
-        ///   allocations.
-        /// * `layout` (`comptime Layout`): The storage layout of the resulting
-        ///   matrix.
-        ///
-        /// ## Returns
-        /// `matrix.general.Dense(N, layout)`: The copied matrix.
-        ///
-        /// ## Errors
-        /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
-        pub fn cloneToGeneralDenseMatrix(self: matrix.diagonal.Sparse(N), allocator: std.mem.Allocator, comptime layout: matrix.Layout) !matrix.general.Dense(N, layout) {
-            const mat: matrix.general.Dense(N, layout) = try .init(allocator, self.rows, self.cols);
-
-            if (comptime layout == .col_major) {
-                var j: usize = 0;
-                while (j < mat.cols) : (j += 1) {
-                    var i: usize = 0;
-                    while (i < int.min(j, mat.rows)) : (i += 1) {
-                        mat.data[i + j * mat.ld] = numeric.zero(N);
-                    }
-
-                    mat.data[j + j * mat.ld] = self.data[j];
-
-                    i = j + 1;
-                    while (i < mat.rows) : (i += 1) {
-                        mat.data[i + j * mat.ld] = numeric.zero(N);
-                    }
-                }
-            } else {
-                var i: usize = 0;
-                while (i < mat.rows) : (i += 1) {
-                    var j: usize = 0;
-                    while (j < int.min(i, mat.cols)) : (j += 1) {
-                        mat.data[i * mat.ld + j] = numeric.zero(N);
-                    }
-
-                    mat.data[i * mat.ld + i] = self.data[i];
-
-                    j = i + 1;
-                    while (j < mat.cols) : (j += 1) {
-                        mat.data[i * mat.ld + j] = try numeric.zero(N);
-                    }
-                }
-            }
-
-            return mat;
         }
     };
 }
