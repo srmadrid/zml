@@ -2,6 +2,533 @@ const complex = @import("../complex.zig");
 const cf32 = complex.cf32;
 const cf64 = complex.cf64;
 
+// Trans
+pub const no_trans: u8 = 'N';
+pub const trans: u8 = 'T';
+pub const conj_trans: u8 = 'C';
+
+// Uplo
+pub const upper: u8 = 'U';
+pub const lower: u8 = 'L';
+
+// Diag
+pub const non_unit: u8 = 'N';
+pub const unit: u8 = 'U';
+
+// Side
+pub const left: u8 = 'L';
+pub const right: u8 = 'R';
+
+// Fact
+pub const factored: u8 = 'F';
+pub const not_factored: u8 = 'N';
+pub const equilibrate: u8 = 'E';
+
+// Norm
+pub const max: u8 = 'M';
+pub const one: u8 = '1';
+pub const inf: u8 = 'I';
+pub const frobenius: u8 = 'F';
+
+// Linear Systems: Simple Drivers
+extern fn LAPACKE_sgesv(layout: c_int, n: isize, nrhs: isize, a: [*]f32, lda: isize, ipiv: [*]isize, b: [*]f32, ldb: isize) isize;
+extern fn LAPACKE_dgesv(layout: c_int, n: isize, nrhs: isize, a: [*]f64, lda: isize, ipiv: [*]isize, b: [*]f64, ldb: isize) isize;
+extern fn LAPACKE_cgesv(layout: c_int, n: isize, nrhs: isize, a: [*]cf32, lda: isize, ipiv: [*]isize, b: [*]cf32, ldb: isize) isize;
+extern fn LAPACKE_zgesv(layout: c_int, n: isize, nrhs: isize, a: [*]cf64, lda: isize, ipiv: [*]isize, b: [*]cf64, ldb: isize) isize;
+extern fn LAPACKE_dsgesv(layout: c_int, n: isize, nrhs: isize, a: [*]f64, lda: isize, ipiv: [*]isize, b: [*]const f64, ldb: isize, x: [*]f64, ldx: isize, iter: *isize) isize;
+extern fn LAPACKE_zcgesv(layout: c_int, n: isize, nrhs: isize, a: [*]cf64, lda: isize, ipiv: [*]isize, b: [*]const cf64, ldb: isize, x: [*]cf64, ldx: isize, iter: *isize) isize;
+pub const sgesv = LAPACKE_sgesv;
+pub const dgesv = LAPACKE_dgesv;
+pub const cgesv = LAPACKE_cgesv;
+pub const zgesv = LAPACKE_zgesv;
+pub const dsgesv = LAPACKE_dsgesv;
+pub const zcgesv = LAPACKE_zcgesv;
+
+extern fn LAPACKE_sgesv_work(layout: c_int, n: isize, nrhs: isize, a: [*]f32, lda: isize, ipiv: [*]isize, b: [*]f32, ldb: isize) isize;
+extern fn LAPACKE_dgesv_work(layout: c_int, n: isize, nrhs: isize, a: [*]f64, lda: isize, ipiv: [*]isize, b: [*]f64, ldb: isize) isize;
+extern fn LAPACKE_cgesv_work(layout: c_int, n: isize, nrhs: isize, a: [*]cf32, lda: isize, ipiv: [*]isize, b: [*]cf32, ldb: isize) isize;
+extern fn LAPACKE_zgesv_work(layout: c_int, n: isize, nrhs: isize, a: [*]cf64, lda: isize, ipiv: [*]isize, b: [*]cf64, ldb: isize) isize;
+extern fn LAPACKE_dsgesv_work(layout: c_int, n: isize, nrhs: isize, a: [*]f64, lda: isize, ipiv: [*]isize, b: [*]const f64, ldb: isize, x: [*]f64, ldx: isize, work: [*]f64, swork: [*]f32, iter: *isize) isize;
+extern fn LAPACKE_zcgesv_work(layout: c_int, n: isize, nrhs: isize, a: [*]cf64, lda: isize, ipiv: [*]isize, b: [*]const cf64, ldb: isize, x: [*]cf64, ldx: isize, work: [*]cf64, swork: [*]cf32, rwork: [*]f64, iter: *isize) isize;
+pub const sgesv_work = LAPACKE_sgesv_work;
+pub const dgesv_work = LAPACKE_dgesv_work;
+pub const cgesv_work = LAPACKE_cgesv_work;
+pub const zgesv_work = LAPACKE_zgesv_work;
+pub const dsgesv_work = LAPACKE_dsgesv_work;
+pub const zcgesv_work = LAPACKE_zcgesv_work;
+
+extern fn LAPACKE_sposv(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]f32, lda: isize, b: [*]f32, ldb: isize) isize;
+extern fn LAPACKE_dposv(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]f64, lda: isize, b: [*]f64, ldb: isize) isize;
+extern fn LAPACKE_cposv(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]cf32, lda: isize, b: [*]cf32, ldb: isize) isize;
+extern fn LAPACKE_zposv(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]cf64, lda: isize, b: [*]cf64, ldb: isize) isize;
+extern fn LAPACKE_dsposv(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]f64, lda: isize, b: [*]const f64, ldb: isize, x: [*]f64, ldx: isize, iter: *isize) isize;
+extern fn LAPACKE_zcposv(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]cf64, lda: isize, b: [*]const cf64, ldb: isize, x: [*]cf64, ldx: isize, iter: *isize) isize;
+pub const sposv = LAPACKE_sposv;
+pub const dposv = LAPACKE_dposv;
+pub const cposv = LAPACKE_cposv;
+pub const zposv = LAPACKE_zposv;
+pub const dsposv = LAPACKE_dsposv;
+pub const zcposv = LAPACKE_zcposv;
+
+extern fn LAPACKE_sposv_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]f32, lda: isize, b: [*]f32, ldb: isize) isize;
+extern fn LAPACKE_dposv_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]f64, lda: isize, b: [*]f64, ldb: isize) isize;
+extern fn LAPACKE_cposv_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]cf32, lda: isize, b: [*]cf32, ldb: isize) isize;
+extern fn LAPACKE_zposv_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]cf64, lda: isize, b: [*]const cf64, ldb: isize) isize;
+extern fn LAPACKE_dsposv_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]f64, lda: isize, b: [*]const f64, ldb: isize, x: [*]f64, ldx: isize, work: [*]f64, swork: [*]f32, iter: *isize) isize;
+extern fn LAPACKE_zcposv_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]cf64, lda: isize, b: [*]cf64, ldb: isize, x: [*]cf64, ldx: isize, work: [*]cf64, swork: [*]cf32, rwork: [*]f64, iter: *isize) isize;
+pub const sposv_work = LAPACKE_sposv_work;
+pub const dposv_work = LAPACKE_dposv_work;
+pub const cposv_work = LAPACKE_cposv_work;
+pub const zposv_work = LAPACKE_zposv_work;
+pub const dsposv_work = LAPACKE_dsposv_work;
+pub const zcposv_work = LAPACKE_zcposv_work;
+
+extern fn LAPACKE_ssysv(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]f32, lda: isize, ipiv: [*]isize, b: [*]f32, ldb: isize) isize;
+extern fn LAPACKE_dsysv(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]f64, lda: isize, ipiv: [*]isize, b: [*]f64, ldb: isize) isize;
+extern fn LAPACKE_csysv(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]cf32, lda: isize, ipiv: [*]isize, b: [*]cf32, ldb: isize) isize;
+extern fn LAPACKE_zsysv(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]cf64, lda: isize, ipiv: [*]isize, b: [*]cf64, ldb: isize) isize;
+pub const ssysv = LAPACKE_ssysv;
+pub const dsysv = LAPACKE_dsysv;
+pub const csysv = LAPACKE_csysv;
+pub const zsysv = LAPACKE_zsysv;
+
+extern fn LAPACKE_ssysv_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]f32, lda: isize, ipiv: [*]isize, b: [*]f32, ldb: isize, work: [*]f32, lwork: isize) isize;
+extern fn LAPACKE_dsysv_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]f64, lda: isize, ipiv: [*]isize, b: [*]f64, ldb: isize, work: [*]f64, lwork: isize) isize;
+extern fn LAPACKE_csysv_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]cf32, lda: isize, ipiv: [*]isize, b: [*]cf32, ldb: isize, work: [*]cf32, lwork: isize) isize;
+extern fn LAPACKE_zsysv_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]cf64, lda: isize, ipiv: [*]isize, b: [*]cf64, ldb: isize, work: [*]cf64, lwork: isize) isize;
+pub const ssysv_work = LAPACKE_ssysv_work;
+pub const dsysv_work = LAPACKE_dsysv_work;
+pub const csysv_work = LAPACKE_csysv_work;
+pub const zsysv_work = LAPACKE_zsysv_work;
+
+extern fn LAPACKE_chesv(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]cf32, lda: isize, ipiv: [*]isize, b: [*]cf32, ldb: isize) isize;
+extern fn LAPACKE_zhesv(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]cf64, lda: isize, ipiv: [*]isize, b: [*]cf64, ldb: isize) isize;
+pub const chesv = LAPACKE_chesv;
+pub const zhesv = LAPACKE_zhesv;
+
+extern fn LAPACKE_chesv_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]cf32, lda: isize, ipiv: [*]isize, b: [*]cf32, ldb: isize, work: [*]cf32, lwork: isize) isize;
+extern fn LAPACKE_zhesv_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]cf64, lda: isize, ipiv: [*]isize, b: [*]cf64, ldb: isize, work: [*]cf64, lwork: isize) isize;
+pub const chesv_work = LAPACKE_chesv_work;
+pub const zhesv_work = LAPACKE_zhesv_work;
+
+// Linear Systems: Expert Drivers
+extern fn LAPACKE_sgesvx(layout: c_int, fact: u8, trans: u8, n: isize, nrhs: isize, a: [*]f32, lda: isize, af: [*]f32, ldaf: isize, ipiv: [*]isize, equed: *u8, r: [*]f32, c: [*]f32, b: [*]f32, ldb: isize, x: [*]f32, ldx: isize, rcond: *f32, ferr: [*]f32, berr: [*]f32, rpivot: *f32) isize;
+extern fn LAPACKE_dgesvx(layout: c_int, fact: u8, trans: u8, n: isize, nrhs: isize, a: [*]f64, lda: isize, af: [*]f64, ldaf: isize, ipiv: [*]isize, equed: *u8, r: [*]f64, c: [*]f64, b: [*]f64, ldb: isize, x: [*]f64, ldx: isize, rcond: *f64, ferr: [*]f64, berr: [*]f64, rpivot: *f64) isize;
+extern fn LAPACKE_cgesvx(layout: c_int, fact: u8, trans: u8, n: isize, nrhs: isize, a: [*]cf32, lda: isize, af: [*]cf32, ldaf: isize, ipiv: [*]isize, equed: *u8, r: [*]f32, c: [*]f32, b: [*]cf32, ldb: isize, x: [*]cf32, ldx: isize, rcond: *f32, ferr: [*]f32, berr: [*]f32, rpivot: *f32) isize;
+extern fn LAPACKE_zgesvx(layout: c_int, fact: u8, trans: u8, n: isize, nrhs: isize, a: [*]cf64, lda: isize, af: [*]cf64, ldaf: isize, ipiv: [*]isize, equed: *u8, r: [*]f64, c: [*]f64, b: [*]cf64, ldb: isize, x: [*]cf64, ldx: isize, rcond: *f64, ferr: [*]f64, berr: [*]f64, rpivot: *f64) isize;
+pub const sgesvx = LAPACKE_sgesvx;
+pub const dgesvx = LAPACKE_dgesvx;
+pub const cgesvx = LAPACKE_cgesvx;
+pub const zgesvx = LAPACKE_zgesvx;
+
+extern fn LAPACKE_sgesvx_work(layout: c_int, fact: u8, trans: u8, n: isize, nrhs: isize, a: [*]f32, lda: isize, af: [*]f32, ldaf: isize, ipiv: [*]isize, equed: *u8, r: [*]f32, c: [*]f32, b: [*]f32, ldb: isize, x: [*]f32, ldx: isize, rcond: *f32, ferr: [*]f32, berr: [*]f32, work: [*]f32, iwork: [*]isize) isize;
+extern fn LAPACKE_dgesvx_work(layout: c_int, fact: u8, trans: u8, n: isize, nrhs: isize, a: [*]f64, lda: isize, af: [*]f64, ldaf: isize, ipiv: [*]isize, equed: *u8, r: [*]f64, c: [*]f64, b: [*]f64, ldb: isize, x: [*]f64, ldx: isize, rcond: *f64, ferr: [*]f64, berr: [*]f64, work: [*]f64, iwork: [*]isize) isize;
+extern fn LAPACKE_cgesvx_work(layout: c_int, fact: u8, trans: u8, n: isize, nrhs: isize, a: [*]cf32, lda: isize, af: [*]cf32, ldaf: isize, ipiv: [*]isize, equed: *u8, r: [*]f32, c: [*]f32, b: [*]cf32, ldb: isize, x: [*]cf32, ldx: isize, rcond: *f32, ferr: [*]f32, berr: [*]f32, work: [*]cf32, rwork: [*]f32) isize;
+extern fn LAPACKE_zgesvx_work(layout: c_int, fact: u8, trans: u8, n: isize, nrhs: isize, a: [*]cf64, lda: isize, af: [*]cf64, ldaf: isize, ipiv: [*]isize, equed: *u8, r: [*]f64, c: [*]f64, b: [*]cf64, ldb: isize, x: [*]cf64, ldx: isize, rcond: *f64, ferr: [*]f64, berr: [*]f64, work: [*]cf64, rwork: [*]f64) isize;
+pub const sgesvx_work = LAPACKE_sgesvx_work;
+pub const dgesvx_work = LAPACKE_dgesvx_work;
+pub const cgesvx_work = LAPACKE_cgesvx_work;
+pub const zgesvx_work = LAPACKE_zgesvx_work;
+
+extern fn LAPACKE_sposvx(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*]f32, lda: isize, af: [*]f32, ldaf: isize, equed: *u8, s: [*]f32, b: [*]f32, ldb: isize, x: [*]f32, ldx: isize, rcond: *f32, ferr: [*]f32, berr: [*]f32) isize;
+extern fn LAPACKE_dposvx(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*]f64, lda: isize, af: [*]f64, ldaf: isize, equed: *u8, s: [*]f64, b: [*]f64, ldb: isize, x: [*]f64, ldx: isize, rcond: *f64, ferr: [*]f64, berr: [*]f64) isize;
+extern fn LAPACKE_cposvx(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*]cf32, lda: isize, af: [*]cf32, ldaf: isize, equed: *u8, s: [*]f32, b: [*]cf32, ldb: isize, x: [*]cf32, ldx: isize, rcond: *f32, ferr: [*]f32, berr: [*]f32) isize;
+extern fn LAPACKE_zposvx(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*]cf64, lda: isize, af: [*]cf64, ldaf: isize, equed: *u8, s: [*]f64, b: [*]cf64, ldb: isize, x: [*]cf64, ldx: isize, rcond: *f64, ferr: [*]f64, berr: [*]f64) isize;
+pub const sposvx = LAPACKE_sposvx;
+pub const dposvx = LAPACKE_dposvx;
+pub const cposvx = LAPACKE_cposvx;
+pub const zposvx = LAPACKE_zposvx;
+
+extern fn LAPACKE_sposvx_work(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*]f32, lda: isize, af: [*]f32, ldaf: isize, equed: *u8, s: [*]f32, b: [*]f32, ldb: isize, x: [*]f32, ldx: isize, rcond: *f32, ferr: [*]f32, berr: [*]f32, work: [*]f32, iwork: [*]isize) isize;
+extern fn LAPACKE_dposvx_work(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*]f64, lda: isize, af: [*]f64, ldaf: isize, equed: *u8, s: [*]f64, b: [*]f64, ldb: isize, x: [*]f64, ldx: isize, rcond: *f64, ferr: [*]f64, berr: [*]f64, work: [*]f64, iwork: [*]isize) isize;
+extern fn LAPACKE_cposvx_work(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*]cf32, lda: isize, af: [*]cf32, ldaf: isize, equed: *u8, s: [*]f32, b: [*]cf32, ldb: isize, x: [*]cf32, ldx: isize, rcond: *f32, ferr: [*]f32, berr: [*]f32, work: [*]cf32, rwork: [*]f32) isize;
+extern fn LAPACKE_zposvx_work(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*]cf64, lda: isize, af: [*]cf64, ldaf: isize, equed: *u8, s: [*]f64, b: [*]cf64, ldb: isize, x: [*]cf64, ldx: isize, rcond: *f64, ferr: [*]f64, berr: [*]f64, work: [*]cf64, rwork: [*]f64) isize;
+pub const sposvx_work = LAPACKE_sposvx_work;
+pub const dposvx_work = LAPACKE_dposvx_work;
+pub const cposvx_work = LAPACKE_cposvx_work;
+pub const zposvx_work = LAPACKE_zposvx_work;
+
+extern fn LAPACKE_ssysvx(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*]const f32, lda: isize, af: [*]f32, ldaf: isize, ipiv: [*]isize, b: [*]const f32, ldb: isize, x: [*]f32, ldx: isize, rcond: *f32, ferr: [*]f32, berr: [*]f32) isize;
+extern fn LAPACKE_dsysvx(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*]const f64, lda: isize, af: [*]f64, ldaf: isize, ipiv: [*]isize, b: [*]const f64, ldb: isize, x: [*]f64, ldx: isize, rcond: *f64, ferr: [*]f64, berr: [*]f64) isize;
+extern fn LAPACKE_csysvx(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*]const cf32, lda: isize, af: [*]cf32, ldaf: isize, ipiv: [*]isize, b: [*]const cf32, ldb: isize, x: [*]cf32, ldx: isize, rcond: *f32, ferr: [*]f32, berr: [*]f32) isize;
+extern fn LAPACKE_zsysvx(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*]const cf64, lda: isize, af: [*]cf64, ldaf: isize, ipiv: [*]isize, b: [*]const cf64, ldb: isize, x: [*]cf64, ldx: isize, rcond: *f64, ferr: [*]f64, berr: [*]f64) isize;
+pub const ssysvx = LAPACKE_ssysvx;
+pub const dsysvx = LAPACKE_dsysvx;
+pub const csysvx = LAPACKE_csysvx;
+pub const zsysvx = LAPACKE_zsysvx;
+
+extern fn LAPACKE_ssysvx_work(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*]const f32, lda: isize, af: [*]f32, ldaf: isize, ipiv: [*]isize, b: [*]const f32, ldb: isize, x: [*]f32, ldx: isize, rcond: *f32, ferr: [*]f32, berr: [*]f32, work: [*]f32, lwork: isize, iwork: [*]isize) isize;
+extern fn LAPACKE_dsysvx_work(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*]const f64, lda: isize, af: [*]f64, ldaf: isize, ipiv: [*]isize, b: [*]const f64, ldb: isize, x: [*]f64, ldx: isize, rcond: *f64, ferr: [*]f64, berr: [*]f64, work: [*]f64, lwork: isize, iwork: [*]isize) isize;
+extern fn LAPACKE_csysvx_work(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*]const cf32, lda: isize, af: [*]cf32, ldaf: isize, ipiv: [*]isize, b: [*]const cf32, ldb: isize, x: [*]cf32, ldx: isize, rcond: *f32, ferr: [*]f32, berr: [*]f32, work: [*]cf32, lwork: isize, rwork: [*]f32) isize;
+extern fn LAPACKE_zsysvx_work(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*]const cf64, lda: isize, af: [*]cf64, ldaf: isize, ipiv: [*]isize, b: [*]const cf64, ldb: isize, x: [*]cf64, ldx: isize, rcond: *f64, ferr: [*]f64, berr: [*]f64, work: [*]cf64, lwork: isize, rwork: [*]f64) isize;
+pub const ssysvx_work = LAPACKE_ssysvx_work;
+pub const dsysvx_work = LAPACKE_dsysvx_work;
+pub const csysvx_work = LAPACKE_csysvx_work;
+pub const zsysvx_work = LAPACKE_zsysvx_work;
+
+extern fn LAPACKE_chesvx(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*]const cf32, lda: isize, af: [*]cf32, ldaf: isize, ipiv: [*]isize, b: [*]const cf32, ldb: isize, x: [*]cf32, ldx: isize, rcond: *f32, ferr: [*]f32, berr: [*]f32) isize;
+extern fn LAPACKE_zhesvx(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*]const cf64, lda: isize, af: [*]cf64, ldaf: isize, ipiv: [*]isize, b: [*]const cf64, ldb: isize, x: [*]cf64, ldx: isize, rcond: *f64, ferr: [*]f64, berr: [*]f64) isize;
+pub const chesvx = LAPACKE_chesvx;
+pub const zhesvx = LAPACKE_zhesvx;
+
+extern fn LAPACKE_chesvx_work(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*]const cf32, lda: isize, af: [*]cf32, ldaf: isize, ipiv: [*]isize, b: [*]const cf32, ldb: isize, x: [*]cf32, ldx: isize, rcond: *f32, ferr: [*]f32, berr: [*]f32, work: [*]cf32, lwork: isize, rwork: [*]f32) isize;
+extern fn LAPACKE_zhesvx_work(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*]const cf64, lda: isize, af: [*]cf64, ldaf: isize, ipiv: [*]isize, b: [*]const cf64, ldb: isize, x: [*]cf64, ldx: isize, rcond: *f64, ferr: [*]f64, berr: [*]f64, work: [*]cf64, lwork: isize, rwork: [*]f64) isize;
+pub const chesvx_work = LAPACKE_chesvx_work;
+pub const zhesvx_work = LAPACKE_zhesvx_work;
+
+// Linear Systems: Computational LU
+extern fn LAPACKE_sgetrs(layout: c_int, trans: u8, n: isize, nrhs: isize, a: [*]const f32, lda: isize, ipiv: [*]const isize, b: [*]f32, ldb: isize) isize;
+extern fn LAPACKE_dgetrs(layout: c_int, trans: u8, n: isize, nrhs: isize, a: [*]const f64, lda: isize, ipiv: [*]const isize, b: [*]f64, ldb: isize) isize;
+extern fn LAPACKE_cgetrs(layout: c_int, trans: u8, n: isize, nrhs: isize, a: [*]const cf32, lda: isize, ipiv: [*]const isize, b: [*]cf32, ldb: isize) isize;
+extern fn LAPACKE_zgetrs(layout: c_int, trans: u8, n: isize, nrhs: isize, a: [*]const cf64, lda: isize, ipiv: [*]const isize, b: [*]cf64, ldb: isize) isize;
+pub const sgetrs = LAPACKE_sgetrs;
+pub const dgetrs = LAPACKE_dgetrs;
+pub const cgetrs = LAPACKE_cgetrs;
+pub const zgetrs = LAPACKE_zgetrs;
+
+extern fn LAPACKE_sgetrs_work(layout: c_int, trans: u8, n: isize, nrhs: isize, a: [*]const f32, lda: isize, ipiv: [*]const isize, b: [*]f32, ldb: isize) isize;
+extern fn LAPACKE_dgetrs_work(layout: c_int, trans: u8, n: isize, nrhs: isize, a: [*]const f64, lda: isize, ipiv: [*]const isize, b: [*]f64, ldb: isize) isize;
+extern fn LAPACKE_cgetrs_work(layout: c_int, trans: u8, n: isize, nrhs: isize, a: [*]const cf32, lda: isize, ipiv: [*]const isize, b: [*]cf32, ldb: isize) isize;
+extern fn LAPACKE_zgetrs_work(layout: c_int, trans: u8, n: isize, nrhs: isize, a: [*]const cf64, lda: isize, ipiv: [*]const isize, b: [*]cf64, ldb: isize) isize;
+pub const sgetrs_work = LAPACKE_sgetrs_work;
+pub const dgetrs_work = LAPACKE_dgetrs_work;
+pub const cgetrs_work = LAPACKE_cgetrs_work;
+pub const zgetrs_work = LAPACKE_zgetrs_work;
+
+extern fn LAPACKE_sgetrf(layout: c_int, m: isize, n: isize, a: [*]f32, lda: isize, ipiv: [*]isize) isize;
+extern fn LAPACKE_dgetrf(layout: c_int, m: isize, n: isize, a: [*]f64, lda: isize, ipiv: [*]isize) isize;
+extern fn LAPACKE_cgetrf(layout: c_int, m: isize, n: isize, a: [*]cf32, lda: isize, ipiv: [*]isize) isize;
+extern fn LAPACKE_zgetrf(layout: c_int, m: isize, n: isize, a: [*]cf64, lda: isize, ipiv: [*]isize) isize;
+pub const sgetrf = LAPACKE_sgetrf;
+pub const dgetrf = LAPACKE_dgetrf;
+pub const cgetrf = LAPACKE_cgetrf;
+pub const zgetrf = LAPACKE_zgetrf;
+
+extern fn LAPACKE_sgetrf_work(layout: c_int, m: isize, n: isize, a: [*]f32, lda: isize, ipiv: [*]isize) isize;
+extern fn LAPACKE_dgetrf_work(layout: c_int, m: isize, n: isize, a: [*]f64, lda: isize, ipiv: [*]isize) isize;
+extern fn LAPACKE_cgetrf_work(layout: c_int, m: isize, n: isize, a: [*]cf32, lda: isize, ipiv: [*]isize) isize;
+extern fn LAPACKE_zgetrf_work(layout: c_int, m: isize, n: isize, a: [*]cf64, lda: isize, ipiv: [*]isize) isize;
+pub const sgetrf_work = LAPACKE_sgetrf_work;
+pub const dgetrf_work = LAPACKE_dgetrf_work;
+pub const cgetrf_work = LAPACKE_cgetrf_work;
+pub const zgetrf_work = LAPACKE_zgetrf_work;
+
+extern fn LAPACKE_sgetri(layout: c_int, n: isize, a: [*]f32, lda: isize, ipiv: [*]const isize) isize;
+extern fn LAPACKE_dgetri(layout: c_int, n: isize, a: [*]f64, lda: isize, ipiv: [*]const isize) isize;
+extern fn LAPACKE_cgetri(layout: c_int, n: isize, a: [*]cf32, lda: isize, ipiv: [*]const isize) isize;
+extern fn LAPACKE_zgetri(layout: c_int, n: isize, a: [*]cf64, lda: isize, ipiv: [*]const isize) isize;
+pub const sgetri = LAPACKE_sgetri;
+pub const dgetri = LAPACKE_dgetri;
+pub const cgetri = LAPACKE_cgetri;
+pub const zgetri = LAPACKE_zgetri;
+
+extern fn LAPACKE_sgetri_work(layout: c_int, n: isize, a: [*]f32, lda: isize, ipiv: [*]const isize, work: [*]f32, lwork: isize) isize;
+extern fn LAPACKE_dgetri_work(layout: c_int, n: isize, a: [*]f64, lda: isize, ipiv: [*]const isize, work: [*]f64, lwork: isize) isize;
+extern fn LAPACKE_cgetri_work(layout: c_int, n: isize, a: [*]cf32, lda: isize, ipiv: [*]const isize, work: [*]cf32, lwork: isize) isize;
+extern fn LAPACKE_zgetri_work(layout: c_int, n: isize, a: [*]cf64, lda: isize, ipiv: [*]const isize, work: [*]cf64, lwork: isize) isize;
+pub const sgetri_work = LAPACKE_sgetri_work;
+pub const dgetri_work = LAPACKE_dgetri_work;
+pub const cgetri_work = LAPACKE_cgetri_work;
+pub const zgetri_work = LAPACKE_zgetri_work;
+
+extern fn LAPACKE_sgecon(layout: c_int, norm: u8, n: isize, a: [*]const f32, lda: isize, anorm: f32, rcond: *f32) isize;
+extern fn LAPACKE_dgecon(layout: c_int, norm: u8, n: isize, a: [*]const f64, lda: isize, anorm: f64, rcond: *f64) isize;
+extern fn LAPACKE_cgecon(layout: c_int, norm: u8, n: isize, a: [*]const cf32, lda: isize, anorm: f32, rcond: *f32) isize;
+extern fn LAPACKE_zgecon(layout: c_int, norm: u8, n: isize, a: [*]const cf64, lda: isize, anorm: f64, rcond: *f64) isize;
+pub const sgecon = LAPACKE_sgecon;
+pub const dgecon = LAPACKE_dgecon;
+pub const cgecon = LAPACKE_cgecon;
+pub const zgecon = LAPACKE_zgecon;
+
+extern fn LAPACKE_sgecon_work(layout: c_int, norm: u8, n: isize, a: [*]const f32, lda: isize, anorm: f32, rcond: *f32, work: [*]f32, iwork: [*]isize) isize;
+extern fn LAPACKE_dgecon_work(layout: c_int, norm: u8, n: isize, a: [*]const f64, lda: isize, anorm: f64, rcond: *f64, work: [*]f64, iwork: [*]isize) isize;
+extern fn LAPACKE_cgecon_work(layout: c_int, norm: u8, n: isize, a: [*]const cf32, lda: isize, anorm: f32, rcond: *f32, work: [*]cf32, rwork: [*]f32) isize;
+extern fn LAPACKE_zgecon_work(layout: c_int, norm: u8, n: isize, a: [*]const cf64, lda: isize, anorm: f64, rcond: *f64, work: [*]cf64, rwork: [*]f64) isize;
+pub const sgecon_work = LAPACKE_sgecon_work;
+pub const dgecon_work = LAPACKE_dgecon_work;
+pub const cgecon_work = LAPACKE_cgecon_work;
+pub const zgecon_work = LAPACKE_zgecon_work;
+
+// Linear Systems: Computational Cholesky
+extern fn LAPACKE_spotrs(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]const f32, lda: isize, b: [*]f32, ldb: isize) isize;
+extern fn LAPACKE_dpotrs(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]const f64, lda: isize, b: [*]f64, ldb: isize) isize;
+extern fn LAPACKE_cpotrs(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]const cf32, lda: isize, b: [*]cf32, ldb: isize) isize;
+extern fn LAPACKE_zpotrs(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]const cf64, lda: isize, b: [*]cf64, ldb: isize) isize;
+pub const spotrs = LAPACKE_spotrs;
+pub const dpotrs = LAPACKE_dpotrs;
+pub const cpotrs = LAPACKE_cpotrs;
+pub const zpotrs = LAPACKE_zpotrs;
+
+extern fn LAPACKE_spotrs_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]const f32, lda: isize, b: [*]f32, ldb: isize) isize;
+extern fn LAPACKE_dpotrs_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]const f64, lda: isize, b: [*]f64, ldb: isize) isize;
+extern fn LAPACKE_cpotrs_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]const cf32, lda: isize, b: [*]cf32, ldb: isize) isize;
+extern fn LAPACKE_zpotrs_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]const cf64, lda: isize, b: [*]cf64, ldb: isize) isize;
+pub const spotrs_work = LAPACKE_spotrs_work;
+pub const dpotrs_work = LAPACKE_dpotrs_work;
+pub const cpotrs_work = LAPACKE_cpotrs_work;
+pub const zpotrs_work = LAPACKE_zpotrs_work;
+
+extern fn LAPACKE_spotrf(layout: c_int, uplo: u8, n: isize, a: [*]f32, lda: isize) isize;
+extern fn LAPACKE_dpotrf(layout: c_int, uplo: u8, n: isize, a: [*]f64, lda: isize) isize;
+extern fn LAPACKE_cpotrf(layout: c_int, uplo: u8, n: isize, a: [*]cf32, lda: isize) isize;
+extern fn LAPACKE_zpotrf(layout: c_int, uplo: u8, n: isize, a: [*]cf64, lda: isize) isize;
+pub const spotrf = LAPACKE_spotrf;
+pub const dpotrf = LAPACKE_dpotrf;
+pub const cpotrf = LAPACKE_cpotrf;
+pub const zpotrf = LAPACKE_zpotrf;
+
+extern fn LAPACKE_spotrf_work(layout: c_int, uplo: u8, n: isize, a: [*]f32, lda: isize) isize;
+extern fn LAPACKE_dpotrf_work(layout: c_int, uplo: u8, n: isize, a: [*]f64, lda: isize) isize;
+extern fn LAPACKE_cpotrf_work(layout: c_int, uplo: u8, n: isize, a: [*]cf32, lda: isize) isize;
+extern fn LAPACKE_zpotrf_work(layout: c_int, uplo: u8, n: isize, a: [*]cf64, lda: isize) isize;
+pub const spotrf_work = LAPACKE_spotrf_work;
+pub const dpotrf_work = LAPACKE_dpotrf_work;
+pub const cpotrf_work = LAPACKE_cpotrf_work;
+pub const zpotrf_work = LAPACKE_zpotrf_work;
+
+extern fn LAPACKE_spotri(layout: c_int, uplo: u8, n: isize, a: [*]f32, lda: isize) isize;
+extern fn LAPACKE_dpotri(layout: c_int, uplo: u8, n: isize, a: [*]f64, lda: isize) isize;
+extern fn LAPACKE_cpotri(layout: c_int, uplo: u8, n: isize, a: [*]cf32, lda: isize) isize;
+extern fn LAPACKE_zpotri(layout: c_int, uplo: u8, n: isize, a: [*]cf64, lda: isize) isize;
+pub const spotri = LAPACKE_spotri;
+pub const dpotri = LAPACKE_dpotri;
+pub const cpotri = LAPACKE_cpotri;
+pub const zpotri = LAPACKE_zpotri;
+
+extern fn LAPACKE_spotri_work(layout: c_int, uplo: u8, n: isize, a: [*]f32, lda: isize) isize;
+extern fn LAPACKE_dpotri_work(layout: c_int, uplo: u8, n: isize, a: [*]f64, lda: isize) isize;
+extern fn LAPACKE_cpotri_work(layout: c_int, uplo: u8, n: isize, a: [*]cf32, lda: isize) isize;
+extern fn LAPACKE_zpotri_work(layout: c_int, uplo: u8, n: isize, a: [*]cf64, lda: isize) isize;
+pub const spotri_work = LAPACKE_spotri_work;
+pub const dpotri_work = LAPACKE_dpotri_work;
+pub const cpotri_work = LAPACKE_cpotri_work;
+pub const zpotri_work = LAPACKE_zpotri_work;
+
+extern fn LAPACKE_spocon(layout: c_int, uplo: u8, n: isize, a: [*]const f32, lda: isize, anorm: f32, rcond: *f32) isize;
+extern fn LAPACKE_dpocon(layout: c_int, uplo: u8, n: isize, a: [*]const f64, lda: isize, anorm: f64, rcond: *f64) isize;
+extern fn LAPACKE_cpocon(layout: c_int, uplo: u8, n: isize, a: [*]const cf32, lda: isize, anorm: f32, rcond: *f32) isize;
+extern fn LAPACKE_zpocon(layout: c_int, uplo: u8, n: isize, a: [*]const cf64, lda: isize, anorm: f64, rcond: *f64) isize;
+pub const spocon = LAPACKE_spocon;
+pub const dpocon = LAPACKE_dpocon;
+pub const cpocon = LAPACKE_cpocon;
+pub const zpocon = LAPACKE_zpocon;
+
+extern fn LAPACKE_spocon_work(layout: c_int, uplo: u8, n: isize, a: [*]const f32, lda: isize, anorm: f32, rcond: *f32, work: [*]f32, iwork: [*]isize) isize;
+extern fn LAPACKE_dpocon_work(layout: c_int, uplo: u8, n: isize, a: [*]const f64, lda: isize, anorm: f64, rcond: *f64, work: [*]f64, iwork: [*]isize) isize;
+extern fn LAPACKE_cpocon_work(layout: c_int, uplo: u8, n: isize, a: [*]const cf32, lda: isize, anorm: f32, rcond: *f32, work: [*]cf32, rwork: [*]f32) isize;
+extern fn LAPACKE_zpocon_work(layout: c_int, uplo: u8, n: isize, a: [*]const cf64, lda: isize, anorm: f64, rcond: *f64, work: [*]cf64, rwork: [*]f64) isize;
+pub const spocon_work = LAPACKE_spocon_work;
+pub const dpocon_work = LAPACKE_dpocon_work;
+pub const cpocon_work = LAPACKE_cpocon_work;
+pub const zpocon_work = LAPACKE_zpocon_work;
+
+// Linear Systems: Computational Symmetric and Hermitian
+extern fn LAPACKE_ssytrs(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]const f32, lda: isize, ipiv: [*]const isize, b: [*]f32, ldb: isize) isize;
+extern fn LAPACKE_dsytrs(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]const f64, lda: isize, ipiv: [*]const isize, b: [*]f64, ldb: isize) isize;
+extern fn LAPACKE_csytrs(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]const cf32, lda: isize, ipiv: [*]const isize, b: [*]cf32, ldb: isize) isize;
+extern fn LAPACKE_zsytrs(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]const cf64, lda: isize, ipiv: [*]const isize, b: [*]cf64, ldb: isize) isize;
+pub const ssytrs = LAPACKE_ssytrs;
+pub const dsytrs = LAPACKE_dsytrs;
+pub const csytrs = LAPACKE_csytrs;
+pub const zsytrs = LAPACKE_zsytrs;
+
+extern fn LAPACKE_ssytrs_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]const f32, lda: isize, ipiv: [*]const isize, b: [*]f32, ldb: isize) isize;
+extern fn LAPACKE_dsytrs_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]const f64, lda: isize, ipiv: [*]const isize, b: [*]f64, ldb: isize) isize;
+extern fn LAPACKE_csytrs_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]const cf32, lda: isize, ipiv: [*]const isize, b: [*]cf32, ldb: isize) isize;
+extern fn LAPACKE_zsytrs_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]const cf64, lda: isize, ipiv: [*]const isize, b: [*]cf64, ldb: isize) isize;
+pub const ssytrs_work = LAPACKE_ssytrs_work;
+pub const dsytrs_work = LAPACKE_dsytrs_work;
+pub const csytrs_work = LAPACKE_csytrs_work;
+pub const zsytrs_work = LAPACKE_zsytrs_work;
+
+extern fn LAPACKE_ssytrf(layout: c_int, uplo: u8, n: isize, a: [*]f32, lda: isize, ipiv: [*]isize) isize;
+extern fn LAPACKE_dsytrf(layout: c_int, uplo: u8, n: isize, a: [*]f64, lda: isize, ipiv: [*]isize) isize;
+extern fn LAPACKE_csytrf(layout: c_int, uplo: u8, n: isize, a: [*]cf32, lda: isize, ipiv: [*]isize) isize;
+extern fn LAPACKE_zsytrf(layout: c_int, uplo: u8, n: isize, a: [*]cf64, lda: isize, ipiv: [*]isize) isize;
+pub const ssytrf = LAPACKE_ssytrf;
+pub const dsytrf = LAPACKE_dsytrf;
+pub const csytrf = LAPACKE_csytrf;
+pub const zsytrf = LAPACKE_zsytrf;
+
+extern fn LAPACKE_ssytrf_work(layout: c_int, uplo: u8, n: isize, a: [*]f32, lda: isize, ipiv: [*]isize, work: [*]f32, lwork: isize) isize;
+extern fn LAPACKE_dsytrf_work(layout: c_int, uplo: u8, n: isize, a: [*]f64, lda: isize, ipiv: [*]isize, work: [*]f64, lwork: isize) isize;
+extern fn LAPACKE_csytrf_work(layout: c_int, uplo: u8, n: isize, a: [*]cf32, lda: isize, ipiv: [*]isize, work: [*]cf32, lwork: isize) isize;
+extern fn LAPACKE_zsytrf_work(layout: c_int, uplo: u8, n: isize, a: [*]cf64, lda: isize, ipiv: [*]isize, work: [*]cf64, lwork: isize) isize;
+pub const ssytrf_work = LAPACKE_ssytrf_work;
+pub const dsytrf_work = LAPACKE_dsytrf_work;
+pub const csytrf_work = LAPACKE_csytrf_work;
+pub const zsytrf_work = LAPACKE_zsytrf_work;
+
+extern fn LAPACKE_ssytri(layout: c_int, uplo: u8, n: isize, a: [*]f32, lda: isize, ipiv: [*]const isize) isize;
+extern fn LAPACKE_dsytri(layout: c_int, uplo: u8, n: isize, a: [*]f64, lda: isize, ipiv: [*]const isize) isize;
+extern fn LAPACKE_csytri(layout: c_int, uplo: u8, n: isize, a: [*]cf32, lda: isize, ipiv: [*]const isize) isize;
+extern fn LAPACKE_zsytri(layout: c_int, uplo: u8, n: isize, a: [*]cf64, lda: isize, ipiv: [*]const isize) isize;
+pub const ssytri = LAPACKE_ssytri;
+pub const dsytri = LAPACKE_dsytri;
+pub const csytri = LAPACKE_csytri;
+pub const zsytri = LAPACKE_zsytri;
+
+extern fn LAPACKE_ssytri_work(layout: c_int, uplo: u8, n: isize, a: [*]f32, lda: isize, ipiv: [*]const isize, work: [*]f32) isize;
+extern fn LAPACKE_dsytri_work(layout: c_int, uplo: u8, n: isize, a: [*]f64, lda: isize, ipiv: [*]const isize, work: [*]f64) isize;
+extern fn LAPACKE_csytri_work(layout: c_int, uplo: u8, n: isize, a: [*]cf32, lda: isize, ipiv: [*]const isize, work: [*]cf32) isize;
+extern fn LAPACKE_zsytri_work(layout: c_int, uplo: u8, n: isize, a: [*]cf64, lda: isize, ipiv: [*]const isize, work: [*]cf64) isize;
+pub const ssytri_work = LAPACKE_ssytri_work;
+pub const dsytri_work = LAPACKE_dsytri_work;
+pub const csytri_work = LAPACKE_csytri_work;
+pub const zsytri_work = LAPACKE_zsytri_work;
+
+extern fn LAPACKE_ssycon(layout: c_int, uplo: u8, n: isize, a: [*]const f32, lda: isize, ipiv: [*]const isize, anorm: f32, rcond: *f32) isize;
+extern fn LAPACKE_dsycon(layout: c_int, uplo: u8, n: isize, a: [*]const f64, lda: isize, ipiv: [*]const isize, anorm: f64, rcond: *f64) isize;
+extern fn LAPACKE_csycon(layout: c_int, uplo: u8, n: isize, a: [*]const cf32, lda: isize, ipiv: [*]const isize, anorm: f32, rcond: *f32) isize;
+extern fn LAPACKE_zsycon(layout: c_int, uplo: u8, n: isize, a: [*]const cf64, lda: isize, ipiv: [*]const isize, anorm: f64, rcond: *f64) isize;
+pub const ssycon = LAPACKE_ssycon;
+pub const dsycon = LAPACKE_dsycon;
+pub const csycon = LAPACKE_csycon;
+pub const zsycon = LAPACKE_zsycon;
+
+extern fn LAPACKE_ssycon_work(layout: c_int, uplo: u8, n: isize, a: [*]const f32, lda: isize, ipiv: [*]const isize, anorm: f32, rcond: *f32, work: [*]f32, iwork: [*]isize) isize;
+extern fn LAPACKE_dsycon_work(layout: c_int, uplo: u8, n: isize, a: [*]const f64, lda: isize, ipiv: [*]const isize, anorm: f64, rcond: *f64, work: [*]f64, iwork: [*]isize) isize;
+extern fn LAPACKE_csycon_work(layout: c_int, uplo: u8, n: isize, a: [*]const cf32, lda: isize, ipiv: [*]const isize, anorm: f32, rcond: *f32, work: [*]cf32) isize;
+extern fn LAPACKE_zsycon_work(layout: c_int, uplo: u8, n: isize, a: [*]const cf64, lda: isize, ipiv: [*]const isize, anorm: f64, rcond: *f64, work: [*]cf64) isize;
+pub const ssycon_work = LAPACKE_ssycon_work;
+pub const dsycon_work = LAPACKE_dsycon_work;
+pub const csycon_work = LAPACKE_csycon_work;
+pub const zsycon_work = LAPACKE_zsycon_work;
+
+extern fn LAPACKE_chetrs(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]const cf32, lda: isize, ipiv: [*]const isize, b: [*]cf32, ldb: isize) isize;
+extern fn LAPACKE_zhetrs(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]const cf64, lda: isize, ipiv: [*]const isize, b: [*]cf64, ldb: isize) isize;
+pub const chetrs = LAPACKE_chetrs;
+pub const zhetrs = LAPACKE_zhetrs;
+
+extern fn LAPACKE_chetrs_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]const cf32, lda: isize, ipiv: [*]const isize, b: [*]cf32, ldb: isize) isize;
+extern fn LAPACKE_zhetrs_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*]const cf64, lda: isize, ipiv: [*]const isize, b: [*]cf64, ldb: isize) isize;
+pub const chetrs_work = LAPACKE_chetrs_work;
+pub const zhetrs_work = LAPACKE_zhetrs_work;
+
+extern fn LAPACKE_chetrf(layout: c_int, uplo: u8, n: isize, a: [*]cf32, lda: isize, ipiv: [*]isize) isize;
+extern fn LAPACKE_zhetrf(layout: c_int, uplo: u8, n: isize, a: [*]cf64, lda: isize, ipiv: [*]isize) isize;
+pub const chetrf = LAPACKE_chetrf;
+pub const zhetrf = LAPACKE_zhetrf;
+
+extern fn LAPACKE_chetrf_work(layout: c_int, uplo: u8, n: isize, a: [*]cf32, lda: isize, ipiv: [*]isize, work: [*]cf32, lwork: isize) isize;
+extern fn LAPACKE_zhetrf_work(layout: c_int, uplo: u8, n: isize, a: [*]cf64, lda: isize, ipiv: [*]isize, work: [*]cf64, lwork: isize) isize;
+pub const chetrf_work = LAPACKE_chetrf_work;
+pub const zhetrf_work = LAPACKE_zhetrf_work;
+
+extern fn LAPACKE_chetri(layout: c_int, uplo: u8, n: isize, a: [*]cf32, lda: isize, ipiv: [*]const isize) isize;
+extern fn LAPACKE_zhetri(layout: c_int, uplo: u8, n: isize, a: [*]cf64, lda: isize, ipiv: [*]const isize) isize;
+pub const chetri = LAPACKE_chetri;
+pub const zhetri = LAPACKE_zhetri;
+
+extern fn LAPACKE_chetri_work(layout: c_int, uplo: u8, n: isize, a: [*]cf32, lda: isize, ipiv: [*]const isize, work: [*]cf32) isize;
+extern fn LAPACKE_zhetri_work(layout: c_int, uplo: u8, n: isize, a: [*]cf64, lda: isize, ipiv: [*]const isize, work: [*]cf64) isize;
+pub const chetri_work = LAPACKE_chetri_work;
+pub const zhetri_work = LAPACKE_zhetri_work;
+
+extern fn LAPACKE_checon(layout: c_int, uplo: u8, n: isize, a: [*]const cf32, lda: isize, ipiv: [*]const isize, anorm: f32, rcond: *f32) isize;
+extern fn LAPACKE_zhecon(layout: c_int, uplo: u8, n: isize, a: [*]const cf64, lda: isize, ipiv: [*]const isize, anorm: f64, rcond: *f64) isize;
+pub const checon = LAPACKE_checon;
+pub const zhecon = LAPACKE_zhecon;
+
+extern fn LAPACKE_checon_work(layout: c_int, uplo: u8, n: isize, a: [*]const cf32, lda: isize, ipiv: [*]const isize, anorm: f32, rcond: *f32, work: [*]cf32) isize;
+extern fn LAPACKE_zhecon_work(layout: c_int, uplo: u8, n: isize, a: [*]const cf64, lda: isize, ipiv: [*]const isize, anorm: f64, rcond: *f64, work: [*]cf64) isize;
+pub const checon_work = LAPACKE_checon_work;
+pub const zhecon_work = LAPACKE_zhecon_work;
+
+// Least Squares: Drivers
+extern fn LAPACKE_sgels(layout: c_int, trans: u8, m: isize, n: isize, nrhs: isize, a: [*]f32, lda: isize, b: [*]f32, ldb: isize) isize;
+extern fn LAPACKE_dgels(layout: c_int, trans: u8, m: isize, n: isize, nrhs: isize, a: [*]f64, lda: isize, b: [*]f64, ldb: isize) isize;
+extern fn LAPACKE_cgels(layout: c_int, trans: u8, m: isize, n: isize, nrhs: isize, a: [*]cf32, lda: isize, b: [*]cf32, ldb: isize) isize;
+extern fn LAPACKE_zgels(layout: c_int, trans: u8, m: isize, n: isize, nrhs: isize, a: [*]cf64, lda: isize, b: [*]cf64, ldb: isize) isize;
+pub const sgels = LAPACKE_sgels;
+pub const dgels = LAPACKE_dgels;
+pub const cgels = LAPACKE_cgels;
+pub const zgels = LAPACKE_zgels;
+
+extern fn LAPACKE_sgels_work(layout: c_int, trans: u8, m: isize, n: isize, nrhs: isize, a: [*]f32, lda: isize, b: [*]f32, ldb: isize, work: [*]f32, lwork: isize) isize;
+extern fn LAPACKE_dgels_work(layout: c_int, trans: u8, m: isize, n: isize, nrhs: isize, a: [*]f64, lda: isize, b: [*]f64, ldb: isize, work: [*]f64, lwork: isize) isize;
+extern fn LAPACKE_cgels_work(layout: c_int, trans: u8, m: isize, n: isize, nrhs: isize, a: [*]cf32, lda: isize, b: [*]cf32, ldb: isize, work: [*]cf32, lwork: isize) isize;
+extern fn LAPACKE_zgels_work(layout: c_int, trans: u8, m: isize, n: isize, nrhs: isize, a: [*]cf64, lda: isize, b: [*]cf64, ldb: isize, work: [*]cf64, lwork: isize) isize;
+pub const sgels_work = LAPACKE_sgels_work;
+pub const dgels_work = LAPACKE_dgels_work;
+pub const cgels_work = LAPACKE_cgels_work;
+pub const zgels_work = LAPACKE_zgels_work;
+
+extern fn LAPACKE_sgelsd(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*]f32, lda: isize, b: [*]f32, ldb: isize, s: [*]f32, rcond: f32, rank: *isize) isize;
+extern fn LAPACKE_dgelsd(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*]f64, lda: isize, b: [*]f64, ldb: isize, s: [*]f64, rcond: f64, rank: *isize) isize;
+extern fn LAPACKE_cgelsd(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*]cf32, lda: isize, b: [*]cf32, ldb: isize, s: [*]f32, rcond: f32, rank: *isize) isize;
+extern fn LAPACKE_zgelsd(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*]cf64, lda: isize, b: [*]cf64, ldb: isize, s: [*]f64, rcond: f64, rank: *isize) isize;
+pub const sgelsd = LAPACKE_sgelsd;
+pub const dgelsd = LAPACKE_dgelsd;
+pub const cgelsd = LAPACKE_cgelsd;
+pub const zgelsd = LAPACKE_zgelsd;
+
+extern fn LAPACKE_sgelsd_work(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*]f32, lda: isize, b: [*]f32, ldb: isize, s: [*]f32, rcond: f32, rank: *isize, work: [*]f32, lwork: isize, iwork: [*]isize) isize;
+extern fn LAPACKE_dgelsd_work(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*]f64, lda: isize, b: [*]f64, ldb: isize, s: [*]f64, rcond: f64, rank: *isize, work: [*]f64, lwork: isize, iwork: [*]isize) isize;
+extern fn LAPACKE_cgelsd_work(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*]cf32, lda: isize, b: [*]cf32, ldb: isize, s: [*]f32, rcond: f32, rank: *isize, work: [*]cf32, lwork: isize, rwork: [*]f32, iwork: [*]isize) isize;
+extern fn LAPACKE_zgelsd_work(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*]cf64, lda: isize, b: [*]cf64, ldb: isize, s: [*]f64, rcond: f64, rank: *isize, work: [*]cf64, lwork: isize, rwork: [*]f64, iwork: [*]isize) isize;
+pub const sgelsd_work = LAPACKE_sgelsd_work;
+pub const dgelsd_work = LAPACKE_dgelsd_work;
+pub const cgelsd_work = LAPACKE_cgelsd_work;
+pub const zgelsd_work = LAPACKE_zgelsd_work;
+
+extern fn LAPACKE_sgelss(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*]f32, lda: isize, b: [*]f32, ldb: isize, s: [*]f32, rcond: f32, rank: *isize) isize;
+extern fn LAPACKE_dgelss(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*]f64, lda: isize, b: [*]f64, ldb: isize, s: [*]f64, rcond: f64, rank: *isize) isize;
+extern fn LAPACKE_cgelss(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*]cf32, lda: isize, b: [*]cf32, ldb: isize, s: [*]f32, rcond: f32, rank: *isize) isize;
+extern fn LAPACKE_zgelss(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*]cf64, lda: isize, b: [*]cf64, ldb: isize, s: [*]f64, rcond: f64, rank: *isize) isize;
+pub const sgelss = LAPACKE_sgelss;
+pub const dgelss = LAPACKE_dgelss;
+pub const cgelss = LAPACKE_cgelss;
+pub const zgelss = LAPACKE_zgelss;
+
+extern fn LAPACKE_sgelss_work(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*]f32, lda: isize, b: [*]f32, ldb: isize, s: [*]f32, rcond: f32, rank: *isize, work: [*]f32, lwork: isize) isize;
+extern fn LAPACKE_dgelss_work(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*]f64, lda: isize, b: [*]f64, ldb: isize, s: [*]f64, rcond: f64, rank: *isize, work: [*]f64, lwork: isize) isize;
+extern fn LAPACKE_cgelss_work(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*]cf32, lda: isize, b: [*]cf32, ldb: isize, s: [*]f32, rcond: f32, rank: *isize, work: [*]cf32, lwork: isize, rwork: [*]f32) isize;
+extern fn LAPACKE_zgelss_work(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*]cf64, lda: isize, b: [*]cf64, ldb: isize, s: [*]f64, rcond: f64, rank: *isize, work: [*]cf64, lwork: isize, rwork: [*]f64) isize;
+pub const sgelss_work = LAPACKE_sgelss_work;
+pub const dgelss_work = LAPACKE_dgelss_work;
+pub const cgelss_work = LAPACKE_cgelss_work;
+pub const zgelss_work = LAPACKE_zgelss_work;
+
+extern fn LAPACKE_sgelsy(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*]f32, lda: isize, b: [*]f32, ldb: isize, jpvt: [*]isize, rcond: f32, rank: *isize) isize;
+extern fn LAPACKE_dgelsy(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*]f64, lda: isize, b: [*]f64, ldb: isize, jpvt: [*]isize, rcond: f64, rank: *isize) isize;
+extern fn LAPACKE_cgelsy(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*]cf32, lda: isize, b: [*]cf32, ldb: isize, jpvt: [*]isize, rcond: f32, rank: *isize) isize;
+extern fn LAPACKE_zgelsy(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*]cf64, lda: isize, b: [*]cf64, ldb: isize, jpvt: [*]isize, rcond: f64, rank: *isize) isize;
+pub const sgelsy = LAPACKE_sgelsy;
+pub const dgelsy = LAPACKE_dgelsy;
+pub const cgelsy = LAPACKE_cgelsy;
+pub const zgelsy = LAPACKE_zgelsy;
+
+extern fn LAPACKE_sgelsy_work(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*]f32, lda: isize, b: [*]f32, ldb: isize, jpvt: [*]isize, rcond: f32, rank: *isize, work: [*]f32, lwork: isize) isize;
+extern fn LAPACKE_dgelsy_work(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*]f64, lda: isize, b: [*]f64, ldb: isize, jpvt: [*]isize, rcond: f64, rank: *isize, work: [*]f64, lwork: isize) isize;
+extern fn LAPACKE_cgelsy_work(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*]cf32, lda: isize, b: [*]cf32, ldb: isize, jpvt: [*]isize, rcond: f32, rank: *isize, work: [*]cf32, lwork: isize, rwork: [*]f32) isize;
+extern fn LAPACKE_zgelsy_work(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*]cf64, lda: isize, b: [*]cf64, ldb: isize, jpvt: [*]isize, rcond: f64, rank: *isize, work: [*]cf64, lwork: isize, rwork: [*]f64) isize;
+pub const sgelsy_work = LAPACKE_sgelsy_work;
+pub const dgelsy_work = LAPACKE_dgelsy_work;
+pub const cgelsy_work = LAPACKE_cgelsy_work;
+pub const zgelsy_work = LAPACKE_zgelsy_work;
+
+extern fn LAPACKE_sgglse(layout: c_int, m: isize, n: isize, p: isize, a: [*]f32, lda: isize, b: [*]f32, ldb: isize, c: [*]f32, d: [*]f32, x: [*]f32) isize;
+extern fn LAPACKE_dgglse(layout: c_int, m: isize, n: isize, p: isize, a: [*]f64, lda: isize, b: [*]f64, ldb: isize, c: [*]f64, d: [*]f64, x: [*]f64) isize;
+extern fn LAPACKE_cgglse(layout: c_int, m: isize, n: isize, p: isize, a: [*]cf32, lda: isize, b: [*]cf32, ldb: isize, c: [*]cf32, d: [*]cf32, x: [*]cf32) isize;
+extern fn LAPACKE_zgglse(layout: c_int, m: isize, n: isize, p: isize, a: [*]cf64, lda: isize, b: [*]cf64, ldb: isize, c: [*]cf64, d: [*]cf64, x: [*]cf64) isize;
+pub const sgglse = LAPACKE_sgglse;
+pub const dgglse = LAPACKE_dgglse;
+pub const cgglse = LAPACKE_cgglse;
+pub const zgglse = LAPACKE_zgglse;
+
+extern fn LAPACKE_sgglse_work(layout: c_int, m: isize, n: isize, p: isize, a: [*]f32, lda: isize, b: [*]f32, ldb: isize, c: [*]f32, d: [*]f32, x: [*]f32, work: [*]f32, lwork: isize) isize;
+extern fn LAPACKE_dgglse_work(layout: c_int, m: isize, n: isize, p: isize, a: [*]f64, lda: isize, b: [*]f64, ldb: isize, c: [*]f64, d: [*]f64, x: [*]f64, work: [*]f64, lwork: isize) isize;
+extern fn LAPACKE_cgglse_work(layout: c_int, m: isize, n: isize, p: isize, a: [*]cf32, lda: isize, b: [*]cf32, ldb: isize, c: [*]cf32, d: [*]cf32, x: [*]cf32, work: [*]cf32, lwork: isize) isize;
+extern fn LAPACKE_zgglse_work(layout: c_int, m: isize, n: isize, p: isize, a: [*]cf64, lda: isize, b: [*]cf64, ldb: isize, c: [*]cf64, d: [*]cf64, x: [*]cf64, work: [*]cf64, lwork: isize) isize;
+pub const sgglse_work = LAPACKE_sgglse_work;
+pub const dgglse_work = LAPACKE_dgglse_work;
+pub const cgglse_work = LAPACKE_cgglse_work;
+pub const zgglse_work = LAPACKE_zgglse_work;
+
+// Least Squares: Computational
+
+// Miscellaneous
 extern fn LAPACKE_sbdsdc(layout: c_int, uplo: u8, compq: u8, n: isize, d: [*c]f32, e: [*c]f32, u: [*c]f32, ldu: isize, vt: [*c]f32, ldvt: isize, q: [*c]f32, iq: [*c]isize) isize;
 extern fn LAPACKE_dbdsdc(layout: c_int, uplo: u8, compq: u8, n: isize, d: [*c]f64, e: [*c]f64, u: [*c]f64, ldu: isize, vt: [*c]f64, ldvt: isize, q: [*c]f64, iq: [*c]isize) isize;
 pub const sbdsdc = LAPACKE_sbdsdc;
@@ -152,15 +679,6 @@ pub const dgebrd = LAPACKE_dgebrd;
 pub const cgebrd = LAPACKE_cgebrd;
 pub const zgebrd = LAPACKE_zgebrd;
 
-extern fn LAPACKE_sgecon(layout: c_int, norm: u8, n: isize, a: [*c]const f32, lda: isize, anorm: f32, rcond: [*c]f32) isize;
-extern fn LAPACKE_dgecon(layout: c_int, norm: u8, n: isize, a: [*c]const f64, lda: isize, anorm: f64, rcond: [*c]f64) isize;
-extern fn LAPACKE_cgecon(layout: c_int, norm: u8, n: isize, a: [*c]const cf32, lda: isize, anorm: f32, rcond: [*c]f32) isize;
-extern fn LAPACKE_zgecon(layout: c_int, norm: u8, n: isize, a: [*c]const cf64, lda: isize, anorm: f64, rcond: [*c]f64) isize;
-pub const sgecon = LAPACKE_sgecon;
-pub const dgecon = LAPACKE_dgecon;
-pub const cgecon = LAPACKE_cgecon;
-pub const zgecon = LAPACKE_zgecon;
-
 extern fn LAPACKE_sgeequ(layout: c_int, m: isize, n: isize, a: [*c]const f32, lda: isize, r: [*c]f32, c: [*c]f32, rowcnd: [*c]f32, colcnd: [*c]f32, amax: [*c]f32) isize;
 extern fn LAPACKE_dgeequ(layout: c_int, m: isize, n: isize, a: [*c]const f64, lda: isize, r: [*c]f64, c: [*c]f64, rowcnd: [*c]f64, colcnd: [*c]f64, amax: [*c]f64) isize;
 extern fn LAPACKE_cgeequ(layout: c_int, m: isize, n: isize, a: [*c]const cf32, lda: isize, r: [*c]f32, c: [*c]f32, rowcnd: [*c]f32, colcnd: [*c]f32, amax: [*c]f32) isize;
@@ -250,42 +768,6 @@ pub const sgelqf = LAPACKE_sgelqf;
 pub const dgelqf = LAPACKE_dgelqf;
 pub const cgelqf = LAPACKE_cgelqf;
 pub const zgelqf = LAPACKE_zgelqf;
-
-extern fn LAPACKE_sgels(layout: c_int, trans: u8, m: isize, n: isize, nrhs: isize, a: [*c]f32, lda: isize, b: [*c]f32, ldb: isize) isize;
-extern fn LAPACKE_dgels(layout: c_int, trans: u8, m: isize, n: isize, nrhs: isize, a: [*c]f64, lda: isize, b: [*c]f64, ldb: isize) isize;
-extern fn LAPACKE_cgels(layout: c_int, trans: u8, m: isize, n: isize, nrhs: isize, a: [*c]cf32, lda: isize, b: [*c]cf32, ldb: isize) isize;
-extern fn LAPACKE_zgels(layout: c_int, trans: u8, m: isize, n: isize, nrhs: isize, a: [*c]cf64, lda: isize, b: [*c]cf64, ldb: isize) isize;
-pub const sgels = LAPACKE_sgels;
-pub const dgels = LAPACKE_dgels;
-pub const cgels = LAPACKE_cgels;
-pub const zgels = LAPACKE_zgels;
-
-extern fn LAPACKE_sgelsd(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*c]f32, lda: isize, b: [*c]f32, ldb: isize, s: [*c]f32, rcond: f32, rank: [*c]isize) isize;
-extern fn LAPACKE_dgelsd(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*c]f64, lda: isize, b: [*c]f64, ldb: isize, s: [*c]f64, rcond: f64, rank: [*c]isize) isize;
-extern fn LAPACKE_cgelsd(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*c]cf32, lda: isize, b: [*c]cf32, ldb: isize, s: [*c]f32, rcond: f32, rank: [*c]isize) isize;
-extern fn LAPACKE_zgelsd(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*c]cf64, lda: isize, b: [*c]cf64, ldb: isize, s: [*c]f64, rcond: f64, rank: [*c]isize) isize;
-pub const sgelsd = LAPACKE_sgelsd;
-pub const dgelsd = LAPACKE_dgelsd;
-pub const cgelsd = LAPACKE_cgelsd;
-pub const zgelsd = LAPACKE_zgelsd;
-
-extern fn LAPACKE_sgelss(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*c]f32, lda: isize, b: [*c]f32, ldb: isize, s: [*c]f32, rcond: f32, rank: [*c]isize) isize;
-extern fn LAPACKE_dgelss(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*c]f64, lda: isize, b: [*c]f64, ldb: isize, s: [*c]f64, rcond: f64, rank: [*c]isize) isize;
-extern fn LAPACKE_cgelss(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*c]cf32, lda: isize, b: [*c]cf32, ldb: isize, s: [*c]f32, rcond: f32, rank: [*c]isize) isize;
-extern fn LAPACKE_zgelss(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*c]cf64, lda: isize, b: [*c]cf64, ldb: isize, s: [*c]f64, rcond: f64, rank: [*c]isize) isize;
-pub const sgelss = LAPACKE_sgelss;
-pub const dgelss = LAPACKE_dgelss;
-pub const cgelss = LAPACKE_cgelss;
-pub const zgelss = LAPACKE_zgelss;
-
-extern fn LAPACKE_sgelsy(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*c]f32, lda: isize, b: [*c]f32, ldb: isize, jpvt: [*c]isize, rcond: f32, rank: [*c]isize) isize;
-extern fn LAPACKE_dgelsy(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*c]f64, lda: isize, b: [*c]f64, ldb: isize, jpvt: [*c]isize, rcond: f64, rank: [*c]isize) isize;
-extern fn LAPACKE_cgelsy(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*c]cf32, lda: isize, b: [*c]cf32, ldb: isize, jpvt: [*c]isize, rcond: f32, rank: [*c]isize) isize;
-extern fn LAPACKE_zgelsy(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*c]cf64, lda: isize, b: [*c]cf64, ldb: isize, jpvt: [*c]isize, rcond: f64, rank: [*c]isize) isize;
-pub const sgelsy = LAPACKE_sgelsy;
-pub const dgelsy = LAPACKE_dgelsy;
-pub const cgelsy = LAPACKE_cgelsy;
-pub const zgelsy = LAPACKE_zgelsy;
 
 extern fn LAPACKE_sgeqlf(layout: c_int, m: isize, n: isize, a: [*c]f32, lda: isize, tau: [*c]f32) isize;
 extern fn LAPACKE_dgeqlf(layout: c_int, m: isize, n: isize, a: [*c]f64, lda: isize, tau: [*c]f64) isize;
@@ -377,19 +859,6 @@ pub const dgesdd = LAPACKE_dgesdd;
 pub const cgesdd = LAPACKE_cgesdd;
 pub const zgesdd = LAPACKE_zgesdd;
 
-extern fn LAPACKE_sgesv(layout: c_int, n: isize, nrhs: isize, a: [*c]f32, lda: isize, ipiv: [*c]isize, b: [*c]f32, ldb: isize) isize;
-extern fn LAPACKE_dgesv(layout: c_int, n: isize, nrhs: isize, a: [*c]f64, lda: isize, ipiv: [*c]isize, b: [*c]f64, ldb: isize) isize;
-extern fn LAPACKE_cgesv(layout: c_int, n: isize, nrhs: isize, a: [*c]cf32, lda: isize, ipiv: [*c]isize, b: [*c]cf32, ldb: isize) isize;
-extern fn LAPACKE_zgesv(layout: c_int, n: isize, nrhs: isize, a: [*c]cf64, lda: isize, ipiv: [*c]isize, b: [*c]cf64, ldb: isize) isize;
-extern fn LAPACKE_dsgesv(layout: c_int, n: isize, nrhs: isize, a: [*c]f64, lda: isize, ipiv: [*c]isize, b: [*c]f64, ldb: isize, x: [*c]f64, ldx: isize, iter: [*c]isize) isize;
-extern fn LAPACKE_zcgesv(layout: c_int, n: isize, nrhs: isize, a: [*c]cf64, lda: isize, ipiv: [*c]isize, b: [*c]cf64, ldb: isize, x: [*c]cf64, ldx: isize, iter: [*c]isize) isize;
-pub const sgesv = LAPACKE_sgesv;
-pub const dgesv = LAPACKE_dgesv;
-pub const cgesv = LAPACKE_cgesv;
-pub const zgesv = LAPACKE_zgesv;
-pub const dsgesv = LAPACKE_dsgesv;
-pub const zcgesv = LAPACKE_zcgesv;
-
 extern fn LAPACKE_sgesvd(layout: c_int, jobu: u8, jobvt: u8, m: isize, n: isize, a: [*c]f32, lda: isize, s: [*c]f32, u: [*c]f32, ldu: isize, vt: [*c]f32, ldvt: isize, superb: [*c]f32) isize;
 extern fn LAPACKE_dgesvd(layout: c_int, jobu: u8, jobvt: u8, m: isize, n: isize, a: [*c]f64, lda: isize, s: [*c]f64, u: [*c]f64, ldu: isize, vt: [*c]f64, ldvt: isize, superb: [*c]f64) isize;
 extern fn LAPACKE_cgesvd(layout: c_int, jobu: u8, jobvt: u8, m: isize, n: isize, a: [*c]cf32, lda: isize, s: [*c]f32, u: [*c]cf32, ldu: isize, vt: [*c]cf32, ldvt: isize, superb: [*c]f32) isize;
@@ -426,15 +895,6 @@ pub const dgesvj = LAPACKE_dgesvj;
 pub const cgesvj = LAPACKE_cgesvj;
 pub const zgesvj = LAPACKE_zgesvj;
 
-extern fn LAPACKE_sgesvx(layout: c_int, fact: u8, trans: u8, n: isize, nrhs: isize, a: [*c]f32, lda: isize, af: [*c]f32, ldaf: isize, ipiv: [*c]isize, equed: [*c]u8, r: [*c]f32, c: [*c]f32, b: [*c]f32, ldb: isize, x: [*c]f32, ldx: isize, rcond: [*c]f32, ferr: [*c]f32, berr: [*c]f32, rpivot: [*c]f32) isize;
-extern fn LAPACKE_dgesvx(layout: c_int, fact: u8, trans: u8, n: isize, nrhs: isize, a: [*c]f64, lda: isize, af: [*c]f64, ldaf: isize, ipiv: [*c]isize, equed: [*c]u8, r: [*c]f64, c: [*c]f64, b: [*c]f64, ldb: isize, x: [*c]f64, ldx: isize, rcond: [*c]f64, ferr: [*c]f64, berr: [*c]f64, rpivot: [*c]f64) isize;
-extern fn LAPACKE_cgesvx(layout: c_int, fact: u8, trans: u8, n: isize, nrhs: isize, a: [*c]cf32, lda: isize, af: [*c]cf32, ldaf: isize, ipiv: [*c]isize, equed: [*c]u8, r: [*c]f32, c: [*c]f32, b: [*c]cf32, ldb: isize, x: [*c]cf32, ldx: isize, rcond: [*c]f32, ferr: [*c]f32, berr: [*c]f32, rpivot: [*c]f32) isize;
-extern fn LAPACKE_zgesvx(layout: c_int, fact: u8, trans: u8, n: isize, nrhs: isize, a: [*c]cf64, lda: isize, af: [*c]cf64, ldaf: isize, ipiv: [*c]isize, equed: [*c]u8, r: [*c]f64, c: [*c]f64, b: [*c]cf64, ldb: isize, x: [*c]cf64, ldx: isize, rcond: [*c]f64, ferr: [*c]f64, berr: [*c]f64, rpivot: [*c]f64) isize;
-pub const sgesvx = LAPACKE_sgesvx;
-pub const dgesvx = LAPACKE_dgesvx;
-pub const cgesvx = LAPACKE_cgesvx;
-pub const zgesvx = LAPACKE_zgesvx;
-
 extern fn LAPACKE_sgesvxx(layout: c_int, fact: u8, trans: u8, n: isize, nrhs: isize, a: [*c]f32, lda: isize, af: [*c]f32, ldaf: isize, ipiv: [*c]isize, equed: [*c]u8, r: [*c]f32, c: [*c]f32, b: [*c]f32, ldb: isize, x: [*c]f32, ldx: isize, rcond: [*c]f32, rpvgrw: [*c]f32, berr: [*c]f32, n_err_bnds: isize, err_bnds_norm: [*c]f32, err_bnds_comp: [*c]f32, nparams: isize, params: [*c]f32) isize;
 extern fn LAPACKE_dgesvxx(layout: c_int, fact: u8, trans: u8, n: isize, nrhs: isize, a: [*c]f64, lda: isize, af: [*c]f64, ldaf: isize, ipiv: [*c]isize, equed: [*c]u8, r: [*c]f64, c: [*c]f64, b: [*c]f64, ldb: isize, x: [*c]f64, ldx: isize, rcond: [*c]f64, rpvgrw: [*c]f64, berr: [*c]f64, n_err_bnds: isize, err_bnds_norm: [*c]f64, err_bnds_comp: [*c]f64, nparams: isize, params: [*c]f64) isize;
 extern fn LAPACKE_cgesvxx(layout: c_int, fact: u8, trans: u8, n: isize, nrhs: isize, a: [*c]cf32, lda: isize, af: [*c]cf32, ldaf: isize, ipiv: [*c]isize, equed: [*c]u8, r: [*c]f32, c: [*c]f32, b: [*c]cf32, ldb: isize, x: [*c]cf32, ldx: isize, rcond: [*c]f32, rpvgrw: [*c]f32, berr: [*c]f32, n_err_bnds: isize, err_bnds_norm: [*c]f32, err_bnds_comp: [*c]f32, nparams: isize, params: [*c]f32) isize;
@@ -453,15 +913,6 @@ pub const dgetf2 = LAPACKE_dgetf2;
 pub const cgetf2 = LAPACKE_cgetf2;
 pub const zgetf2 = LAPACKE_zgetf2;
 
-extern fn LAPACKE_sgetrf(layout: c_int, m: isize, n: isize, a: [*c]f32, lda: isize, ipiv: [*c]isize) isize;
-extern fn LAPACKE_dgetrf(layout: c_int, m: isize, n: isize, a: [*c]f64, lda: isize, ipiv: [*c]isize) isize;
-extern fn LAPACKE_cgetrf(layout: c_int, m: isize, n: isize, a: [*c]cf32, lda: isize, ipiv: [*c]isize) isize;
-extern fn LAPACKE_zgetrf(layout: c_int, m: isize, n: isize, a: [*c]cf64, lda: isize, ipiv: [*c]isize) isize;
-pub const sgetrf = LAPACKE_sgetrf;
-pub const dgetrf = LAPACKE_dgetrf;
-pub const cgetrf = LAPACKE_cgetrf;
-pub const zgetrf = LAPACKE_zgetrf;
-
 extern fn LAPACKE_sgetrf2(layout: c_int, m: isize, n: isize, a: [*c]f32, lda: isize, ipiv: [*c]isize) isize;
 extern fn LAPACKE_dgetrf2(layout: c_int, m: isize, n: isize, a: [*c]f64, lda: isize, ipiv: [*c]isize) isize;
 extern fn LAPACKE_cgetrf2(layout: c_int, m: isize, n: isize, a: [*c]cf32, lda: isize, ipiv: [*c]isize) isize;
@@ -470,24 +921,6 @@ pub const sgetrf2 = LAPACKE_sgetrf2;
 pub const dgetrf2 = LAPACKE_dgetrf2;
 pub const cgetrf2 = LAPACKE_cgetrf2;
 pub const zgetrf2 = LAPACKE_zgetrf2;
-
-extern fn LAPACKE_sgetri(layout: c_int, n: isize, a: [*c]f32, lda: isize, ipiv: [*c]const isize) isize;
-extern fn LAPACKE_dgetri(layout: c_int, n: isize, a: [*c]f64, lda: isize, ipiv: [*c]const isize) isize;
-extern fn LAPACKE_cgetri(layout: c_int, n: isize, a: [*c]cf32, lda: isize, ipiv: [*c]const isize) isize;
-extern fn LAPACKE_zgetri(layout: c_int, n: isize, a: [*c]cf64, lda: isize, ipiv: [*c]const isize) isize;
-pub const sgetri = LAPACKE_sgetri;
-pub const dgetri = LAPACKE_dgetri;
-pub const cgetri = LAPACKE_cgetri;
-pub const zgetri = LAPACKE_zgetri;
-
-extern fn LAPACKE_sgetrs(layout: c_int, trans: u8, n: isize, nrhs: isize, a: [*c]const f32, lda: isize, ipiv: [*c]const isize, b: [*c]f32, ldb: isize) isize;
-extern fn LAPACKE_dgetrs(layout: c_int, trans: u8, n: isize, nrhs: isize, a: [*c]const f64, lda: isize, ipiv: [*c]const isize, b: [*c]f64, ldb: isize) isize;
-extern fn LAPACKE_cgetrs(layout: c_int, trans: u8, n: isize, nrhs: isize, a: [*c]const cf32, lda: isize, ipiv: [*c]const isize, b: [*c]cf32, ldb: isize) isize;
-extern fn LAPACKE_zgetrs(layout: c_int, trans: u8, n: isize, nrhs: isize, a: [*c]const cf64, lda: isize, ipiv: [*c]const isize, b: [*c]cf64, ldb: isize) isize;
-pub const sgetrs = LAPACKE_sgetrs;
-pub const dgetrs = LAPACKE_dgetrs;
-pub const cgetrs = LAPACKE_cgetrs;
-pub const zgetrs = LAPACKE_zgetrs;
 
 extern fn LAPACKE_sggbak(layout: c_int, job: u8, side: u8, n: isize, ilo: isize, ihi: isize, lscale: [*c]const f32, rscale: [*c]const f32, m: isize, v: [*c]f32, ldv: isize) isize;
 extern fn LAPACKE_dggbak(layout: c_int, job: u8, side: u8, n: isize, ilo: isize, ihi: isize, lscale: [*c]const f64, rscale: [*c]const f64, m: isize, v: [*c]f64, ldv: isize) isize;
@@ -587,15 +1020,6 @@ pub const sgghd3 = LAPACKE_sgghd3;
 pub const dgghd3 = LAPACKE_dgghd3;
 pub const cgghd3 = LAPACKE_cgghd3;
 pub const zgghd3 = LAPACKE_zgghd3;
-
-extern fn LAPACKE_sgglse(layout: c_int, m: isize, n: isize, p: isize, a: [*c]f32, lda: isize, b: [*c]f32, ldb: isize, c: [*c]f32, d: [*c]f32, x: [*c]f32) isize;
-extern fn LAPACKE_dgglse(layout: c_int, m: isize, n: isize, p: isize, a: [*c]f64, lda: isize, b: [*c]f64, ldb: isize, c: [*c]f64, d: [*c]f64, x: [*c]f64) isize;
-extern fn LAPACKE_cgglse(layout: c_int, m: isize, n: isize, p: isize, a: [*c]cf32, lda: isize, b: [*c]cf32, ldb: isize, c: [*c]cf32, d: [*c]cf32, x: [*c]cf32) isize;
-extern fn LAPACKE_zgglse(layout: c_int, m: isize, n: isize, p: isize, a: [*c]cf64, lda: isize, b: [*c]cf64, ldb: isize, c: [*c]cf64, d: [*c]cf64, x: [*c]cf64) isize;
-pub const sgglse = LAPACKE_sgglse;
-pub const dgglse = LAPACKE_dgglse;
-pub const cgglse = LAPACKE_cgglse;
-pub const zgglse = LAPACKE_zgglse;
 
 extern fn LAPACKE_sggqrf(layout: c_int, n: isize, m: isize, p: isize, a: [*c]f32, lda: isize, taua: [*c]f32, b: [*c]f32, ldb: isize, taub: [*c]f32) isize;
 extern fn LAPACKE_dggqrf(layout: c_int, n: isize, m: isize, p: isize, a: [*c]f64, lda: isize, taua: [*c]f64, b: [*c]f64, ldb: isize, taub: [*c]f64) isize;
@@ -745,11 +1169,6 @@ extern fn LAPACKE_zhbtrd(layout: c_int, vect: u8, uplo: u8, n: isize, kd: isize,
 pub const chbtrd = LAPACKE_chbtrd;
 pub const zhbtrd = LAPACKE_zhbtrd;
 
-extern fn LAPACKE_checon(layout: c_int, uplo: u8, n: isize, a: [*c]const cf32, lda: isize, ipiv: [*c]const isize, anorm: f32, rcond: [*c]f32) isize;
-extern fn LAPACKE_zhecon(layout: c_int, uplo: u8, n: isize, a: [*c]const cf64, lda: isize, ipiv: [*c]const isize, anorm: f64, rcond: [*c]f64) isize;
-pub const checon = LAPACKE_checon;
-pub const zhecon = LAPACKE_zhecon;
-
 extern fn LAPACKE_cheequb(layout: c_int, uplo: u8, n: isize, a: [*c]const cf32, lda: isize, s: [*c]f32, scond: [*c]f32, amax: [*c]f32) isize;
 extern fn LAPACKE_zheequb(layout: c_int, uplo: u8, n: isize, a: [*c]const cf64, lda: isize, s: [*c]f64, scond: [*c]f64, amax: [*c]f64) isize;
 pub const cheequb = LAPACKE_cheequb;
@@ -805,16 +1224,6 @@ extern fn LAPACKE_zherfsx(layout: c_int, uplo: u8, equed: u8, n: isize, nrhs: is
 pub const cherfsx = LAPACKE_cherfsx;
 pub const zherfsx = LAPACKE_zherfsx;
 
-extern fn LAPACKE_chesv(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]cf32, lda: isize, ipiv: [*c]isize, b: [*c]cf32, ldb: isize) isize;
-extern fn LAPACKE_zhesv(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]cf64, lda: isize, ipiv: [*c]isize, b: [*c]cf64, ldb: isize) isize;
-pub const chesv = LAPACKE_chesv;
-pub const zhesv = LAPACKE_zhesv;
-
-extern fn LAPACKE_chesvx(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]const cf32, lda: isize, af: [*c]cf32, ldaf: isize, ipiv: [*c]isize, b: [*c]const cf32, ldb: isize, x: [*c]cf32, ldx: isize, rcond: [*c]f32, ferr: [*c]f32, berr: [*c]f32) isize;
-extern fn LAPACKE_zhesvx(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]const cf64, lda: isize, af: [*c]cf64, ldaf: isize, ipiv: [*c]isize, b: [*c]const cf64, ldb: isize, x: [*c]cf64, ldx: isize, rcond: [*c]f64, ferr: [*c]f64, berr: [*c]f64) isize;
-pub const chesvx = LAPACKE_chesvx;
-pub const zhesvx = LAPACKE_zhesvx;
-
 extern fn LAPACKE_chesvxx(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]cf32, lda: isize, af: [*c]cf32, ldaf: isize, ipiv: [*c]isize, equed: [*c]u8, s: [*c]f32, b: [*c]cf32, ldb: isize, x: [*c]cf32, ldx: isize, rcond: [*c]f32, rpvgrw: [*c]f32, berr: [*c]f32, n_err_bnds: isize, err_bnds_norm: [*c]f32, err_bnds_comp: [*c]f32, nparams: isize, params: [*c]f32) isize;
 extern fn LAPACKE_zhesvxx(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]cf64, lda: isize, af: [*c]cf64, ldaf: isize, ipiv: [*c]isize, equed: [*c]u8, s: [*c]f64, b: [*c]cf64, ldb: isize, x: [*c]cf64, ldx: isize, rcond: [*c]f64, rpvgrw: [*c]f64, berr: [*c]f64, n_err_bnds: isize, err_bnds_norm: [*c]f64, err_bnds_comp: [*c]f64, nparams: isize, params: [*c]f64) isize;
 pub const chesvxx = LAPACKE_chesvxx;
@@ -824,21 +1233,6 @@ extern fn LAPACKE_chetrd(layout: c_int, uplo: u8, n: isize, a: [*c]cf32, lda: is
 extern fn LAPACKE_zhetrd(layout: c_int, uplo: u8, n: isize, a: [*c]cf64, lda: isize, d: [*c]f64, e: [*c]f64, tau: [*c]cf64) isize;
 pub const chetrd = LAPACKE_chetrd;
 pub const zhetrd = LAPACKE_zhetrd;
-
-extern fn LAPACKE_chetrf(layout: c_int, uplo: u8, n: isize, a: [*c]cf32, lda: isize, ipiv: [*c]isize) isize;
-extern fn LAPACKE_zhetrf(layout: c_int, uplo: u8, n: isize, a: [*c]cf64, lda: isize, ipiv: [*c]isize) isize;
-pub const chetrf = LAPACKE_chetrf;
-pub const zhetrf = LAPACKE_zhetrf;
-
-extern fn LAPACKE_chetri(layout: c_int, uplo: u8, n: isize, a: [*c]cf32, lda: isize, ipiv: [*c]const isize) isize;
-extern fn LAPACKE_zhetri(layout: c_int, uplo: u8, n: isize, a: [*c]cf64, lda: isize, ipiv: [*c]const isize) isize;
-pub const chetri = LAPACKE_chetri;
-pub const zhetri = LAPACKE_zhetri;
-
-extern fn LAPACKE_chetrs(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]const cf32, lda: isize, ipiv: [*c]const isize, b: [*c]cf32, ldb: isize) isize;
-extern fn LAPACKE_zhetrs(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]const cf64, lda: isize, ipiv: [*c]const isize, b: [*c]cf64, ldb: isize) isize;
-pub const chetrs = LAPACKE_chetrs;
-pub const zhetrs = LAPACKE_zhetrs;
 
 extern fn LAPACKE_chfrk(layout: c_int, transr: u8, uplo: u8, trans: u8, n: isize, k: isize, alpha: f32, a: [*c]const cf32, lda: isize, beta: f32, c: [*c]cf32) isize;
 extern fn LAPACKE_zhfrk(layout: c_int, transr: u8, uplo: u8, trans: u8, n: isize, k: isize, alpha: f64, a: [*c]const cf64, lda: isize, beta: f64, c: [*c]cf64) isize;
@@ -1342,15 +1736,6 @@ pub const dpftrs = LAPACKE_dpftrs;
 pub const cpftrs = LAPACKE_cpftrs;
 pub const zpftrs = LAPACKE_zpftrs;
 
-extern fn LAPACKE_spocon(layout: c_int, uplo: u8, n: isize, a: [*c]const f32, lda: isize, anorm: f32, rcond: [*c]f32) isize;
-extern fn LAPACKE_dpocon(layout: c_int, uplo: u8, n: isize, a: [*c]const f64, lda: isize, anorm: f64, rcond: [*c]f64) isize;
-extern fn LAPACKE_cpocon(layout: c_int, uplo: u8, n: isize, a: [*c]const cf32, lda: isize, anorm: f32, rcond: [*c]f32) isize;
-extern fn LAPACKE_zpocon(layout: c_int, uplo: u8, n: isize, a: [*c]const cf64, lda: isize, anorm: f64, rcond: [*c]f64) isize;
-pub const spocon = LAPACKE_spocon;
-pub const dpocon = LAPACKE_dpocon;
-pub const cpocon = LAPACKE_cpocon;
-pub const zpocon = LAPACKE_zpocon;
-
 extern fn LAPACKE_spoequ(layout: c_int, n: isize, a: [*c]const f32, lda: isize, s: [*c]f32, scond: [*c]f32, amax: [*c]f32) isize;
 extern fn LAPACKE_dpoequ(layout: c_int, n: isize, a: [*c]const f64, lda: isize, s: [*c]f64, scond: [*c]f64, amax: [*c]f64) isize;
 extern fn LAPACKE_cpoequ(layout: c_int, n: isize, a: [*c]const cf32, lda: isize, s: [*c]f32, scond: [*c]f32, amax: [*c]f32) isize;
@@ -1387,28 +1772,6 @@ pub const dporfsx = LAPACKE_dporfsx;
 pub const cporfsx = LAPACKE_cporfsx;
 pub const zporfsx = LAPACKE_zporfsx;
 
-extern fn LAPACKE_sposv(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]f32, lda: isize, b: [*c]f32, ldb: isize) isize;
-extern fn LAPACKE_dposv(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]f64, lda: isize, b: [*c]f64, ldb: isize) isize;
-extern fn LAPACKE_cposv(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]cf32, lda: isize, b: [*c]cf32, ldb: isize) isize;
-extern fn LAPACKE_zposv(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]cf64, lda: isize, b: [*c]cf64, ldb: isize) isize;
-extern fn LAPACKE_dsposv(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]f64, lda: isize, b: [*c]f64, ldb: isize, x: [*c]f64, ldx: isize, iter: [*c]isize) isize;
-extern fn LAPACKE_zcposv(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]cf64, lda: isize, b: [*c]cf64, ldb: isize, x: [*c]cf64, ldx: isize, iter: [*c]isize) isize;
-pub const sposv = LAPACKE_sposv;
-pub const dposv = LAPACKE_dposv;
-pub const cposv = LAPACKE_cposv;
-pub const zposv = LAPACKE_zposv;
-pub const dsposv = LAPACKE_dsposv;
-pub const zcposv = LAPACKE_zcposv;
-
-extern fn LAPACKE_sposvx(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]f32, lda: isize, af: [*c]f32, ldaf: isize, equed: [*c]u8, s: [*c]f32, b: [*c]f32, ldb: isize, x: [*c]f32, ldx: isize, rcond: [*c]f32, ferr: [*c]f32, berr: [*c]f32) isize;
-extern fn LAPACKE_dposvx(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]f64, lda: isize, af: [*c]f64, ldaf: isize, equed: [*c]u8, s: [*c]f64, b: [*c]f64, ldb: isize, x: [*c]f64, ldx: isize, rcond: [*c]f64, ferr: [*c]f64, berr: [*c]f64) isize;
-extern fn LAPACKE_cposvx(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]cf32, lda: isize, af: [*c]cf32, ldaf: isize, equed: [*c]u8, s: [*c]f32, b: [*c]cf32, ldb: isize, x: [*c]cf32, ldx: isize, rcond: [*c]f32, ferr: [*c]f32, berr: [*c]f32) isize;
-extern fn LAPACKE_zposvx(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]cf64, lda: isize, af: [*c]cf64, ldaf: isize, equed: [*c]u8, s: [*c]f64, b: [*c]cf64, ldb: isize, x: [*c]cf64, ldx: isize, rcond: [*c]f64, ferr: [*c]f64, berr: [*c]f64) isize;
-pub const sposvx = LAPACKE_sposvx;
-pub const dposvx = LAPACKE_dposvx;
-pub const cposvx = LAPACKE_cposvx;
-pub const zposvx = LAPACKE_zposvx;
-
 extern fn LAPACKE_sposvxx(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]f32, lda: isize, af: [*c]f32, ldaf: isize, equed: [*c]u8, s: [*c]f32, b: [*c]f32, ldb: isize, x: [*c]f32, ldx: isize, rcond: [*c]f32, rpvgrw: [*c]f32, berr: [*c]f32, n_err_bnds: isize, err_bnds_norm: [*c]f32, err_bnds_comp: [*c]f32, nparams: isize, params: [*c]f32) isize;
 extern fn LAPACKE_dposvxx(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]f64, lda: isize, af: [*c]f64, ldaf: isize, equed: [*c]u8, s: [*c]f64, b: [*c]f64, ldb: isize, x: [*c]f64, ldx: isize, rcond: [*c]f64, rpvgrw: [*c]f64, berr: [*c]f64, n_err_bnds: isize, err_bnds_norm: [*c]f64, err_bnds_comp: [*c]f64, nparams: isize, params: [*c]f64) isize;
 extern fn LAPACKE_cposvxx(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]cf32, lda: isize, af: [*c]cf32, ldaf: isize, equed: [*c]u8, s: [*c]f32, b: [*c]cf32, ldb: isize, x: [*c]cf32, ldx: isize, rcond: [*c]f32, rpvgrw: [*c]f32, berr: [*c]f32, n_err_bnds: isize, err_bnds_norm: [*c]f32, err_bnds_comp: [*c]f32, nparams: isize, params: [*c]f32) isize;
@@ -1426,33 +1789,6 @@ pub const spotrf2 = LAPACKE_spotrf2;
 pub const dpotrf2 = LAPACKE_dpotrf2;
 pub const cpotrf2 = LAPACKE_cpotrf2;
 pub const zpotrf2 = LAPACKE_zpotrf2;
-
-extern fn LAPACKE_spotrf(layout: c_int, uplo: u8, n: isize, a: [*c]f32, lda: isize) isize;
-extern fn LAPACKE_dpotrf(layout: c_int, uplo: u8, n: isize, a: [*c]f64, lda: isize) isize;
-extern fn LAPACKE_cpotrf(layout: c_int, uplo: u8, n: isize, a: [*c]cf32, lda: isize) isize;
-extern fn LAPACKE_zpotrf(layout: c_int, uplo: u8, n: isize, a: [*c]cf64, lda: isize) isize;
-pub const spotrf = LAPACKE_spotrf;
-pub const dpotrf = LAPACKE_dpotrf;
-pub const cpotrf = LAPACKE_cpotrf;
-pub const zpotrf = LAPACKE_zpotrf;
-
-extern fn LAPACKE_spotri(layout: c_int, uplo: u8, n: isize, a: [*c]f32, lda: isize) isize;
-extern fn LAPACKE_dpotri(layout: c_int, uplo: u8, n: isize, a: [*c]f64, lda: isize) isize;
-extern fn LAPACKE_cpotri(layout: c_int, uplo: u8, n: isize, a: [*c]cf32, lda: isize) isize;
-extern fn LAPACKE_zpotri(layout: c_int, uplo: u8, n: isize, a: [*c]cf64, lda: isize) isize;
-pub const spotri = LAPACKE_spotri;
-pub const dpotri = LAPACKE_dpotri;
-pub const cpotri = LAPACKE_cpotri;
-pub const zpotri = LAPACKE_zpotri;
-
-extern fn LAPACKE_spotrs(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]const f32, lda: isize, b: [*c]f32, ldb: isize) isize;
-extern fn LAPACKE_dpotrs(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]const f64, lda: isize, b: [*c]f64, ldb: isize) isize;
-extern fn LAPACKE_cpotrs(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]const cf32, lda: isize, b: [*c]cf32, ldb: isize) isize;
-extern fn LAPACKE_zpotrs(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]const cf64, lda: isize, b: [*c]cf64, ldb: isize) isize;
-pub const spotrs = LAPACKE_spotrs;
-pub const dpotrs = LAPACKE_dpotrs;
-pub const cpotrs = LAPACKE_cpotrs;
-pub const zpotrs = LAPACKE_zpotrs;
 
 extern fn LAPACKE_sppcon(layout: c_int, uplo: u8, n: isize, ap: [*c]const f32, anorm: f32, rcond: [*c]f32) isize;
 extern fn LAPACKE_dppcon(layout: c_int, uplo: u8, n: isize, ap: [*c]const f64, anorm: f64, rcond: [*c]f64) isize;
@@ -1821,15 +2157,6 @@ extern fn LAPACKE_dstevx(layout: c_int, jobz: u8, range: u8, n: isize, d: [*c]f6
 pub const sstevx = LAPACKE_sstevx;
 pub const dstevx = LAPACKE_dstevx;
 
-extern fn LAPACKE_ssycon(layout: c_int, uplo: u8, n: isize, a: [*c]const f32, lda: isize, ipiv: [*c]const isize, anorm: f32, rcond: [*c]f32) isize;
-extern fn LAPACKE_dsycon(layout: c_int, uplo: u8, n: isize, a: [*c]const f64, lda: isize, ipiv: [*c]const isize, anorm: f64, rcond: [*c]f64) isize;
-extern fn LAPACKE_csycon(layout: c_int, uplo: u8, n: isize, a: [*c]const cf32, lda: isize, ipiv: [*c]const isize, anorm: f32, rcond: [*c]f32) isize;
-extern fn LAPACKE_zsycon(layout: c_int, uplo: u8, n: isize, a: [*c]const cf64, lda: isize, ipiv: [*c]const isize, anorm: f64, rcond: [*c]f64) isize;
-pub const ssycon = LAPACKE_ssycon;
-pub const dsycon = LAPACKE_dsycon;
-pub const csycon = LAPACKE_csycon;
-pub const zsycon = LAPACKE_zsycon;
-
 extern fn LAPACKE_ssyequb(layout: c_int, uplo: u8, n: isize, a: [*c]const f32, lda: isize, s: [*c]f32, scond: [*c]f32, amax: [*c]f32) isize;
 extern fn LAPACKE_dsyequb(layout: c_int, uplo: u8, n: isize, a: [*c]const f64, lda: isize, s: [*c]f64, scond: [*c]f64, amax: [*c]f64) isize;
 extern fn LAPACKE_csyequb(layout: c_int, uplo: u8, n: isize, a: [*c]const cf32, lda: isize, s: [*c]f32, scond: [*c]f32, amax: [*c]f32) isize;
@@ -1897,24 +2224,6 @@ pub const dsyrfsx = LAPACKE_dsyrfsx;
 pub const csyrfsx = LAPACKE_csyrfsx;
 pub const zsyrfsx = LAPACKE_zsyrfsx;
 
-extern fn LAPACKE_ssysv(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]f32, lda: isize, ipiv: [*c]isize, b: [*c]f32, ldb: isize) isize;
-extern fn LAPACKE_dsysv(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]f64, lda: isize, ipiv: [*c]isize, b: [*c]f64, ldb: isize) isize;
-extern fn LAPACKE_csysv(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]cf32, lda: isize, ipiv: [*c]isize, b: [*c]cf32, ldb: isize) isize;
-extern fn LAPACKE_zsysv(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]cf64, lda: isize, ipiv: [*c]isize, b: [*c]cf64, ldb: isize) isize;
-pub const ssysv = LAPACKE_ssysv;
-pub const dsysv = LAPACKE_dsysv;
-pub const csysv = LAPACKE_csysv;
-pub const zsysv = LAPACKE_zsysv;
-
-extern fn LAPACKE_ssysvx(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]const f32, lda: isize, af: [*c]f32, ldaf: isize, ipiv: [*c]isize, b: [*c]const f32, ldb: isize, x: [*c]f32, ldx: isize, rcond: [*c]f32, ferr: [*c]f32, berr: [*c]f32) isize;
-extern fn LAPACKE_dsysvx(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]const f64, lda: isize, af: [*c]f64, ldaf: isize, ipiv: [*c]isize, b: [*c]const f64, ldb: isize, x: [*c]f64, ldx: isize, rcond: [*c]f64, ferr: [*c]f64, berr: [*c]f64) isize;
-extern fn LAPACKE_csysvx(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]const cf32, lda: isize, af: [*c]cf32, ldaf: isize, ipiv: [*c]isize, b: [*c]const cf32, ldb: isize, x: [*c]cf32, ldx: isize, rcond: [*c]f32, ferr: [*c]f32, berr: [*c]f32) isize;
-extern fn LAPACKE_zsysvx(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]const cf64, lda: isize, af: [*c]cf64, ldaf: isize, ipiv: [*c]isize, b: [*c]const cf64, ldb: isize, x: [*c]cf64, ldx: isize, rcond: [*c]f64, ferr: [*c]f64, berr: [*c]f64) isize;
-pub const ssysvx = LAPACKE_ssysvx;
-pub const dsysvx = LAPACKE_dsysvx;
-pub const csysvx = LAPACKE_csysvx;
-pub const zsysvx = LAPACKE_zsysvx;
-
 extern fn LAPACKE_ssysvxx(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]f32, lda: isize, af: [*c]f32, ldaf: isize, ipiv: [*c]isize, equed: [*c]u8, s: [*c]f32, b: [*c]f32, ldb: isize, x: [*c]f32, ldx: isize, rcond: [*c]f32, rpvgrw: [*c]f32, berr: [*c]f32, n_err_bnds: isize, err_bnds_norm: [*c]f32, err_bnds_comp: [*c]f32, nparams: isize, params: [*c]f32) isize;
 extern fn LAPACKE_dsysvxx(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]f64, lda: isize, af: [*c]f64, ldaf: isize, ipiv: [*c]isize, equed: [*c]u8, s: [*c]f64, b: [*c]f64, ldb: isize, x: [*c]f64, ldx: isize, rcond: [*c]f64, rpvgrw: [*c]f64, berr: [*c]f64, n_err_bnds: isize, err_bnds_norm: [*c]f64, err_bnds_comp: [*c]f64, nparams: isize, params: [*c]f64) isize;
 extern fn LAPACKE_csysvxx(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]cf32, lda: isize, af: [*c]cf32, ldaf: isize, ipiv: [*c]isize, equed: [*c]u8, s: [*c]f32, b: [*c]cf32, ldb: isize, x: [*c]cf32, ldx: isize, rcond: [*c]f32, rpvgrw: [*c]f32, berr: [*c]f32, n_err_bnds: isize, err_bnds_norm: [*c]f32, err_bnds_comp: [*c]f32, nparams: isize, params: [*c]f32) isize;
@@ -1928,33 +2237,6 @@ extern fn LAPACKE_ssytrd(layout: c_int, uplo: u8, n: isize, a: [*c]f32, lda: isi
 extern fn LAPACKE_dsytrd(layout: c_int, uplo: u8, n: isize, a: [*c]f64, lda: isize, d: [*c]f64, e: [*c]f64, tau: [*c]f64) isize;
 pub const ssytrd = LAPACKE_ssytrd;
 pub const dsytrd = LAPACKE_dsytrd;
-
-extern fn LAPACKE_ssytrf(layout: c_int, uplo: u8, n: isize, a: [*c]f32, lda: isize, ipiv: [*c]isize) isize;
-extern fn LAPACKE_dsytrf(layout: c_int, uplo: u8, n: isize, a: [*c]f64, lda: isize, ipiv: [*c]isize) isize;
-extern fn LAPACKE_csytrf(layout: c_int, uplo: u8, n: isize, a: [*c]cf32, lda: isize, ipiv: [*c]isize) isize;
-extern fn LAPACKE_zsytrf(layout: c_int, uplo: u8, n: isize, a: [*c]cf64, lda: isize, ipiv: [*c]isize) isize;
-pub const ssytrf = LAPACKE_ssytrf;
-pub const dsytrf = LAPACKE_dsytrf;
-pub const csytrf = LAPACKE_csytrf;
-pub const zsytrf = LAPACKE_zsytrf;
-
-extern fn LAPACKE_ssytri(layout: c_int, uplo: u8, n: isize, a: [*c]f32, lda: isize, ipiv: [*c]const isize) isize;
-extern fn LAPACKE_dsytri(layout: c_int, uplo: u8, n: isize, a: [*c]f64, lda: isize, ipiv: [*c]const isize) isize;
-extern fn LAPACKE_csytri(layout: c_int, uplo: u8, n: isize, a: [*c]cf32, lda: isize, ipiv: [*c]const isize) isize;
-extern fn LAPACKE_zsytri(layout: c_int, uplo: u8, n: isize, a: [*c]cf64, lda: isize, ipiv: [*c]const isize) isize;
-pub const ssytri = LAPACKE_ssytri;
-pub const dsytri = LAPACKE_dsytri;
-pub const csytri = LAPACKE_csytri;
-pub const zsytri = LAPACKE_zsytri;
-
-extern fn LAPACKE_ssytrs(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]const f32, lda: isize, ipiv: [*c]const isize, b: [*c]f32, ldb: isize) isize;
-extern fn LAPACKE_dsytrs(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]const f64, lda: isize, ipiv: [*c]const isize, b: [*c]f64, ldb: isize) isize;
-extern fn LAPACKE_csytrs(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]const cf32, lda: isize, ipiv: [*c]const isize, b: [*c]cf32, ldb: isize) isize;
-extern fn LAPACKE_zsytrs(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]const cf64, lda: isize, ipiv: [*c]const isize, b: [*c]cf64, ldb: isize) isize;
-pub const ssytrs = LAPACKE_ssytrs;
-pub const dsytrs = LAPACKE_dsytrs;
-pub const csytrs = LAPACKE_csytrs;
-pub const zsytrs = LAPACKE_zsytrs;
 
 extern fn LAPACKE_stbcon(layout: c_int, norm: u8, uplo: u8, diag: u8, n: isize, kd: isize, ab: [*c]const f32, ldab: isize, rcond: [*c]f32) isize;
 extern fn LAPACKE_dtbcon(layout: c_int, norm: u8, uplo: u8, diag: u8, n: isize, kd: isize, ab: [*c]const f64, ldab: isize, rcond: [*c]f64) isize;
@@ -2482,15 +2764,6 @@ pub const dgebrd_work = LAPACKE_dgebrd_work;
 pub const cgebrd_work = LAPACKE_cgebrd_work;
 pub const zgebrd_work = LAPACKE_zgebrd_work;
 
-extern fn LAPACKE_sgecon_work(layout: c_int, norm: u8, n: isize, a: [*c]const f32, lda: isize, anorm: f32, rcond: [*c]f32, work: [*c]f32, iwork: [*c]isize) isize;
-extern fn LAPACKE_dgecon_work(layout: c_int, norm: u8, n: isize, a: [*c]const f64, lda: isize, anorm: f64, rcond: [*c]f64, work: [*c]f64, iwork: [*c]isize) isize;
-extern fn LAPACKE_cgecon_work(layout: c_int, norm: u8, n: isize, a: [*c]const cf32, lda: isize, anorm: f32, rcond: [*c]f32, work: [*c]cf32, rwork: [*c]f32) isize;
-extern fn LAPACKE_zgecon_work(layout: c_int, norm: u8, n: isize, a: [*c]const cf64, lda: isize, anorm: f64, rcond: [*c]f64, work: [*c]cf64, rwork: [*c]f64) isize;
-pub const sgecon_work = LAPACKE_sgecon_work;
-pub const dgecon_work = LAPACKE_dgecon_work;
-pub const cgecon_work = LAPACKE_cgecon_work;
-pub const zgecon_work = LAPACKE_zgecon_work;
-
 extern fn LAPACKE_sgeequ_work(layout: c_int, m: isize, n: isize, a: [*c]const f32, lda: isize, r: [*c]f32, c: [*c]f32, rowcnd: [*c]f32, colcnd: [*c]f32, amax: [*c]f32) isize;
 extern fn LAPACKE_dgeequ_work(layout: c_int, m: isize, n: isize, a: [*c]const f64, lda: isize, r: [*c]f64, c: [*c]f64, rowcnd: [*c]f64, colcnd: [*c]f64, amax: [*c]f64) isize;
 extern fn LAPACKE_cgeequ_work(layout: c_int, m: isize, n: isize, a: [*c]const cf32, lda: isize, r: [*c]f32, c: [*c]f32, rowcnd: [*c]f32, colcnd: [*c]f32, amax: [*c]f32) isize;
@@ -2580,42 +2853,6 @@ pub const sgelqf_work = LAPACKE_sgelqf_work;
 pub const dgelqf_work = LAPACKE_dgelqf_work;
 pub const cgelqf_work = LAPACKE_cgelqf_work;
 pub const zgelqf_work = LAPACKE_zgelqf_work;
-
-extern fn LAPACKE_sgels_work(layout: c_int, trans: u8, m: isize, n: isize, nrhs: isize, a: [*c]f32, lda: isize, b: [*c]f32, ldb: isize, work: [*c]f32, lwork: isize) isize;
-extern fn LAPACKE_dgels_work(layout: c_int, trans: u8, m: isize, n: isize, nrhs: isize, a: [*c]f64, lda: isize, b: [*c]f64, ldb: isize, work: [*c]f64, lwork: isize) isize;
-extern fn LAPACKE_cgels_work(layout: c_int, trans: u8, m: isize, n: isize, nrhs: isize, a: [*c]cf32, lda: isize, b: [*c]cf32, ldb: isize, work: [*c]cf32, lwork: isize) isize;
-extern fn LAPACKE_zgels_work(layout: c_int, trans: u8, m: isize, n: isize, nrhs: isize, a: [*c]cf64, lda: isize, b: [*c]cf64, ldb: isize, work: [*c]cf64, lwork: isize) isize;
-pub const sgels_work = LAPACKE_sgels_work;
-pub const dgels_work = LAPACKE_dgels_work;
-pub const cgels_work = LAPACKE_cgels_work;
-pub const zgels_work = LAPACKE_zgels_work;
-
-extern fn LAPACKE_sgelsd_work(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*c]f32, lda: isize, b: [*c]f32, ldb: isize, s: [*c]f32, rcond: f32, rank: [*c]isize, work: [*c]f32, lwork: isize, iwork: [*c]isize) isize;
-extern fn LAPACKE_dgelsd_work(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*c]f64, lda: isize, b: [*c]f64, ldb: isize, s: [*c]f64, rcond: f64, rank: [*c]isize, work: [*c]f64, lwork: isize, iwork: [*c]isize) isize;
-extern fn LAPACKE_cgelsd_work(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*c]cf32, lda: isize, b: [*c]cf32, ldb: isize, s: [*c]f32, rcond: f32, rank: [*c]isize, work: [*c]cf32, lwork: isize, rwork: [*c]f32, iwork: [*c]isize) isize;
-extern fn LAPACKE_zgelsd_work(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*c]cf64, lda: isize, b: [*c]cf64, ldb: isize, s: [*c]f64, rcond: f64, rank: [*c]isize, work: [*c]cf64, lwork: isize, rwork: [*c]f64, iwork: [*c]isize) isize;
-pub const sgelsd_work = LAPACKE_sgelsd_work;
-pub const dgelsd_work = LAPACKE_dgelsd_work;
-pub const cgelsd_work = LAPACKE_cgelsd_work;
-pub const zgelsd_work = LAPACKE_zgelsd_work;
-
-extern fn LAPACKE_sgelss_work(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*c]f32, lda: isize, b: [*c]f32, ldb: isize, s: [*c]f32, rcond: f32, rank: [*c]isize, work: [*c]f32, lwork: isize) isize;
-extern fn LAPACKE_dgelss_work(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*c]f64, lda: isize, b: [*c]f64, ldb: isize, s: [*c]f64, rcond: f64, rank: [*c]isize, work: [*c]f64, lwork: isize) isize;
-extern fn LAPACKE_cgelss_work(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*c]cf32, lda: isize, b: [*c]cf32, ldb: isize, s: [*c]f32, rcond: f32, rank: [*c]isize, work: [*c]cf32, lwork: isize, rwork: [*c]f32) isize;
-extern fn LAPACKE_zgelss_work(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*c]cf64, lda: isize, b: [*c]cf64, ldb: isize, s: [*c]f64, rcond: f64, rank: [*c]isize, work: [*c]cf64, lwork: isize, rwork: [*c]f64) isize;
-pub const sgelss_work = LAPACKE_sgelss_work;
-pub const dgelss_work = LAPACKE_dgelss_work;
-pub const cgelss_work = LAPACKE_cgelss_work;
-pub const zgelss_work = LAPACKE_zgelss_work;
-
-extern fn LAPACKE_sgelsy_work(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*c]f32, lda: isize, b: [*c]f32, ldb: isize, jpvt: [*c]isize, rcond: f32, rank: [*c]isize, work: [*c]f32, lwork: isize) isize;
-extern fn LAPACKE_dgelsy_work(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*c]f64, lda: isize, b: [*c]f64, ldb: isize, jpvt: [*c]isize, rcond: f64, rank: [*c]isize, work: [*c]f64, lwork: isize) isize;
-extern fn LAPACKE_cgelsy_work(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*c]cf32, lda: isize, b: [*c]cf32, ldb: isize, jpvt: [*c]isize, rcond: f32, rank: [*c]isize, work: [*c]cf32, lwork: isize, rwork: [*c]f32) isize;
-extern fn LAPACKE_zgelsy_work(layout: c_int, m: isize, n: isize, nrhs: isize, a: [*c]cf64, lda: isize, b: [*c]cf64, ldb: isize, jpvt: [*c]isize, rcond: f64, rank: [*c]isize, work: [*c]cf64, lwork: isize, rwork: [*c]f64) isize;
-pub const sgelsy_work = LAPACKE_sgelsy_work;
-pub const dgelsy_work = LAPACKE_dgelsy_work;
-pub const cgelsy_work = LAPACKE_cgelsy_work;
-pub const zgelsy_work = LAPACKE_zgelsy_work;
 
 extern fn LAPACKE_sgeqlf_work(layout: c_int, m: isize, n: isize, a: [*c]f32, lda: isize, tau: [*c]f32, work: [*c]f32, lwork: isize) isize;
 extern fn LAPACKE_dgeqlf_work(layout: c_int, m: isize, n: isize, a: [*c]f64, lda: isize, tau: [*c]f64, work: [*c]f64, lwork: isize) isize;
@@ -2725,19 +2962,6 @@ pub const dgedmdq_work = LAPACKE_dgedmdq_work;
 pub const cgedmdq_work = LAPACKE_cgedmdq_work;
 pub const zgedmdq_work = LAPACKE_zgedmdq_work;
 
-extern fn LAPACKE_sgesv_work(layout: c_int, n: isize, nrhs: isize, a: [*c]f32, lda: isize, ipiv: [*c]isize, b: [*c]f32, ldb: isize) isize;
-extern fn LAPACKE_dgesv_work(layout: c_int, n: isize, nrhs: isize, a: [*c]f64, lda: isize, ipiv: [*c]isize, b: [*c]f64, ldb: isize) isize;
-extern fn LAPACKE_cgesv_work(layout: c_int, n: isize, nrhs: isize, a: [*c]cf32, lda: isize, ipiv: [*c]isize, b: [*c]cf32, ldb: isize) isize;
-extern fn LAPACKE_zgesv_work(layout: c_int, n: isize, nrhs: isize, a: [*c]cf64, lda: isize, ipiv: [*c]isize, b: [*c]cf64, ldb: isize) isize;
-extern fn LAPACKE_dsgesv_work(layout: c_int, n: isize, nrhs: isize, a: [*c]f64, lda: isize, ipiv: [*c]isize, b: [*c]f64, ldb: isize, x: [*c]f64, ldx: isize, work: [*c]f64, swork: [*c]f32, iter: [*c]isize) isize;
-extern fn LAPACKE_zcgesv_work(layout: c_int, n: isize, nrhs: isize, a: [*c]cf64, lda: isize, ipiv: [*c]isize, b: [*c]cf64, ldb: isize, x: [*c]cf64, ldx: isize, work: [*c]cf64, swork: [*c]cf32, rwork: [*c]f64, iter: [*c]isize) isize;
-pub const sgesv_work = LAPACKE_sgesv_work;
-pub const dgesv_work = LAPACKE_dgesv_work;
-pub const cgesv_work = LAPACKE_cgesv_work;
-pub const zgesv_work = LAPACKE_zgesv_work;
-pub const dsgesv_work = LAPACKE_dsgesv_work;
-pub const zcgesv_work = LAPACKE_zcgesv_work;
-
 extern fn LAPACKE_sgesvd_work(layout: c_int, jobu: u8, jobvt: u8, m: isize, n: isize, a: [*c]f32, lda: isize, s: [*c]f32, u: [*c]f32, ldu: isize, vt: [*c]f32, ldvt: isize, work: [*c]f32, lwork: isize) isize;
 extern fn LAPACKE_dgesvd_work(layout: c_int, jobu: u8, jobvt: u8, m: isize, n: isize, a: [*c]f64, lda: isize, s: [*c]f64, u: [*c]f64, ldu: isize, vt: [*c]f64, ldvt: isize, work: [*c]f64, lwork: isize) isize;
 extern fn LAPACKE_cgesvd_work(layout: c_int, jobu: u8, jobvt: u8, m: isize, n: isize, a: [*c]cf32, lda: isize, s: [*c]f32, u: [*c]cf32, ldu: isize, vt: [*c]cf32, ldvt: isize, work: [*c]cf32, lwork: isize, rwork: [*c]f32) isize;
@@ -2774,15 +2998,6 @@ pub const dgesvj_work = LAPACKE_dgesvj_work;
 pub const cgesvj_work = LAPACKE_cgesvj_work;
 pub const zgesvj_work = LAPACKE_zgesvj_work;
 
-extern fn LAPACKE_sgesvx_work(layout: c_int, fact: u8, trans: u8, n: isize, nrhs: isize, a: [*c]f32, lda: isize, af: [*c]f32, ldaf: isize, ipiv: [*c]isize, equed: [*c]u8, r: [*c]f32, c: [*c]f32, b: [*c]f32, ldb: isize, x: [*c]f32, ldx: isize, rcond: [*c]f32, ferr: [*c]f32, berr: [*c]f32, work: [*c]f32, iwork: [*c]isize) isize;
-extern fn LAPACKE_dgesvx_work(layout: c_int, fact: u8, trans: u8, n: isize, nrhs: isize, a: [*c]f64, lda: isize, af: [*c]f64, ldaf: isize, ipiv: [*c]isize, equed: [*c]u8, r: [*c]f64, c: [*c]f64, b: [*c]f64, ldb: isize, x: [*c]f64, ldx: isize, rcond: [*c]f64, ferr: [*c]f64, berr: [*c]f64, work: [*c]f64, iwork: [*c]isize) isize;
-extern fn LAPACKE_cgesvx_work(layout: c_int, fact: u8, trans: u8, n: isize, nrhs: isize, a: [*c]cf32, lda: isize, af: [*c]cf32, ldaf: isize, ipiv: [*c]isize, equed: [*c]u8, r: [*c]f32, c: [*c]f32, b: [*c]cf32, ldb: isize, x: [*c]cf32, ldx: isize, rcond: [*c]f32, ferr: [*c]f32, berr: [*c]f32, work: [*c]cf32, rwork: [*c]f32) isize;
-extern fn LAPACKE_zgesvx_work(layout: c_int, fact: u8, trans: u8, n: isize, nrhs: isize, a: [*c]cf64, lda: isize, af: [*c]cf64, ldaf: isize, ipiv: [*c]isize, equed: [*c]u8, r: [*c]f64, c: [*c]f64, b: [*c]cf64, ldb: isize, x: [*c]cf64, ldx: isize, rcond: [*c]f64, ferr: [*c]f64, berr: [*c]f64, work: [*c]cf64, rwork: [*c]f64) isize;
-pub const sgesvx_work = LAPACKE_sgesvx_work;
-pub const dgesvx_work = LAPACKE_dgesvx_work;
-pub const cgesvx_work = LAPACKE_cgesvx_work;
-pub const zgesvx_work = LAPACKE_zgesvx_work;
-
 extern fn LAPACKE_sgesvxx_work(layout: c_int, fact: u8, trans: u8, n: isize, nrhs: isize, a: [*c]f32, lda: isize, af: [*c]f32, ldaf: isize, ipiv: [*c]isize, equed: [*c]u8, r: [*c]f32, c: [*c]f32, b: [*c]f32, ldb: isize, x: [*c]f32, ldx: isize, rcond: [*c]f32, rpvgrw: [*c]f32, berr: [*c]f32, n_err_bnds: isize, err_bnds_norm: [*c]f32, err_bnds_comp: [*c]f32, nparams: isize, params: [*c]f32, work: [*c]f32, iwork: [*c]isize) isize;
 extern fn LAPACKE_dgesvxx_work(layout: c_int, fact: u8, trans: u8, n: isize, nrhs: isize, a: [*c]f64, lda: isize, af: [*c]f64, ldaf: isize, ipiv: [*c]isize, equed: [*c]u8, r: [*c]f64, c: [*c]f64, b: [*c]f64, ldb: isize, x: [*c]f64, ldx: isize, rcond: [*c]f64, rpvgrw: [*c]f64, berr: [*c]f64, n_err_bnds: isize, err_bnds_norm: [*c]f64, err_bnds_comp: [*c]f64, nparams: isize, params: [*c]f64, work: [*c]f64, iwork: [*c]isize) isize;
 extern fn LAPACKE_cgesvxx_work(layout: c_int, fact: u8, trans: u8, n: isize, nrhs: isize, a: [*c]cf32, lda: isize, af: [*c]cf32, ldaf: isize, ipiv: [*c]isize, equed: [*c]u8, r: [*c]f32, c: [*c]f32, b: [*c]cf32, ldb: isize, x: [*c]cf32, ldx: isize, rcond: [*c]f32, rpvgrw: [*c]f32, berr: [*c]f32, n_err_bnds: isize, err_bnds_norm: [*c]f32, err_bnds_comp: [*c]f32, nparams: isize, params: [*c]f32, work: [*c]cf32, rwork: [*c]f32) isize;
@@ -2801,15 +3016,6 @@ pub const dgetf2_work = LAPACKE_dgetf2_work;
 pub const cgetf2_work = LAPACKE_cgetf2_work;
 pub const zgetf2_work = LAPACKE_zgetf2_work;
 
-extern fn LAPACKE_sgetrf_work(layout: c_int, m: isize, n: isize, a: [*c]f32, lda: isize, ipiv: [*c]isize) isize;
-extern fn LAPACKE_dgetrf_work(layout: c_int, m: isize, n: isize, a: [*c]f64, lda: isize, ipiv: [*c]isize) isize;
-extern fn LAPACKE_cgetrf_work(layout: c_int, m: isize, n: isize, a: [*c]cf32, lda: isize, ipiv: [*c]isize) isize;
-extern fn LAPACKE_zgetrf_work(layout: c_int, m: isize, n: isize, a: [*c]cf64, lda: isize, ipiv: [*c]isize) isize;
-pub const sgetrf_work = LAPACKE_sgetrf_work;
-pub const dgetrf_work = LAPACKE_dgetrf_work;
-pub const cgetrf_work = LAPACKE_cgetrf_work;
-pub const zgetrf_work = LAPACKE_zgetrf_work;
-
 extern fn LAPACKE_sgetrf2_work(layout: c_int, m: isize, n: isize, a: [*c]f32, lda: isize, ipiv: [*c]isize) isize;
 extern fn LAPACKE_dgetrf2_work(layout: c_int, m: isize, n: isize, a: [*c]f64, lda: isize, ipiv: [*c]isize) isize;
 extern fn LAPACKE_cgetrf2_work(layout: c_int, m: isize, n: isize, a: [*c]cf32, lda: isize, ipiv: [*c]isize) isize;
@@ -2818,24 +3024,6 @@ pub const sgetrf2_work = LAPACKE_sgetrf2_work;
 pub const dgetrf2_work = LAPACKE_dgetrf2_work;
 pub const cgetrf2_work = LAPACKE_cgetrf2_work;
 pub const zgetrf2_work = LAPACKE_zgetrf2_work;
-
-extern fn LAPACKE_sgetri_work(layout: c_int, n: isize, a: [*c]f32, lda: isize, ipiv: [*c]const isize, work: [*c]f32, lwork: isize) isize;
-extern fn LAPACKE_dgetri_work(layout: c_int, n: isize, a: [*c]f64, lda: isize, ipiv: [*c]const isize, work: [*c]f64, lwork: isize) isize;
-extern fn LAPACKE_cgetri_work(layout: c_int, n: isize, a: [*c]cf32, lda: isize, ipiv: [*c]const isize, work: [*c]cf32, lwork: isize) isize;
-extern fn LAPACKE_zgetri_work(layout: c_int, n: isize, a: [*c]cf64, lda: isize, ipiv: [*c]const isize, work: [*c]cf64, lwork: isize) isize;
-pub const sgetri_work = LAPACKE_sgetri_work;
-pub const dgetri_work = LAPACKE_dgetri_work;
-pub const cgetri_work = LAPACKE_cgetri_work;
-pub const zgetri_work = LAPACKE_zgetri_work;
-
-extern fn LAPACKE_sgetrs_work(layout: c_int, trans: u8, n: isize, nrhs: isize, a: [*c]const f32, lda: isize, ipiv: [*c]const isize, b: [*c]f32, ldb: isize) isize;
-extern fn LAPACKE_dgetrs_work(layout: c_int, trans: u8, n: isize, nrhs: isize, a: [*c]const f64, lda: isize, ipiv: [*c]const isize, b: [*c]f64, ldb: isize) isize;
-extern fn LAPACKE_cgetrs_work(layout: c_int, trans: u8, n: isize, nrhs: isize, a: [*c]const cf32, lda: isize, ipiv: [*c]const isize, b: [*c]cf32, ldb: isize) isize;
-extern fn LAPACKE_zgetrs_work(layout: c_int, trans: u8, n: isize, nrhs: isize, a: [*c]const cf64, lda: isize, ipiv: [*c]const isize, b: [*c]cf64, ldb: isize) isize;
-pub const sgetrs_work = LAPACKE_sgetrs_work;
-pub const dgetrs_work = LAPACKE_dgetrs_work;
-pub const cgetrs_work = LAPACKE_cgetrs_work;
-pub const zgetrs_work = LAPACKE_zgetrs_work;
 
 extern fn LAPACKE_sggbak_work(layout: c_int, job: u8, side: u8, n: isize, ilo: isize, ihi: isize, lscale: [*c]const f32, rscale: [*c]const f32, m: isize, v: [*c]f32, ldv: isize) isize;
 extern fn LAPACKE_dggbak_work(layout: c_int, job: u8, side: u8, n: isize, ilo: isize, ihi: isize, lscale: [*c]const f64, rscale: [*c]const f64, m: isize, v: [*c]f64, ldv: isize) isize;
@@ -2935,15 +3123,6 @@ pub const sgghd3_work = LAPACKE_sgghd3_work;
 pub const dgghd3_work = LAPACKE_dgghd3_work;
 pub const cgghd3_work = LAPACKE_cgghd3_work;
 pub const zgghd3_work = LAPACKE_zgghd3_work;
-
-extern fn LAPACKE_sgglse_work(layout: c_int, m: isize, n: isize, p: isize, a: [*c]f32, lda: isize, b: [*c]f32, ldb: isize, c: [*c]f32, d: [*c]f32, x: [*c]f32, work: [*c]f32, lwork: isize) isize;
-extern fn LAPACKE_dgglse_work(layout: c_int, m: isize, n: isize, p: isize, a: [*c]f64, lda: isize, b: [*c]f64, ldb: isize, c: [*c]f64, d: [*c]f64, x: [*c]f64, work: [*c]f64, lwork: isize) isize;
-extern fn LAPACKE_cgglse_work(layout: c_int, m: isize, n: isize, p: isize, a: [*c]cf32, lda: isize, b: [*c]cf32, ldb: isize, c: [*c]cf32, d: [*c]cf32, x: [*c]cf32, work: [*c]cf32, lwork: isize) isize;
-extern fn LAPACKE_zgglse_work(layout: c_int, m: isize, n: isize, p: isize, a: [*c]cf64, lda: isize, b: [*c]cf64, ldb: isize, c: [*c]cf64, d: [*c]cf64, x: [*c]cf64, work: [*c]cf64, lwork: isize) isize;
-pub const sgglse_work = LAPACKE_sgglse_work;
-pub const dgglse_work = LAPACKE_dgglse_work;
-pub const cgglse_work = LAPACKE_cgglse_work;
-pub const zgglse_work = LAPACKE_zgglse_work;
 
 extern fn LAPACKE_sggqrf_work(layout: c_int, n: isize, m: isize, p: isize, a: [*c]f32, lda: isize, taua: [*c]f32, b: [*c]f32, ldb: isize, taub: [*c]f32, work: [*c]f32, lwork: isize) isize;
 extern fn LAPACKE_dggqrf_work(layout: c_int, n: isize, m: isize, p: isize, a: [*c]f64, lda: isize, taua: [*c]f64, b: [*c]f64, ldb: isize, taub: [*c]f64, work: [*c]f64, lwork: isize) isize;
@@ -3093,11 +3272,6 @@ extern fn LAPACKE_zhbtrd_work(layout: c_int, vect: u8, uplo: u8, n: isize, kd: i
 pub const chbtrd_work = LAPACKE_chbtrd_work;
 pub const zhbtrd_work = LAPACKE_zhbtrd_work;
 
-extern fn LAPACKE_checon_work(layout: c_int, uplo: u8, n: isize, a: [*c]const cf32, lda: isize, ipiv: [*c]const isize, anorm: f32, rcond: [*c]f32, work: [*c]cf32) isize;
-extern fn LAPACKE_zhecon_work(layout: c_int, uplo: u8, n: isize, a: [*c]const cf64, lda: isize, ipiv: [*c]const isize, anorm: f64, rcond: [*c]f64, work: [*c]cf64) isize;
-pub const checon_work = LAPACKE_checon_work;
-pub const zhecon_work = LAPACKE_zhecon_work;
-
 extern fn LAPACKE_cheequb_work(layout: c_int, uplo: u8, n: isize, a: [*c]const cf32, lda: isize, s: [*c]f32, scond: [*c]f32, amax: [*c]f32, work: [*c]cf32) isize;
 extern fn LAPACKE_zheequb_work(layout: c_int, uplo: u8, n: isize, a: [*c]const cf64, lda: isize, s: [*c]f64, scond: [*c]f64, amax: [*c]f64, work: [*c]cf64) isize;
 pub const cheequb_work = LAPACKE_cheequb_work;
@@ -3153,16 +3327,6 @@ extern fn LAPACKE_zherfsx_work(layout: c_int, uplo: u8, equed: u8, n: isize, nrh
 pub const cherfsx_work = LAPACKE_cherfsx_work;
 pub const zherfsx_work = LAPACKE_zherfsx_work;
 
-extern fn LAPACKE_chesv_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]cf32, lda: isize, ipiv: [*c]isize, b: [*c]cf32, ldb: isize, work: [*c]cf32, lwork: isize) isize;
-extern fn LAPACKE_zhesv_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]cf64, lda: isize, ipiv: [*c]isize, b: [*c]cf64, ldb: isize, work: [*c]cf64, lwork: isize) isize;
-pub const chesv_work = LAPACKE_chesv_work;
-pub const zhesv_work = LAPACKE_zhesv_work;
-
-extern fn LAPACKE_chesvx_work(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]const cf32, lda: isize, af: [*c]cf32, ldaf: isize, ipiv: [*c]isize, b: [*c]const cf32, ldb: isize, x: [*c]cf32, ldx: isize, rcond: [*c]f32, ferr: [*c]f32, berr: [*c]f32, work: [*c]cf32, lwork: isize, rwork: [*c]f32) isize;
-extern fn LAPACKE_zhesvx_work(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]const cf64, lda: isize, af: [*c]cf64, ldaf: isize, ipiv: [*c]isize, b: [*c]const cf64, ldb: isize, x: [*c]cf64, ldx: isize, rcond: [*c]f64, ferr: [*c]f64, berr: [*c]f64, work: [*c]cf64, lwork: isize, rwork: [*c]f64) isize;
-pub const chesvx_work = LAPACKE_chesvx_work;
-pub const zhesvx_work = LAPACKE_zhesvx_work;
-
 extern fn LAPACKE_chesvxx_work(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]cf32, lda: isize, af: [*c]cf32, ldaf: isize, ipiv: [*c]isize, equed: [*c]u8, s: [*c]f32, b: [*c]cf32, ldb: isize, x: [*c]cf32, ldx: isize, rcond: [*c]f32, rpvgrw: [*c]f32, berr: [*c]f32, n_err_bnds: isize, err_bnds_norm: [*c]f32, err_bnds_comp: [*c]f32, nparams: isize, params: [*c]f32, work: [*c]cf32, rwork: [*c]f32) isize;
 extern fn LAPACKE_zhesvxx_work(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]cf64, lda: isize, af: [*c]cf64, ldaf: isize, ipiv: [*c]isize, equed: [*c]u8, s: [*c]f64, b: [*c]cf64, ldb: isize, x: [*c]cf64, ldx: isize, rcond: [*c]f64, rpvgrw: [*c]f64, berr: [*c]f64, n_err_bnds: isize, err_bnds_norm: [*c]f64, err_bnds_comp: [*c]f64, nparams: isize, params: [*c]f64, work: [*c]cf64, rwork: [*c]f64) isize;
 pub const chesvxx_work = LAPACKE_chesvxx_work;
@@ -3172,21 +3336,6 @@ extern fn LAPACKE_chetrd_work(layout: c_int, uplo: u8, n: isize, a: [*c]cf32, ld
 extern fn LAPACKE_zhetrd_work(layout: c_int, uplo: u8, n: isize, a: [*c]cf64, lda: isize, d: [*c]f64, e: [*c]f64, tau: [*c]cf64, work: [*c]cf64, lwork: isize) isize;
 pub const chetrd_work = LAPACKE_chetrd_work;
 pub const zhetrd_work = LAPACKE_zhetrd_work;
-
-extern fn LAPACKE_chetrf_work(layout: c_int, uplo: u8, n: isize, a: [*c]cf32, lda: isize, ipiv: [*c]isize, work: [*c]cf32, lwork: isize) isize;
-extern fn LAPACKE_zhetrf_work(layout: c_int, uplo: u8, n: isize, a: [*c]cf64, lda: isize, ipiv: [*c]isize, work: [*c]cf64, lwork: isize) isize;
-pub const chetrf_work = LAPACKE_chetrf_work;
-pub const zhetrf_work = LAPACKE_zhetrf_work;
-
-extern fn LAPACKE_chetri_work(layout: c_int, uplo: u8, n: isize, a: [*c]cf32, lda: isize, ipiv: [*c]const isize, work: [*c]cf32) isize;
-extern fn LAPACKE_zhetri_work(layout: c_int, uplo: u8, n: isize, a: [*c]cf64, lda: isize, ipiv: [*c]const isize, work: [*c]cf64) isize;
-pub const chetri_work = LAPACKE_chetri_work;
-pub const zhetri_work = LAPACKE_zhetri_work;
-
-extern fn LAPACKE_chetrs_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]const cf32, lda: isize, ipiv: [*c]const isize, b: [*c]cf32, ldb: isize) isize;
-extern fn LAPACKE_zhetrs_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]const cf64, lda: isize, ipiv: [*c]const isize, b: [*c]cf64, ldb: isize) isize;
-pub const chetrs_work = LAPACKE_chetrs_work;
-pub const zhetrs_work = LAPACKE_zhetrs_work;
 
 extern fn LAPACKE_chfrk_work(layout: c_int, transr: u8, uplo: u8, trans: u8, n: isize, k: isize, alpha: f32, a: [*c]const cf32, lda: isize, beta: f32, c: [*c]cf32) isize;
 extern fn LAPACKE_zhfrk_work(layout: c_int, transr: u8, uplo: u8, trans: u8, n: isize, k: isize, alpha: f64, a: [*c]const cf64, lda: isize, beta: f64, c: [*c]cf64) isize;
@@ -3742,15 +3891,6 @@ pub const dpftrs_work = LAPACKE_dpftrs_work;
 pub const cpftrs_work = LAPACKE_cpftrs_work;
 pub const zpftrs_work = LAPACKE_zpftrs_work;
 
-extern fn LAPACKE_spocon_work(layout: c_int, uplo: u8, n: isize, a: [*c]const f32, lda: isize, anorm: f32, rcond: [*c]f32, work: [*c]f32, iwork: [*c]isize) isize;
-extern fn LAPACKE_dpocon_work(layout: c_int, uplo: u8, n: isize, a: [*c]const f64, lda: isize, anorm: f64, rcond: [*c]f64, work: [*c]f64, iwork: [*c]isize) isize;
-extern fn LAPACKE_cpocon_work(layout: c_int, uplo: u8, n: isize, a: [*c]const cf32, lda: isize, anorm: f32, rcond: [*c]f32, work: [*c]cf32, rwork: [*c]f32) isize;
-extern fn LAPACKE_zpocon_work(layout: c_int, uplo: u8, n: isize, a: [*c]const cf64, lda: isize, anorm: f64, rcond: [*c]f64, work: [*c]cf64, rwork: [*c]f64) isize;
-pub const spocon_work = LAPACKE_spocon_work;
-pub const dpocon_work = LAPACKE_dpocon_work;
-pub const cpocon_work = LAPACKE_cpocon_work;
-pub const zpocon_work = LAPACKE_zpocon_work;
-
 extern fn LAPACKE_spoequ_work(layout: c_int, n: isize, a: [*c]const f32, lda: isize, s: [*c]f32, scond: [*c]f32, amax: [*c]f32) isize;
 extern fn LAPACKE_dpoequ_work(layout: c_int, n: isize, a: [*c]const f64, lda: isize, s: [*c]f64, scond: [*c]f64, amax: [*c]f64) isize;
 extern fn LAPACKE_cpoequ_work(layout: c_int, n: isize, a: [*c]const cf32, lda: isize, s: [*c]f32, scond: [*c]f32, amax: [*c]f32) isize;
@@ -3787,28 +3927,6 @@ pub const dporfsx_work = LAPACKE_dporfsx_work;
 pub const cporfsx_work = LAPACKE_cporfsx_work;
 pub const zporfsx_work = LAPACKE_zporfsx_work;
 
-extern fn LAPACKE_sposv_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]f32, lda: isize, b: [*c]f32, ldb: isize) isize;
-extern fn LAPACKE_dposv_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]f64, lda: isize, b: [*c]f64, ldb: isize) isize;
-extern fn LAPACKE_cposv_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]cf32, lda: isize, b: [*c]cf32, ldb: isize) isize;
-extern fn LAPACKE_zposv_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]cf64, lda: isize, b: [*c]cf64, ldb: isize) isize;
-extern fn LAPACKE_dsposv_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]f64, lda: isize, b: [*c]f64, ldb: isize, x: [*c]f64, ldx: isize, work: [*c]f64, swork: [*c]f32, iter: [*c]isize) isize;
-extern fn LAPACKE_zcposv_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]cf64, lda: isize, b: [*c]cf64, ldb: isize, x: [*c]cf64, ldx: isize, work: [*c]cf64, swork: [*c]cf32, rwork: [*c]f64, iter: [*c]isize) isize;
-pub const sposv_work = LAPACKE_sposv_work;
-pub const dposv_work = LAPACKE_dposv_work;
-pub const cposv_work = LAPACKE_cposv_work;
-pub const zposv_work = LAPACKE_zposv_work;
-pub const dsposv_work = LAPACKE_dsposv_work;
-pub const zcposv_work = LAPACKE_zcposv_work;
-
-extern fn LAPACKE_sposvx_work(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]f32, lda: isize, af: [*c]f32, ldaf: isize, equed: [*c]u8, s: [*c]f32, b: [*c]f32, ldb: isize, x: [*c]f32, ldx: isize, rcond: [*c]f32, ferr: [*c]f32, berr: [*c]f32, work: [*c]f32, iwork: [*c]isize) isize;
-extern fn LAPACKE_dposvx_work(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]f64, lda: isize, af: [*c]f64, ldaf: isize, equed: [*c]u8, s: [*c]f64, b: [*c]f64, ldb: isize, x: [*c]f64, ldx: isize, rcond: [*c]f64, ferr: [*c]f64, berr: [*c]f64, work: [*c]f64, iwork: [*c]isize) isize;
-extern fn LAPACKE_cposvx_work(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]cf32, lda: isize, af: [*c]cf32, ldaf: isize, equed: [*c]u8, s: [*c]f32, b: [*c]cf32, ldb: isize, x: [*c]cf32, ldx: isize, rcond: [*c]f32, ferr: [*c]f32, berr: [*c]f32, work: [*c]cf32, rwork: [*c]f32) isize;
-extern fn LAPACKE_zposvx_work(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]cf64, lda: isize, af: [*c]cf64, ldaf: isize, equed: [*c]u8, s: [*c]f64, b: [*c]cf64, ldb: isize, x: [*c]cf64, ldx: isize, rcond: [*c]f64, ferr: [*c]f64, berr: [*c]f64, work: [*c]cf64, rwork: [*c]f64) isize;
-pub const sposvx_work = LAPACKE_sposvx_work;
-pub const dposvx_work = LAPACKE_dposvx_work;
-pub const cposvx_work = LAPACKE_cposvx_work;
-pub const zposvx_work = LAPACKE_zposvx_work;
-
 extern fn LAPACKE_sposvxx_work(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]f32, lda: isize, af: [*c]f32, ldaf: isize, equed: [*c]u8, s: [*c]f32, b: [*c]f32, ldb: isize, x: [*c]f32, ldx: isize, rcond: [*c]f32, rpvgrw: [*c]f32, berr: [*c]f32, n_err_bnds: isize, err_bnds_norm: [*c]f32, err_bnds_comp: [*c]f32, nparams: isize, params: [*c]f32, work: [*c]f32, iwork: [*c]isize) isize;
 extern fn LAPACKE_dposvxx_work(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]f64, lda: isize, af: [*c]f64, ldaf: isize, equed: [*c]u8, s: [*c]f64, b: [*c]f64, ldb: isize, x: [*c]f64, ldx: isize, rcond: [*c]f64, rpvgrw: [*c]f64, berr: [*c]f64, n_err_bnds: isize, err_bnds_norm: [*c]f64, err_bnds_comp: [*c]f64, nparams: isize, params: [*c]f64, work: [*c]f64, iwork: [*c]isize) isize;
 extern fn LAPACKE_cposvxx_work(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]cf32, lda: isize, af: [*c]cf32, ldaf: isize, equed: [*c]u8, s: [*c]f32, b: [*c]cf32, ldb: isize, x: [*c]cf32, ldx: isize, rcond: [*c]f32, rpvgrw: [*c]f32, berr: [*c]f32, n_err_bnds: isize, err_bnds_norm: [*c]f32, err_bnds_comp: [*c]f32, nparams: isize, params: [*c]f32, work: [*c]cf32, rwork: [*c]f32) isize;
@@ -3826,33 +3944,6 @@ pub const spotrf2_work = LAPACKE_spotrf2_work;
 pub const dpotrf2_work = LAPACKE_dpotrf2_work;
 pub const cpotrf2_work = LAPACKE_cpotrf2_work;
 pub const zpotrf2_work = LAPACKE_zpotrf2_work;
-
-extern fn LAPACKE_spotrf_work(layout: c_int, uplo: u8, n: isize, a: [*c]f32, lda: isize) isize;
-extern fn LAPACKE_dpotrf_work(layout: c_int, uplo: u8, n: isize, a: [*c]f64, lda: isize) isize;
-extern fn LAPACKE_cpotrf_work(layout: c_int, uplo: u8, n: isize, a: [*c]cf32, lda: isize) isize;
-extern fn LAPACKE_zpotrf_work(layout: c_int, uplo: u8, n: isize, a: [*c]cf64, lda: isize) isize;
-pub const spotrf_work = LAPACKE_spotrf_work;
-pub const dpotrf_work = LAPACKE_dpotrf_work;
-pub const cpotrf_work = LAPACKE_cpotrf_work;
-pub const zpotrf_work = LAPACKE_zpotrf_work;
-
-extern fn LAPACKE_spotri_work(layout: c_int, uplo: u8, n: isize, a: [*c]f32, lda: isize) isize;
-extern fn LAPACKE_dpotri_work(layout: c_int, uplo: u8, n: isize, a: [*c]f64, lda: isize) isize;
-extern fn LAPACKE_cpotri_work(layout: c_int, uplo: u8, n: isize, a: [*c]cf32, lda: isize) isize;
-extern fn LAPACKE_zpotri_work(layout: c_int, uplo: u8, n: isize, a: [*c]cf64, lda: isize) isize;
-pub const spotri_work = LAPACKE_spotri_work;
-pub const dpotri_work = LAPACKE_dpotri_work;
-pub const cpotri_work = LAPACKE_cpotri_work;
-pub const zpotri_work = LAPACKE_zpotri_work;
-
-extern fn LAPACKE_spotrs_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]const f32, lda: isize, b: [*c]f32, ldb: isize) isize;
-extern fn LAPACKE_dpotrs_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]const f64, lda: isize, b: [*c]f64, ldb: isize) isize;
-extern fn LAPACKE_cpotrs_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]const cf32, lda: isize, b: [*c]cf32, ldb: isize) isize;
-extern fn LAPACKE_zpotrs_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]const cf64, lda: isize, b: [*c]cf64, ldb: isize) isize;
-pub const spotrs_work = LAPACKE_spotrs_work;
-pub const dpotrs_work = LAPACKE_dpotrs_work;
-pub const cpotrs_work = LAPACKE_cpotrs_work;
-pub const zpotrs_work = LAPACKE_zpotrs_work;
 
 extern fn LAPACKE_sppcon_work(layout: c_int, uplo: u8, n: isize, ap: [*c]const f32, anorm: f32, rcond: [*c]f32, work: [*c]f32, iwork: [*c]isize) isize;
 extern fn LAPACKE_dppcon_work(layout: c_int, uplo: u8, n: isize, ap: [*c]const f64, anorm: f64, rcond: [*c]f64, work: [*c]f64, iwork: [*c]isize) isize;
@@ -4221,15 +4312,6 @@ extern fn LAPACKE_dstevx_work(layout: c_int, jobz: u8, range: u8, n: isize, d: [
 pub const sstevx_work = LAPACKE_sstevx_work;
 pub const dstevx_work = LAPACKE_dstevx_work;
 
-extern fn LAPACKE_ssycon_work(layout: c_int, uplo: u8, n: isize, a: [*c]const f32, lda: isize, ipiv: [*c]const isize, anorm: f32, rcond: [*c]f32, work: [*c]f32, iwork: [*c]isize) isize;
-extern fn LAPACKE_dsycon_work(layout: c_int, uplo: u8, n: isize, a: [*c]const f64, lda: isize, ipiv: [*c]const isize, anorm: f64, rcond: [*c]f64, work: [*c]f64, iwork: [*c]isize) isize;
-extern fn LAPACKE_csycon_work(layout: c_int, uplo: u8, n: isize, a: [*c]const cf32, lda: isize, ipiv: [*c]const isize, anorm: f32, rcond: [*c]f32, work: [*c]cf32) isize;
-extern fn LAPACKE_zsycon_work(layout: c_int, uplo: u8, n: isize, a: [*c]const cf64, lda: isize, ipiv: [*c]const isize, anorm: f64, rcond: [*c]f64, work: [*c]cf64) isize;
-pub const ssycon_work = LAPACKE_ssycon_work;
-pub const dsycon_work = LAPACKE_dsycon_work;
-pub const csycon_work = LAPACKE_csycon_work;
-pub const zsycon_work = LAPACKE_zsycon_work;
-
 extern fn LAPACKE_ssyequb_work(layout: c_int, uplo: u8, n: isize, a: [*c]const f32, lda: isize, s: [*c]f32, scond: [*c]f32, amax: [*c]f32, work: [*c]f32) isize;
 extern fn LAPACKE_dsyequb_work(layout: c_int, uplo: u8, n: isize, a: [*c]const f64, lda: isize, s: [*c]f64, scond: [*c]f64, amax: [*c]f64, work: [*c]f64) isize;
 extern fn LAPACKE_csyequb_work(layout: c_int, uplo: u8, n: isize, a: [*c]const cf32, lda: isize, s: [*c]f32, scond: [*c]f32, amax: [*c]f32, work: [*c]cf32) isize;
@@ -4297,24 +4379,6 @@ pub const dsyrfsx_work = LAPACKE_dsyrfsx_work;
 pub const csyrfsx_work = LAPACKE_csyrfsx_work;
 pub const zsyrfsx_work = LAPACKE_zsyrfsx_work;
 
-extern fn LAPACKE_ssysv_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]f32, lda: isize, ipiv: [*c]isize, b: [*c]f32, ldb: isize, work: [*c]f32, lwork: isize) isize;
-extern fn LAPACKE_dsysv_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]f64, lda: isize, ipiv: [*c]isize, b: [*c]f64, ldb: isize, work: [*c]f64, lwork: isize) isize;
-extern fn LAPACKE_csysv_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]cf32, lda: isize, ipiv: [*c]isize, b: [*c]cf32, ldb: isize, work: [*c]cf32, lwork: isize) isize;
-extern fn LAPACKE_zsysv_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]cf64, lda: isize, ipiv: [*c]isize, b: [*c]cf64, ldb: isize, work: [*c]cf64, lwork: isize) isize;
-pub const ssysv_work = LAPACKE_ssysv_work;
-pub const dsysv_work = LAPACKE_dsysv_work;
-pub const csysv_work = LAPACKE_csysv_work;
-pub const zsysv_work = LAPACKE_zsysv_work;
-
-extern fn LAPACKE_ssysvx_work(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]const f32, lda: isize, af: [*c]f32, ldaf: isize, ipiv: [*c]isize, b: [*c]const f32, ldb: isize, x: [*c]f32, ldx: isize, rcond: [*c]f32, ferr: [*c]f32, berr: [*c]f32, work: [*c]f32, lwork: isize, iwork: [*c]isize) isize;
-extern fn LAPACKE_dsysvx_work(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]const f64, lda: isize, af: [*c]f64, ldaf: isize, ipiv: [*c]isize, b: [*c]const f64, ldb: isize, x: [*c]f64, ldx: isize, rcond: [*c]f64, ferr: [*c]f64, berr: [*c]f64, work: [*c]f64, lwork: isize, iwork: [*c]isize) isize;
-extern fn LAPACKE_csysvx_work(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]const cf32, lda: isize, af: [*c]cf32, ldaf: isize, ipiv: [*c]isize, b: [*c]const cf32, ldb: isize, x: [*c]cf32, ldx: isize, rcond: [*c]f32, ferr: [*c]f32, berr: [*c]f32, work: [*c]cf32, lwork: isize, rwork: [*c]f32) isize;
-extern fn LAPACKE_zsysvx_work(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]const cf64, lda: isize, af: [*c]cf64, ldaf: isize, ipiv: [*c]isize, b: [*c]const cf64, ldb: isize, x: [*c]cf64, ldx: isize, rcond: [*c]f64, ferr: [*c]f64, berr: [*c]f64, work: [*c]cf64, lwork: isize, rwork: [*c]f64) isize;
-pub const ssysvx_work = LAPACKE_ssysvx_work;
-pub const dsysvx_work = LAPACKE_dsysvx_work;
-pub const csysvx_work = LAPACKE_csysvx_work;
-pub const zsysvx_work = LAPACKE_zsysvx_work;
-
 extern fn LAPACKE_ssysvxx_work(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]f32, lda: isize, af: [*c]f32, ldaf: isize, ipiv: [*c]isize, equed: [*c]u8, s: [*c]f32, b: [*c]f32, ldb: isize, x: [*c]f32, ldx: isize, rcond: [*c]f32, rpvgrw: [*c]f32, berr: [*c]f32, n_err_bnds: isize, err_bnds_norm: [*c]f32, err_bnds_comp: [*c]f32, nparams: isize, params: [*c]f32, work: [*c]f32, iwork: [*c]isize) isize;
 extern fn LAPACKE_dsysvxx_work(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]f64, lda: isize, af: [*c]f64, ldaf: isize, ipiv: [*c]isize, equed: [*c]u8, s: [*c]f64, b: [*c]f64, ldb: isize, x: [*c]f64, ldx: isize, rcond: [*c]f64, rpvgrw: [*c]f64, berr: [*c]f64, n_err_bnds: isize, err_bnds_norm: [*c]f64, err_bnds_comp: [*c]f64, nparams: isize, params: [*c]f64, work: [*c]f64, iwork: [*c]isize) isize;
 extern fn LAPACKE_csysvxx_work(layout: c_int, fact: u8, uplo: u8, n: isize, nrhs: isize, a: [*c]cf32, lda: isize, af: [*c]cf32, ldaf: isize, ipiv: [*c]isize, equed: [*c]u8, s: [*c]f32, b: [*c]cf32, ldb: isize, x: [*c]cf32, ldx: isize, rcond: [*c]f32, rpvgrw: [*c]f32, berr: [*c]f32, n_err_bnds: isize, err_bnds_norm: [*c]f32, err_bnds_comp: [*c]f32, nparams: isize, params: [*c]f32, work: [*c]cf32, rwork: [*c]f32) isize;
@@ -4328,33 +4392,6 @@ extern fn LAPACKE_ssytrd_work(layout: c_int, uplo: u8, n: isize, a: [*c]f32, lda
 extern fn LAPACKE_dsytrd_work(layout: c_int, uplo: u8, n: isize, a: [*c]f64, lda: isize, d: [*c]f64, e: [*c]f64, tau: [*c]f64, work: [*c]f64, lwork: isize) isize;
 pub const ssytrd_work = LAPACKE_ssytrd_work;
 pub const dsytrd_work = LAPACKE_dsytrd_work;
-
-extern fn LAPACKE_ssytrf_work(layout: c_int, uplo: u8, n: isize, a: [*c]f32, lda: isize, ipiv: [*c]isize, work: [*c]f32, lwork: isize) isize;
-extern fn LAPACKE_dsytrf_work(layout: c_int, uplo: u8, n: isize, a: [*c]f64, lda: isize, ipiv: [*c]isize, work: [*c]f64, lwork: isize) isize;
-extern fn LAPACKE_csytrf_work(layout: c_int, uplo: u8, n: isize, a: [*c]cf32, lda: isize, ipiv: [*c]isize, work: [*c]cf32, lwork: isize) isize;
-extern fn LAPACKE_zsytrf_work(layout: c_int, uplo: u8, n: isize, a: [*c]cf64, lda: isize, ipiv: [*c]isize, work: [*c]cf64, lwork: isize) isize;
-pub const ssytrf_work = LAPACKE_ssytrf_work;
-pub const dsytrf_work = LAPACKE_dsytrf_work;
-pub const csytrf_work = LAPACKE_csytrf_work;
-pub const zsytrf_work = LAPACKE_zsytrf_work;
-
-extern fn LAPACKE_ssytri_work(layout: c_int, uplo: u8, n: isize, a: [*c]f32, lda: isize, ipiv: [*c]const isize, work: [*c]f32) isize;
-extern fn LAPACKE_dsytri_work(layout: c_int, uplo: u8, n: isize, a: [*c]f64, lda: isize, ipiv: [*c]const isize, work: [*c]f64) isize;
-extern fn LAPACKE_csytri_work(layout: c_int, uplo: u8, n: isize, a: [*c]cf32, lda: isize, ipiv: [*c]const isize, work: [*c]cf32) isize;
-extern fn LAPACKE_zsytri_work(layout: c_int, uplo: u8, n: isize, a: [*c]cf64, lda: isize, ipiv: [*c]const isize, work: [*c]cf64) isize;
-pub const ssytri_work = LAPACKE_ssytri_work;
-pub const dsytri_work = LAPACKE_dsytri_work;
-pub const csytri_work = LAPACKE_csytri_work;
-pub const zsytri_work = LAPACKE_zsytri_work;
-
-extern fn LAPACKE_ssytrs_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]const f32, lda: isize, ipiv: [*c]const isize, b: [*c]f32, ldb: isize) isize;
-extern fn LAPACKE_dsytrs_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]const f64, lda: isize, ipiv: [*c]const isize, b: [*c]f64, ldb: isize) isize;
-extern fn LAPACKE_csytrs_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]const cf32, lda: isize, ipiv: [*c]const isize, b: [*c]cf32, ldb: isize) isize;
-extern fn LAPACKE_zsytrs_work(layout: c_int, uplo: u8, n: isize, nrhs: isize, a: [*c]const cf64, lda: isize, ipiv: [*c]const isize, b: [*c]cf64, ldb: isize) isize;
-pub const ssytrs_work = LAPACKE_ssytrs_work;
-pub const dsytrs_work = LAPACKE_dsytrs_work;
-pub const csytrs_work = LAPACKE_csytrs_work;
-pub const zsytrs_work = LAPACKE_zsytrs_work;
 
 extern fn LAPACKE_stbcon_work(layout: c_int, norm: u8, uplo: u8, diag: u8, n: isize, kd: isize, ab: [*c]const f32, ldab: isize, rcond: [*c]f32, work: [*c]f32, iwork: [*c]isize) isize;
 extern fn LAPACKE_dtbcon_work(layout: c_int, norm: u8, uplo: u8, diag: u8, n: isize, kd: isize, ab: [*c]const f64, ldab: isize, rcond: [*c]f64, work: [*c]f64, iwork: [*c]isize) isize;

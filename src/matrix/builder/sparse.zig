@@ -8,7 +8,7 @@ const matrix = @import("../../matrix.zig");
 
 /// Sparse builder matrix type, represented in COO format. Three arrays are
 /// used to store the row indices, column indices, and values of the non-zero
-/// elements. Indices are not sorted and duplicate entries are allowed, getting
+/// entries. Indices are not sorted and duplicate entries are allowed, getting
 /// summed at compilation. This type cannot be used for matrix computations
 /// directly; it must first be compiled into a standard sparse matrix.
 pub fn Sparse(N: type) type {
@@ -50,14 +50,14 @@ pub fn Sparse(N: type) type {
         };
 
         /// Initializes a new `matrix.builder.Sparse(N)` with the specified rows
-        /// and columns, and an initial capacity for non-zero elements.
+        /// and columns, and an initial capacity for non-zero entries.
         ///
         /// ## Arguments
         /// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
         ///   allocations.
         /// * `rows` (`usize`): The rows of the builder matrix.
         /// * `cols` (`usize`): The columns of the builder matrix.
-        /// * `nnz` (`usize`): The initial capacity for non-zero elements.
+        /// * `nnz` (`usize`): The initial capacity for non-zero entries.
         ///
         /// ## Returns
         /// `matrix.builder.Sparse(N)`: The newly initialized builder matrix.
@@ -115,14 +115,14 @@ pub fn Sparse(N: type) type {
             self.* = undefined;
         }
 
-        /// Reserves space for at least `new_nnz` non-zero elements.
+        /// Reserves space for at least `new_nnz` non-zero entries.
         ///
         /// ## Arguments
         /// * `self` (`*matrix.builder.Sparse(N)`): A pointer to the builder
         ///   matrix to reserve space for.
         /// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
         ///   allocations. Must be the same allocator used to initialize `self`.
-        /// * `new_nnz` (`usize`): The new capacity for non-zero elements.
+        /// * `new_nnz` (`usize`): The new capacity for non-zero entries.
         ///
         /// ## Returns
         /// `void`
@@ -149,15 +149,15 @@ pub fn Sparse(N: type) type {
             }
         }
 
-        /// Appends a new non-zero element to the builder matrix.
+        /// Appends a new non-zero entry to the builder matrix.
         ///
         /// ## Arguments
         /// * `self` (`*matrix.builder.Sparse(N)`): A pointer to the builder
         ///   matrix.
         /// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
         ///   allocations. Must be the same allocator used to initialize `self`.
-        /// * `r` (`usize`): The row index of the element.
-        /// * `c` (`usize`): The column index of the element.
+        /// * `r` (`usize`): The row index of the entry.
+        /// * `c` (`usize`): The column index of the entry.
         /// * `value` (`N`): The value to insert.
         ///
         /// ## Returns
@@ -167,8 +167,6 @@ pub fn Sparse(N: type) type {
         /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails
         ///   when resizing the internal buffers.
         /// * `matrix.Error.PositionOutOfBounds`: If `r` or `c` is out of bounds.
-        /// * `matrix.Error.DataNotOwned`: If the builder matrix does not own
-        ///   its data and a resize is required.
         pub fn append(self: *matrix.builder.Sparse(N), allocator: std.mem.Allocator, r: usize, c: usize, value: N) !void {
             if (r >= self.rows or c >= self.cols)
                 return matrix.Error.PositionOutOfBounds;
@@ -181,21 +179,18 @@ pub fn Sparse(N: type) type {
                 try self.reserve(allocator, new_nnz);
             }
 
-            self.data[self.nnz] = value;
-            self.ridx[self.nnz] = r;
-            self.cidx[self.nnz] = c;
-            self.nnz += 1;
+            return self.appendAssumeCapacity(r, c, value);
         }
 
-        /// Appends a new non-zero element without performing bounds checks
+        /// Appends a new non-zero entry without performing bounds checks
         /// or verifying capacity.
         ///
         /// ## Arguments
         /// * `self` (`*matrix.builder.Sparse(N)`): A pointer to the builder
         ///   matrix.
-        /// * `r` (`usize`): The row index of the element. Assumed to be within
+        /// * `r` (`usize`): The row index of the entry. Assumed to be within
         ///   bounds.
-        /// * `c` (`usize`): The column index of the element. Assumed to be
+        /// * `c` (`usize`): The column index of the entry. Assumed to be
         ///   within bounds.
         /// * `value` (`N`): The value to insert.
         ///
@@ -249,6 +244,78 @@ pub fn Sparse(N: type) type {
                 ._rlen = self.nnz,
                 ._clen = self.nnz,
             };
+        }
+
+        /// Compiles the builder matrix into a specified sparse matrix type,
+        /// transferring ownership of the data and invalidating the builder.
+        ///
+        /// If M is a symmetric, Hermitian or triangular matrix, only the
+        /// specified triangle is kept. For M a unit triangular matrix, the
+        /// diagonal is also discarded.
+        ///
+        /// ## Arguments
+        /// * `self` (`*matrix.builder.Sparse(N)`): A pointer to the builder
+        ///   matrix to compile.
+        /// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
+        ///   allocations. Must be the same allocator used to initialize `self`.
+        /// * `M` (`comptime type`): The sparse type to compile the matrix to.
+        ///
+        /// ## Returns
+        /// `matrix.general.Sparse(N, layout)`: The compiled sparse matrix.
+        ///
+        /// ## Errors
+        /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
+        /// * `matrix.Error.NotSquare`: If the builder matrix is not square and
+        ///   M is a square matrix type.
+        pub fn compile(self: *matrix.builder.Sparse(N), allocator: std.mem.Allocator, comptime M: type) !M {
+            comptime if (!meta.isMatrix(M) or !meta.isSparseMatrix(M) or
+                (!meta.isGeneralSparseMatrix(M) and !meta.isSymmetricSparseMatrix(M) and !meta.isHermitianSparseMatrix(M) and !meta.isTriangularSparseMatrix(M)))
+                @compileError("zsl.matrix.builder.Sparse(N).compile: M must a sparse general, symmetric, Hermitian or triangular matrix type, got \n\tM = " ++ @typeName(M) ++ "\n");
+
+            if ((comptime meta.isSquareMatrix(M)) and self.rows != self.cols)
+                return matrix.Error.NotSquare;
+
+            if (comptime meta.isSymmetricMatrix(M) or meta.isHermitianMatrix(M) or meta.isTriangularMatrix(M))
+                self.removeTriangle(meta.uploOf(M).?.invert(), (meta.diagOf(M) orelse .non_unit) == .unit);
+
+            return self.compileInternal(allocator, M);
+        }
+
+        /// Compiles the builder matrix into a specified sparse matrix type by
+        /// copying the data, leaving the builder intact.
+        ///
+        /// If M is a symmetric, Hermitian or triangular matrix, only the
+        /// specified triangle is kept.
+        ///
+        /// ## Arguments
+        /// * `self` (`matrix.builder.Sparse(N)`): The builder matrix to
+        ///   compile.
+        /// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
+        ///   allocations. Must be the same allocator used to initialize `self`.
+        /// * `M` (`comptime type`): The sparse type to compile the matrix to.
+        ///
+        /// ## Returns
+        /// `matrix.general.Sparse(N)`: The compiled general sparse matrix.
+        ///
+        /// ## Errors
+        /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
+        /// * `matrix.Error.NotSquare`: If the builder matrix is not square and
+        ///   M is a square matrix type.
+        pub fn compileClone(self: matrix.builder.Sparse(N), allocator: std.mem.Allocator, comptime M: type) !M {
+            comptime if (!meta.isMatrix(M) or !meta.isSparseMatrix(M) or
+                (!meta.isGeneralMatrix(M) and !meta.isSymmetricMatrix(M) or !meta.isHermitianMatrix(M) or !meta.isTriangularMatrix(M)))
+                @compileError("zsl.matrix.builder.Sparse(N).compileClone: M must a sparse general, symmetric, Hermitian or triangular matrix type, got \n\tM = " ++ @typeName(M) ++ "\n");
+
+            if ((comptime meta.isSquareMatrix(M)) and self.rows != self.cols)
+                return matrix.Error.NotSquare;
+
+            var copy = try self.clone(allocator);
+            errdefer copy.deinit(allocator);
+
+            if (comptime meta.isSymmetricMatrix(M) or meta.isHermitianMatrix(M) or meta.isTriangularMatrix(M))
+                copy.removeTriangle(meta.uploOf(M).?.invert(), (meta.diagOf(M) orelse .non_unit) == .unit);
+
+            return copy.compileInternal(allocator, M);
         }
 
         fn compileInternal(self: *matrix.builder.Sparse(N), allocator: std.mem.Allocator, comptime M: type) !M {
@@ -393,78 +460,6 @@ pub fn Sparse(N: type) type {
             }
 
             self.nnz = j;
-        }
-
-        /// Compiles the builder matrix into a specified sparse matrix type,
-        /// transferring ownership of the data and invalidating the builder.
-        ///
-        /// If M is a symmetric, Hermitian or triangular matrix, only the
-        /// specified triangle is kept.
-        ///
-        /// ## Arguments
-        /// * `self` (`*matrix.builder.Sparse(N)`): A pointer to the builder
-        ///   matrix to compile.
-        /// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
-        ///   allocations. Must be the same allocator used to initialize `self`.
-        /// * `M` (`comptime type`): The sparse type to compile the matrix to.
-        ///
-        /// ## Returns
-        /// `matrix.general.Sparse(N, layout)`: The compiled general sparse
-        /// matrix.
-        ///
-        /// ## Errors
-        /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
-        /// * `matrix.Error.NotSquare`: If the builder matrix is not square and
-        ///   M is a square matrix type.
-        pub fn compile(self: *matrix.builder.Sparse(N), allocator: std.mem.Allocator, comptime M: type) !M {
-            comptime if (!meta.isMatrix(M) or !meta.isSparseMatrix(M) or
-                (!meta.isGeneralSparseMatrix(M) and !meta.isSymmetricSparseMatrix(M) and !meta.isHermitianSparseMatrix(M) and !meta.isTriangularSparseMatrix(M)))
-                @compileError("zsl.matrix.builder.Sparse(N).compile: M must a sparse general, symmetric, Hermitian or triangular matrix type, got \n\tM = " ++ @typeName(M) ++ "\n");
-
-            if ((comptime meta.isSquareMatrix(M)) and self.rows != self.cols)
-                return matrix.Error.NotSquare;
-
-            if (comptime meta.isSymmetricMatrix(M) or meta.isHermitianMatrix(M) or meta.isTriangularMatrix(M))
-                self.removeTriangle(meta.uploOf(M).?.invert(), (meta.diagOf(M) orelse .non_unit) == .unit);
-
-            return self.compileInternal(allocator, M);
-        }
-
-        /// Compiles the builder matrix into a specified sparse matrix type by
-        /// copying the data, leaving the builder intact.
-        ///
-        /// If M is a symmetric, Hermitian or triangular matrix, only the
-        /// specified triangle is kept.
-        ///
-        /// ## Arguments
-        /// * `self` (`matrix.builder.Sparse(N)`): The builder matrix to
-        ///   compile.
-        /// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
-        ///   allocations. Must be the same allocator used to initialize `self`.
-        /// * `M` (`comptime type`): The sparse type to compile the matrix to.
-        ///
-        /// ## Returns
-        /// `matrix.general.Sparse(N)`: The compiled general sparse matrix.
-        ///
-        /// ## Errors
-        /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
-        /// * `matrix.Error.NotSquare`: If the builder matrix is not square and
-        ///   M is a square matrix type.
-        pub fn compileClone(self: matrix.builder.Sparse(N), allocator: std.mem.Allocator, comptime M: type) !M {
-            comptime if (!meta.isMatrix(M) or !meta.isSparseMatrix(M) or
-                (!meta.isGeneralMatrix(M) and !meta.isSymmetricMatrix(M) or !meta.isHermitianMatrix(M) or !meta.isTriangularMatrix(M)))
-                @compileError("zsl.matrix.builder.Sparse(N).compileClone: M must a sparse general, symmetric, Hermitian or triangular matrix type, got \n\tM = " ++ @typeName(M) ++ "\n");
-
-            if ((comptime meta.isSquareMatrix(M)) and self.rows != self.cols)
-                return matrix.Error.NotSquare;
-
-            var copy = try self.clone(allocator);
-            errdefer copy.deinit(allocator);
-
-            if (comptime meta.isSymmetricMatrix(M) or meta.isHermitianMatrix(M) or meta.isTriangularMatrix(M))
-                copy.removeTriangle(meta.uploOf(M).?.invert(), (meta.diagOf(M) orelse .non_unit) == .unit);
-
-            return copy.compileInternal(allocator, M);
         }
     };
 }

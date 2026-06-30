@@ -77,8 +77,8 @@ pub fn correctMatmul(comptime O: type, allocator: std.mem.Allocator, rows: usize
 }
 
 test {
-    const test_blas = false;
-    const test_matmul = true;
+    const test_blas = true;
+    const test_matmul = false;
 
     if (test_blas) {
         _ = @import("linalg/blas.zig");

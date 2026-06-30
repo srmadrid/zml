@@ -296,7 +296,7 @@ pub fn Dense(N: type) type {
             };
         }
 
-        pub fn _index(self: *const Dense(N), index: usize) usize {
+        pub fn _index(self: Dense(N), index: usize) usize {
             return if (self.inc > 0)
                 index * numeric.cast(usize, self.inc)
             else

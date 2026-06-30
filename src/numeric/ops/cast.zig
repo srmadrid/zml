@@ -78,15 +78,6 @@ pub fn cast(comptime N: type, value: anytype) N {
     if (comptime N == V)
         return value;
 
-    // if (comptime V == comptime_int or V == comptime_float) {
-    //     if (comptime value == 0)
-    //         return numeric.zero(N)
-    //     else if (comptime value == 1)
-    //         return numeric.one(N)
-    //     else if (comptime value == 2)
-    //         return numeric.two(N);
-    // }
-
     switch (comptime meta.numericType(V)) {
         .bool => switch (comptime meta.numericType(N)) {
             .bool => unreachable,
