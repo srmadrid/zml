@@ -32,7 +32,7 @@ pub fn Div(comptime X: type, comptime Y: type) type {
 /// ## Returns
 /// `vector.Div(@TypeOf(x), @TypeOf(y))`: The result of the division.
 pub fn div(x: anytype, y: anytype) vector.Div(@TypeOf(x), @TypeOf(y)) {
-    return vecops.apply2(x, y, numeric.div);
+    return vecops.apply2Unchecked(x, y, numeric.div);
 }
 
 /// Performs division of vector by a numeric, dynamically allocating memory for
@@ -87,6 +87,13 @@ pub fn divAlloc(allocator: std.mem.Allocator, x: anytype, y: anytype) !vector.Di
 /// * `vector.Error.DimensionMismatch`: If the two vectors do not have the
 ///   same length.
 pub fn divInto(o: anytype, x: anytype, y: anytype) !void {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+
+    comptime if (!meta.isVector(X) or !meta.isNumeric(Y))
+        @compileError("zsl.vector.divInto: X must be a vector type and Y must be a numeric type, got\n\tX = " ++
+            @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n");
+
     return vecops.apply2Into(o, x, y, numeric.divInto);
 }
 
@@ -109,5 +116,12 @@ pub fn divInto(o: anytype, x: anytype, y: anytype) !void {
 /// ## Returns
 /// `void`
 pub fn divIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+
+    comptime if (!meta.isVector(X) or !meta.isNumeric(Y))
+        @compileError("zsl.vector.divIntoUnchecked: X must be a vector type and Y must be a numeric type, got\n\tX = " ++
+            @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n");
+
     return vecops.apply2IntoUnchecked(o, x, y, numeric.divInto);
 }

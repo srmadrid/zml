@@ -30,13 +30,11 @@ pub fn Mul(comptime X: type, comptime Y: type) type {
 ///
 /// This function is intended for when the result matrix's dimensions is known
 /// at compile time, i.e., at least one of the inputs is a static matrix. For
-/// two static matrices, dimension checks are performed at compile time, for any
-/// other two matrix combination, dimension checks are performed at runtime
-/// throught `std.debug.assert`.
+/// two static matrices, dimension checks are performed at compile time.
 ///
 /// ## Signature
 /// ```zig
-/// matrix.mul(x: X, y: Y) matrix.Mul(X, Y)
+/// matrix.mul(x: X, y: Y) !matrix.Mul(X, Y)
 /// ```
 ///
 /// ## Arguments
@@ -45,11 +43,44 @@ pub fn Mul(comptime X: type, comptime Y: type) type {
 ///
 /// ## Returns
 /// `matrix.Mul(@TypeOf(x), @TypeOf(y))`: The result of the multiplication.
+///
+/// ## Errors
+/// * `linalg.Error.DimensionMismatch`: If the two matrices do not have
+///   compatible dimensions.
 pub fn mul(x: anytype, y: anytype) matrix.Mul(@TypeOf(x), @TypeOf(y)) {
     return if (comptime meta.isMatrix(@TypeOf(x)) and meta.isMatrix(@TypeOf(y)))
         linalg.matmul(x, y)
     else
         matops.apply2(x, y, numeric.mul);
+}
+
+/// Performs multiplication between two matrices, or a matrix and a numeric,
+/// without performing any dimension checks.
+///
+/// For two input matrices, the result inherits its memory layout from the
+/// inputs, i.e., if the input layouts mismatch, the left operand (`x`) strictly
+/// dictates the output layout, unless it provides no layout information. For
+/// more control over layouts, use `matrix.mulInto`.
+///
+/// This function is intended for when the result matrix's dimensions is known
+/// at compile time, i.e., at least one of the inputs is a static matrix.
+///
+/// ## Signature
+/// ```zig
+/// matrix.mulUnchecked(x: X, y: Y) matrix.Mul(X, Y)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left matrix or numeric operand.
+/// * `y` (`anytype`): The right matrix or numeric operand.
+///
+/// ## Returns
+/// `matrix.Mul(@TypeOf(x), @TypeOf(y))`: The result of the multiplication.
+pub fn mulUnchecked(x: anytype, y: anytype) matrix.Mul(@TypeOf(x), @TypeOf(y)) {
+    return if (comptime meta.isMatrix(@TypeOf(x)) and meta.isMatrix(@TypeOf(y)))
+        linalg.matmulUnchecked(x, y)
+    else
+        matops.apply2Unchecked(x, y, numeric.mul);
 }
 
 /// Performs multiplication between two matrices, or a matrix and a numeric,
@@ -117,6 +148,14 @@ pub fn mulAlloc(allocator: std.mem.Allocator, x: anytype, y: anytype) !matrix.Mu
 /// * `linalg.Error.DimensionMismatch`: If the three matrices do not have
 ///   compatible dimensions.
 pub fn mulInto(o: anytype, x: anytype, y: anytype) !void {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+
+    comptime if ((!meta.isMatrix(X) and !meta.isNumeric(X)) or (!meta.isMatrix(Y) and !meta.isNumeric(Y)) or
+        (!meta.isMatrix(X) and !meta.isMatrix(Y)))
+        @compileError("zsl.matrix.mulInto: at least one of x or y must be a matrix, the other must be a numeric or a matrix, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+
     return if (comptime meta.isMatrix(@TypeOf(x)) and meta.isMatrix(@TypeOf(y)))
         linalg.matmulInto(o, x, y)
     else
@@ -144,6 +183,14 @@ pub fn mulInto(o: anytype, x: anytype, y: anytype) !void {
 /// ## Returns
 /// `void`
 pub fn mulIntoUnchecked(o: anytype, x: anytype, y: anytype) !void {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+
+    comptime if ((!meta.isMatrix(X) and !meta.isNumeric(X)) or (!meta.isMatrix(Y) and !meta.isNumeric(Y)) or
+        (!meta.isMatrix(X) and !meta.isMatrix(Y)))
+        @compileError("zsl.matrix.mulIntoUnchecked: at least one of x or y must be a matrix, the other must be a numeric or a matrix, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+
     return if (comptime meta.isMatrix(@TypeOf(x)) and meta.isMatrix(@TypeOf(y)))
         linalg.matmulIntoUnchecked(o, x, y)
     else

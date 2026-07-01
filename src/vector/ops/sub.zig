@@ -19,13 +19,11 @@ pub fn Sub(comptime X: type, comptime Y: type) type {
 ///
 /// This function is intended for when the result vector's length is known at
 /// compile time, i.e., at least one of the inputs is a static vector. For two
-/// static vectors, dimension checks are performed at compile time, for any
-/// other combination, dimension checks are performed at runtime throught
-/// `std.debug.assert`.
+/// static vectors, dimension checks are performed at compile time.
 ///
 /// ## Signature
 /// ```zig
-/// vector.sub(x: X, y: Y) vector.Sub(X, Y)
+/// vector.sub(x: X, y: Y) !vector.Sub(X, Y)
 /// ```
 ///
 /// ## Arguments
@@ -34,8 +32,33 @@ pub fn Sub(comptime X: type, comptime Y: type) type {
 ///
 /// ## Returns
 /// `vector.Sub(@TypeOf(x), @TypeOf(y))`: The result of the subtraction.
-pub fn sub(x: anytype, y: anytype) vector.Sub(@TypeOf(x), @TypeOf(y)) {
+///
+/// ## Errors
+/// * `vector.Error.DimensionMismatch`: If the two vectors do not have the same
+///   length.
+pub fn sub(x: anytype, y: anytype) !vector.Sub(@TypeOf(x), @TypeOf(y)) {
     return vecops.apply2(x, y, numeric.sub);
+}
+
+/// Performs subtraction between two vectors, without performing any dimension
+/// checks.
+///
+/// This function is intended for when the result vector's length is known at
+/// compile time, i.e., at least one of the inputs is a static vector.
+///
+/// ## Signature
+/// ```zig
+/// vector.subUnchecked(x: X, y: Y) vector.Sub(X, Y)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left vector operand.
+/// * `y` (`anytype`): The right vector operand.
+///
+/// ## Returns
+/// `vector.Sub(@TypeOf(x), @TypeOf(y))`: The result of the subtraction.
+pub fn subUnchecked(x: anytype, y: anytype) vector.Sub(@TypeOf(x), @TypeOf(y)) {
+    return vecops.apply2Unchecked(x, y, numeric.sub);
 }
 
 /// Performs subtraction between two vectors, dynamically allocating memory for
@@ -93,6 +116,13 @@ pub fn subAlloc(allocator: std.mem.Allocator, x: anytype, y: anytype) !vector.Su
 /// * `vector.Error.DimensionMismatch`: If the three vectors do not have the
 ///   same length.
 pub fn subInto(o: anytype, x: anytype, y: anytype) !void {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+
+    comptime if (!meta.isVector(X) or !meta.isVector(Y))
+        @compileError("zsl.vector.subInto: X and Y must be vector types, got\n\tX = " ++
+            @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n");
+
     return vecops.apply2Into(o, x, y, numeric.subInto);
 }
 
@@ -116,5 +146,12 @@ pub fn subInto(o: anytype, x: anytype, y: anytype) !void {
 /// ## Returns
 /// `void`
 pub fn subIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+
+    comptime if (!meta.isVector(X) or !meta.isVector(Y))
+        @compileError("zsl.vector.subIntoUnchecked: X and Y must be vector types, got\n\tX = " ++
+            @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n");
+
     return vecops.apply2IntoUnchecked(o, x, y, numeric.subInto);
 }

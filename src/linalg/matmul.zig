@@ -209,12 +209,11 @@ pub fn Matmul(comptime X: type, comptime Y: type) type {
 ///
 /// This function is intended for when the result's dimension is known at
 /// compile time. For two static inputs, dimension checks are performed at
-/// compile time, for any other combination, dimension checks are performed at
-/// runtime throught `std.debug.assert`.
+/// compile time.
 ///
 /// ## Signature
 /// ```zig
-/// linalg.matmul(x: X, y: Y) linalg.Matmul(X, Y)
+/// linalg.matmul(x: X, y: Y) !linalg.Matmul(X, Y)
 /// ```
 ///
 /// ## Arguments
@@ -223,7 +222,11 @@ pub fn Matmul(comptime X: type, comptime Y: type) type {
 ///
 /// ## Returns
 /// `linalg.Matmul(@TypeOf(x), @TypeOf(y))`: The result of the operation.
-pub fn matmul(x: anytype, y: anytype) linalg.Matmul(@TypeOf(x), @TypeOf(y)) {
+///
+/// ## Errors
+/// * `linalg.Error.DimensionMismatch`: If the inputs do not have compatible
+///   dimensions.
+pub fn matmul(x: anytype, y: anytype) !linalg.Matmul(@TypeOf(x), @TypeOf(y)) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
     const R: type = linalg.Matmul(X, Y);
@@ -244,7 +247,49 @@ pub fn matmul(x: anytype, y: anytype) linalg.Matmul(@TypeOf(x), @TypeOf(y)) {
 
     if (comptime !((meta.isVector(X) and meta.isStaticVector(X)) or meta.isStaticMatrix(X)) or
         !((meta.isVector(Y) and meta.isStaticVector(Y)) or meta.isStaticMatrix(Y)))
-        std.debug.assert(x_cols == y_rows);
+    {
+        if (x_cols != y_rows)
+            return matrix.Error.DimensionMismatch;
+    }
+
+    var result = R.init;
+
+    linalg.matmulIntoUnchecked(&result, x, y);
+
+    return result;
+}
+
+/// Performs matrix multiplication between two matrices, or between a matrix and
+/// a vector, without performing dimension checks.
+///
+/// For matrix outputs, the result inherits its memory layout from the inputs,
+/// i.e., if the input layouts mismatch, the left operand (`x`) strictly
+/// dictates the output layout, unless it provides no layout information. For
+/// more control over layouts, use `linalg.matmulInto`.
+///
+/// This function is intended for when the result's dimension is known at
+/// compile time.
+///
+/// ## Signature
+/// ```zig
+/// linalg.matmulUnchecked(x: X, y: Y) linalg.Matmul(X, Y)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `linalg.Matmul(@TypeOf(x), @TypeOf(y))`: The result of the operation.
+pub fn matmulUnchecked(x: anytype, y: anytype) linalg.Matmul(@TypeOf(x), @TypeOf(y)) {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const R: type = linalg.Matmul(X, Y);
+
+    if (comptime meta.isDenseVector(R) or meta.isSparseVector(R) or
+        meta.isDenseMatrix(R) or meta.isSparseMatrix(R))
+        @compileError("zsl.linalg.matmulUnchecked: the result cannot be a heap-allocated type, i.e., both inputs must be static, or any vector and a static matrix, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\tresult: " ++ @typeName(R) ++ "\nFor these inputs use zsl.linalg.matmulAlloc instead.");
 
     var result = R.init;
 

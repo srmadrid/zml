@@ -7,20 +7,21 @@ pub fn main(init: std.process.Init) !void {
     // try blas_lv1_threshold_calibration(init);
     // try blas_lv2_threshold_calibration(init);
 
-    const arena = init.arena.allocator();
+    // const arena = init.arena.allocator();
     // const gpa = init.gpa;
 
     const io = init.io;
 
     var xoshiro = std.Random.DefaultPrng.init(@bitCast(std.Io.Clock.real.now(io).toMicroseconds()));
     const prng = xoshiro.random();
-    const normal = zsl.stats.Normal(zsl.cf16).init(.{ .re = 0.0, .im = 1.0 }, .{ .re = 0.01, .im = 1.0 });
+    const normal = zsl.stats.Normal(f32).init(0.0, 1.0);
 
-    const x: zsl.matrix.hermitian.Dense(zsl.cf16, .upper, .col_major) = try .initFn(arena, 6, zsl.stats.Normal(zsl.cf16).sample, .{ normal, prng });
+    const x: zsl.matrix.symmetric.Static(4, f32, .upper, .col_major) = try .initFn(zsl.stats.Normal(f32).sample, .{ normal, prng });
+    const y: zsl.matrix.general.Static(4, 4, f32, .row_major) = try .initFn(zsl.stats.Normal(f32).sample, .{ normal, prng });
 
     printMatrix("X", x);
-    printMatrix("X^T", x.transposeView());
-    printMatrix("X^H", x.adjointView());
+    printMatrix("Y", y);
+    printMatrix("X + Y", zsl.matrix.subUnchecked(x, y));
 }
 
 pub fn blas_lv1_threshold_calibration(init: std.process.Init) !void {
@@ -1459,11 +1460,11 @@ fn printMatrix(desc: []const u8, A: anytype) void {
     std.debug.print("\nMatrix {s}:\n\n", .{desc});
 
     var i: u32 = 0;
-    while (i < A.rows) : (i += 1) {
+    while (i < @TypeOf(A).rows) : (i += 1) {
         std.debug.print("\t", .{});
 
         var j: u32 = 0;
-        while (j < A.cols) : (j += 1) {
+        while (j < @TypeOf(A).cols) : (j += 1) {
             // if (comptime zsl.meta.isComplex(zsl.meta.Numeric(@TypeOf(A)))) {
             //     std.debug.print("{d:7.4} + {d:7.4}i    ", .{ (A.get(i, j) catch unreachable).re, (A.get(i, j) catch unreachable).im });
             // } else {

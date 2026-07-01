@@ -114,6 +114,7 @@ pub const ArrayType = enum {
     dense,
     strided,
     sparse,
+    builder_sparse,
     numeric, // Fallback for numeric types that are not arrays
 };
 
@@ -345,6 +346,9 @@ pub fn arrayType(comptime A: type) ArrayType {
     if (comptime isSparseArray(A))
         return .sparse;
 
+    if (comptime isBuilderSparseArray(A))
+        return .builder_sparse;
+
     return .numeric; // Fallback for numeric types that are not arrays
 }
 
@@ -420,6 +424,7 @@ pub const isArray = type_checks.isArray;
 pub const isDenseArray = type_checks.isDenseArray;
 pub const isStridedArray = type_checks.isStridedArray;
 pub const isSparseArray = type_checks.isSparseArray;
+pub const isBuilderSparseArray = type_checks.isBuilderSparseArray;
 pub const isExpression = type_checks.isExpression;
 pub const isIntegral = type_checks.isIntegral;
 pub const isNonIntegral = type_checks.isNonIntegral;

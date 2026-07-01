@@ -309,7 +309,7 @@ pub fn Apply2(comptime X: type, comptime Y: type, comptime op: anytype) type {
 ///
 /// ## Signature
 /// ```zig
-/// matrix.apply2(x: X, y: Y, op: Op) matrix.Apply2(X, Y, op)
+/// matrix.apply2(x: X, y: Y, op: Op) !matrix.Apply2(X, Y, op)
 /// ```
 ///
 /// ## Arguments
@@ -320,7 +320,11 @@ pub fn Apply2(comptime X: type, comptime Y: type, comptime op: anytype) type {
 ///
 /// ## Returns
 /// `matrix.Apply2(@TypeOf(x), @TypeOf(y), op)`: The result of the operation.
-pub fn apply2(x: anytype, y: anytype, comptime op: anytype) matops.Apply2(@TypeOf(x), @TypeOf(y), op) {
+///
+/// ## Errors
+/// * `matrix.Error.DimensionMismatch`: If the two matrices do not have the same
+///   dimensions. Can only happen if both operands are matrices.
+pub fn apply2(x: anytype, y: anytype, comptime op: anytype) !matops.Apply2(@TypeOf(x), @TypeOf(y), op) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
     const Op: type = @TypeOf(op);
@@ -337,8 +341,62 @@ pub fn apply2(x: anytype, y: anytype, comptime op: anytype) matops.Apply2(@TypeO
     const x_rows = x_rows_optional orelse y_rows;
     const x_cols = x_cols_optional orelse y_cols;
 
-    if (comptime !(meta.isStaticMatrix(X) or meta.isNumeric(X)) or !(meta.isStaticMatrix(Y) or meta.isNumeric(Y)))
-        std.debug.assert(x_rows == y_rows and x_cols == y_cols);
+    if (comptime !(meta.isStaticMatrix(X) or meta.isNumeric(X)) or !(meta.isStaticMatrix(Y) or meta.isNumeric(Y))) {
+        if (x_rows != y_rows or x_cols != y_cols)
+            return matrix.Error.DimensionMismatch;
+    }
+
+    var result = R.init;
+
+    matops.apply2IntoUnchecked(
+        &result,
+        x,
+        y,
+        switch (comptime op) {
+            numeric.add => numeric.addInto,
+            numeric.sub => numeric.subInto,
+            numeric.mul => numeric.mulInto,
+            numeric.div => numeric.divInto,
+            else => unreachable,
+        },
+    );
+
+    return result;
+}
+
+/// Applies a binary operation elementwise between two matrices, or between a
+/// matrix and a numeric, without performing any dimension checks.
+///
+/// The result inherits its memory layout from the inputs, i.e., if the input
+/// layouts mismatch, the left operand (`x`) strictly dictates the output
+/// layout, unless it provides no layout information. For more control over
+/// layouts, use `matrix.apply2Into`.
+///
+/// This function is intended for when the result matrix's dimension is known at
+/// compile time, i.e., at least one of the inputs is a static matrix.
+///
+/// ## Signature
+/// ```zig
+/// matrix.apply2Unchecked(x: X, y: Y, op: Op) matrix.Apply2(X, Y, op)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+/// * `op` (`comptime anytype`): A binary numeric function to apply elementwise
+///   to `x` and `y`.
+///
+/// ## Returns
+/// `matrix.Apply2(@TypeOf(x), @TypeOf(y), op)`: The result of the operation.
+pub fn apply2Unchecked(x: anytype, y: anytype, comptime op: anytype) matops.Apply2(@TypeOf(x), @TypeOf(y), op) {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const Op: type = @TypeOf(op);
+    const R: type = matops.Apply2(X, Y, op);
+
+    if (comptime meta.isDenseMatrix(R) or meta.isSparseMatrix(R))
+        @compileError("zsl.matrix.apply2: the result cannot be a heap-allocated matrix type, i.e., at least one input must be a static matrix, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\top: " ++ @typeName(Op) ++ "\n\tresult: " ++ @typeName(R) ++ "\nFor these inputs use zsl.matrix.apply2Alloc instead.");
 
     var result = R.init;
 

@@ -32,7 +32,7 @@ pub fn Div(comptime X: type, comptime Y: type) type {
 /// ## Returns
 /// `matrix.Div(@TypeOf(x), @TypeOf(y))`: The result of the division.
 pub fn div(x: anytype, y: anytype) matrix.Div(@TypeOf(x), @TypeOf(y)) {
-    return matops.apply2(x, y, numeric.div);
+    return matops.apply2Unchecked(x, y, numeric.div);
 }
 
 /// Performs division of matrix by a numeric, dynamically allocating memory for
@@ -87,6 +87,13 @@ pub fn divAlloc(allocator: std.mem.Allocator, x: anytype, y: anytype) !matrix.Di
 /// * `matrix.Error.DimensionMismatch`: If the two matrices do not have the
 ///   same dimensions.
 pub fn divInto(o: anytype, x: anytype, y: anytype) !void {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+
+    comptime if (!meta.isMatrix(X) or !meta.isNumeric(Y))
+        @compileError("zsl.matrix.divInto: x must be a matrix and y must be a numeric, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+
     return matops.apply2Into(o, x, y, numeric.divInto);
 }
 
@@ -109,5 +116,12 @@ pub fn divInto(o: anytype, x: anytype, y: anytype) !void {
 /// ## Returns
 /// `void`
 pub fn divIntoUnchecked(o: anytype, x: anytype, y: anytype) !void {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+
+    comptime if (!meta.isMatrix(X) or !meta.isNumeric(Y))
+        @compileError("zsl.matrix.divIntoUnchecked: x must be a matrix and y must be a numeric, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+
     return matops.apply2IntoUnchecked(o, x, y, numeric.divInto);
 }

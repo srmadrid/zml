@@ -659,6 +659,20 @@ pub fn isSparseArray(comptime T: type) bool {
     }
 }
 
+/// Checks if the input type is an instance of a builder sparse array.
+///
+/// ## Arguments
+/// * `T` (`comptime type`): The type to check.
+///
+/// ## Returns
+/// `bool`: `true` if the type is a builder sparse array, `false` otherwise.
+pub fn isBuilderSparseArray(comptime T: type) bool {
+    switch (comptime @typeInfo(T)) {
+        .@"struct" => return @hasDecl(T, "is_array") and T.is_array and @hasDecl(T, "is_builder") and T.is_builder and @hasDecl(T, "is_sparse") and T.is_sparse,
+        else => return false,
+    }
+}
+
 pub fn isExpression(comptime T: type) bool {
     _ = T;
     return false;

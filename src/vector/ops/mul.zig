@@ -33,7 +33,7 @@ pub fn Mul(comptime X: type, comptime Y: type) type {
 /// ## Returns
 /// `vector.Mul(@TypeOf(x), @TypeOf(y))`: The result of the multiplication.
 pub fn mul(x: anytype, y: anytype) vector.Mul(@TypeOf(x), @TypeOf(y)) {
-    return vecops.apply2(x, y, numeric.mul);
+    return vecops.apply2Unchecked(x, y, numeric.mul);
 }
 
 /// Performs multiplication between a vector and a numeric, dynamically
@@ -88,6 +88,14 @@ pub fn mulAlloc(allocator: std.mem.Allocator, x: anytype, y: anytype) !vector.Mu
 /// * `vector.Error.DimensionMismatch`: If the two vectors do not have the same
 ///   length.
 pub fn mulInto(o: anytype, x: anytype, y: anytype) !void {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+
+    comptime if ((!meta.isVector(X) and !meta.isNumeric(X)) or (!meta.isVector(Y) and !meta.isNumeric(Y)) or
+        (!meta.isVector(X) and !meta.isVector(Y)) or (meta.isVector(X) and meta.isVector(Y)))
+        @compileError("zsl.vector.mulInto: at least one of X or Y must be a vector type, the other must be a numeric type, got\n\tX = " ++
+            @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n");
+
     return vecops.apply2Into(o, x, y, numeric.mulInto);
 }
 
@@ -110,5 +118,13 @@ pub fn mulInto(o: anytype, x: anytype, y: anytype) !void {
 /// ## Returns
 /// `void`
 pub fn mulIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+
+    comptime if ((!meta.isVector(X) and !meta.isNumeric(X)) or (!meta.isVector(Y) and !meta.isNumeric(Y)) or
+        (!meta.isVector(X) and !meta.isVector(Y)) or (meta.isVector(X) and meta.isVector(Y)))
+        @compileError("zsl.vector.mulIntoUnchecked: at least one of X or Y must be a vector type, the other must be a numeric type, got\n\tX = " ++
+            @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n");
+
     return vecops.apply2IntoUnchecked(o, x, y, numeric.mulInto);
 }

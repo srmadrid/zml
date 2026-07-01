@@ -19,13 +19,11 @@ pub fn Add(comptime X: type, comptime Y: type) type {
 ///
 /// This function is intended for when the result vector's length is known at
 /// compile time, i.e., at least one of the inputs is a static vector. For two
-/// static vectors, dimension checks are performed at compile time, for any
-/// other combination, dimension checks are performed at runtime throught
-/// `std.debug.assert`.
+/// static vectors, dimension checks are performed at compile time.
 ///
 /// ## Signature
 /// ```zig
-/// vector.add(x: X, y: Y) vector.Add(X, Y)
+/// vector.add(x: X, y: Y) !vector.Add(X, Y)
 /// ```
 ///
 /// ## Arguments
@@ -34,8 +32,33 @@ pub fn Add(comptime X: type, comptime Y: type) type {
 ///
 /// ## Returns
 /// `vector.Add(@TypeOf(x), @TypeOf(y))`: The result of the addition.
-pub fn add(x: anytype, y: anytype) vector.Add(@TypeOf(x), @TypeOf(y)) {
+///
+/// ## Errors
+/// * `vector.Error.DimensionMismatch`: If the two vectors do not have the same
+///   length.
+pub fn add(x: anytype, y: anytype) !vector.Add(@TypeOf(x), @TypeOf(y)) {
     return vecops.apply2(x, y, numeric.add);
+}
+
+/// Performs addition between two vectors, without performing any dimension
+/// checks.
+///
+/// This function is intended for when the result vector's length is known at
+/// compile time, i.e., at least one of the inputs is a static vector.
+///
+/// ## Signature
+/// ```zig
+/// vector.addUnchecked(x: X, y: Y) vector.Add(X, Y)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left vector operand.
+/// * `y` (`anytype`): The right vector operand.
+///
+/// ## Returns
+/// `vector.Add(@TypeOf(x), @TypeOf(y))`: The result of the addition.
+pub fn addUnchecked(x: anytype, y: anytype) vector.Add(@TypeOf(x), @TypeOf(y)) {
+    return vecops.apply2Unchecked(x, y, numeric.add);
 }
 
 /// Performs addition between two vectors, dynamically allocating memory for the
@@ -93,6 +116,13 @@ pub fn addAlloc(allocator: std.mem.Allocator, x: anytype, y: anytype) !vector.Ad
 /// * `vector.Error.DimensionMismatch`: If the three vectors do not have the
 ///   same length.
 pub fn addInto(o: anytype, x: anytype, y: anytype) !void {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+
+    comptime if (!meta.isVector(X) or !meta.isVector(Y))
+        @compileError("zsl.vector.addInto: x and y must be vectors, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+
     return vecops.apply2Into(o, x, y, numeric.addInto);
 }
 
@@ -116,5 +146,12 @@ pub fn addInto(o: anytype, x: anytype, y: anytype) !void {
 /// ## Returns
 /// `void`
 pub fn addIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+
+    comptime if (!meta.isVector(X) or !meta.isVector(Y))
+        @compileError("zsl.vector.addIntoUnchecked: x and y must be vectors, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+
     return vecops.apply2IntoUnchecked(o, x, y, numeric.addInto);
 }

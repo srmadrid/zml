@@ -10,6 +10,7 @@ pub const lapacke = @import("linalg/lapacke.zig");
 // Vector operations
 pub const Dot = @import("linalg/dot.zig").Dot;
 pub const dot = @import("linalg/dot.zig").dot;
+pub const dotUnchecked = @import("linalg/dot.zig").dotUnchecked;
 
 // outer
 
@@ -32,10 +33,10 @@ pub const Norm = @import("linalg/norm.zig").Norm;
 pub const NormOrder = @import("linalg/norm.zig").NormOrder;
 pub const norm = @import("linalg/norm.zig").norm;
 pub const normAlloc = @import("linalg/norm.zig").normAlloc;
-// pub const normInto = @import("linalg/norm.zig").normInto;
 
 pub const Matmul = @import("linalg/matmul.zig").Matmul;
 pub const matmul = @import("linalg/matmul.zig").matmul;
+pub const matmulUnchecked = @import("linalg/matmul.zig").matmulUnchecked;
 pub const matmulAlloc = @import("linalg/matmul.zig").matmulAlloc;
 pub const matmulInto = @import("linalg/matmul.zig").matmulInto;
 pub const matmulIntoAlloc = @import("linalg/matmul.zig").matmulIntoAlloc;

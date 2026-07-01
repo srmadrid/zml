@@ -24,13 +24,11 @@ pub fn Add(comptime X: type, comptime Y: type) type {
 ///
 /// This function is intended for when the result matrix's dimensions is known
 /// at compile time, i.e., at least one of the inputs is a static matrix. For
-/// two static matrices, dimension checks are performed at compile time, for any
-/// other combination, dimension checks are performed at runtime throught
-/// `std.debug.assert`.
+/// two static matrices, dimension checks are performed at compile time.
 ///
 /// ## Signature
 /// ```zig
-/// matrix.add(x: X, y: Y) matrix.Add(X, Y)
+/// matrix.add(x: X, y: Y) !matrix.Add(X, Y)
 /// ```
 ///
 /// ## Arguments
@@ -39,8 +37,38 @@ pub fn Add(comptime X: type, comptime Y: type) type {
 ///
 /// ## Returns
 /// `matrix.Add(@TypeOf(x), @TypeOf(y))`: The result of the addition.
-pub fn add(x: anytype, y: anytype) matrix.Add(@TypeOf(x), @TypeOf(y)) {
+///
+/// ## Errors
+/// * `matrix.Error.DimensionMismatch`: If the two matrices do not have the same
+///   dimensions. Can only happen if both operands are matrices.
+pub fn add(x: anytype, y: anytype) !matrix.Add(@TypeOf(x), @TypeOf(y)) {
     return matops.apply2(x, y, numeric.add);
+}
+
+/// Performs addition between two matrices, without performing any dimension
+/// checks.
+///
+/// The result inherits its memory layout from the inputs, i.e., if the input
+/// layouts mismatch, the left operand (`x`) strictly dictates the output
+/// layout, unless it provides no layout information. For more control over
+/// layouts, use `matrix.addInto`.
+///
+/// This function is intended for when the result matrix's dimensions is known
+/// at compile time, i.e., at least one of the inputs is a static matrix.
+///
+/// ## Signature
+/// ```zig
+/// matrix.addUnchecked(x: X, y: Y) matrix.Add(X, Y)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left matrix operand.
+/// * `y` (`anytype`): The right matrix operand.
+///
+/// ## Returns
+/// `matrix.Add(@TypeOf(x), @TypeOf(y))`: The result of the addition.
+pub fn addUnchecked(x: anytype, y: anytype) matrix.Add(@TypeOf(x), @TypeOf(y)) {
+    return matops.apply2Unchecked(x, y, numeric.add);
 }
 
 /// Performs addition between two matrices, dynamically allocating memory for
@@ -104,6 +132,13 @@ pub fn addAlloc(allocator: std.mem.Allocator, x: anytype, y: anytype) !matrix.Ad
 /// * `matrix.Error.DimensionMismatch`: If the three matrices do not have the
 ///   same dimension.
 pub fn addInto(o: anytype, x: anytype, y: anytype) !void {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+
+    comptime if (!meta.isMatrix(X) or !meta.isMatrix(Y))
+        @compileError("zsl.matrix.addInto: x and y must be matrices, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+
     return matops.apply2Into(o, x, y, numeric.addInto);
 }
 
@@ -128,5 +163,12 @@ pub fn addInto(o: anytype, x: anytype, y: anytype) !void {
 /// ## Returns
 /// `void`
 pub fn addIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+
+    comptime if (!meta.isMatrix(X) or !meta.isMatrix(Y))
+        @compileError("zsl.matrix.addIntoUnchecked: x and y must be matrices, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+
     return matops.apply2IntoUnchecked(o, x, y, numeric.addInto);
 }

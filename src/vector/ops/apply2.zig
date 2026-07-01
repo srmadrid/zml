@@ -66,8 +66,67 @@ pub fn Apply2(comptime X: type, comptime Y: type, comptime op: anytype) type {
 /// This function is intended for when the result vector's length is known at
 /// compile time, i.e., at least one of the inputs is a static vector. For two
 /// static vectors, or a static vector and a numeric dimension checks are
-/// performed at compile time, for any other combination, dimension checks are
-/// performed at runtime throught `std.debug.assert`.
+/// performed at compile time.
+///
+/// ## Signature
+/// ```zig
+/// vector.apply2(x: X, y: Y, op: Op) !vector.Apply2(X, Y, op)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+/// * `op` (`comptime anytype`): A binary numeric function to apply elementwise
+///   to `x` and `y`.
+///
+/// ## Returns
+/// `vector.Apply2(@TypeOf(x), @TypeOf(y), op)`: The result of the operation.
+///
+/// ## Errors
+/// * `vector.Error.DimensionMismatch`: If the two vectors do not have the same
+///   length. Can only happen if both operands are vectors.
+pub fn apply2(x: anytype, y: anytype, comptime op: anytype) !vecops.Apply2(@TypeOf(x), @TypeOf(y), op) {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const Op: type = @TypeOf(op);
+    const R: type = vecops.Apply2(X, Y, op);
+
+    if (comptime meta.isDenseVector(R) or meta.isSparseVector(R))
+        @compileError("zsl.vector.apply2: the result cannot be a heap-allocated vector type, i.e., at least one input must be a static vector, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\top: " ++ @typeName(Op) ++ "\n\tresult: " ++ @typeName(R) ++ "\nFor these inputs use zsl.vector.apply2Alloc instead.");
+
+    const x_len_optional: ?usize = if (comptime meta.isVector(X)) (if (comptime meta.isStaticVector(X)) X.len else x.len) else null;
+    const y_len = if (comptime meta.isVector(Y)) (if (comptime meta.isStaticVector(Y)) Y.len else y.len) else x_len_optional.?;
+    const x_len = x_len_optional orelse y_len;
+
+    if (comptime !(meta.isStaticVector(X) or meta.isNumeric(X)) or !(meta.isStaticVector(Y) or meta.isNumeric(Y))) {
+        if (x_len != y_len)
+            return vector.Error.DimensionMismatch;
+    }
+
+    var result = R.init;
+
+    vecops.apply2IntoUnchecked(
+        &result,
+        x,
+        y,
+        switch (comptime op) {
+            numeric.add => numeric.addInto,
+            numeric.sub => numeric.subInto,
+            numeric.mul => numeric.mulInto,
+            numeric.div => numeric.divInto,
+            else => unreachable,
+        },
+    );
+
+    return result;
+}
+
+/// Applies a binary operation elementwise between two vectors, or between a
+/// vector and a numeric, without performing any dimension checks.
+///
+/// This function is intended for when the result vector's length is known at
+/// compile time, i.e., at least one of the inputs is a static vector.
 ///
 /// ## Signature
 /// ```zig
@@ -82,22 +141,15 @@ pub fn Apply2(comptime X: type, comptime Y: type, comptime op: anytype) type {
 ///
 /// ## Returns
 /// `vector.Apply2(@TypeOf(x), @TypeOf(y), op)`: The result of the operation.
-pub fn apply2(x: anytype, y: anytype, comptime op: anytype) vecops.Apply2(@TypeOf(x), @TypeOf(y), op) {
+pub fn apply2Unchecked(x: anytype, y: anytype, comptime op: anytype) vecops.Apply2(@TypeOf(x), @TypeOf(y), op) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
     const Op: type = @TypeOf(op);
     const R: type = vecops.Apply2(X, Y, op);
 
     if (comptime meta.isDenseVector(R) or meta.isSparseVector(R))
-        @compileError("zsl.vector.apply2: the result cannot be a heap-allocated vector type, i.e., at least one input must be a static vector, got\n\tx: " ++
+        @compileError("zsl.vector.apply2Unchecked: the result cannot be a heap-allocated vector type, i.e., at least one input must be a static vector, got\n\tx: " ++
             @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\top: " ++ @typeName(Op) ++ "\n\tresult: " ++ @typeName(R) ++ "\nFor these inputs use zsl.vector.apply2Alloc instead.");
-
-    const x_len_optional: ?usize = if (comptime meta.isVector(X)) (if (comptime meta.isStaticVector(X)) X.len else x.len) else null;
-    const y_len = if (comptime meta.isVector(Y)) (if (comptime meta.isStaticVector(Y)) Y.len else y.len) else x_len_optional.?;
-    const x_len = x_len_optional orelse y_len;
-
-    if (comptime !(meta.isStaticVector(X) or meta.isNumeric(X)) or !(meta.isStaticVector(Y) or meta.isNumeric(Y)))
-        std.debug.assert(x_len == y_len);
 
     var result = R.init;
 
