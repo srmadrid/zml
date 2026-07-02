@@ -1,3 +1,64 @@
+const meta = @import("../meta.zig");
+
+pub const Transpose = enum(u2) {
+    no_trans,
+    trans,
+    conj_trans,
+    conj_no_trans,
+
+    pub fn toInt(self: Transpose, comptime Int: type) Int {
+        comptime if (!meta.isNumeric(Int) or meta.numericType(Int) != .int)
+            @compileError("zsl.linalg.Transpose.toInt: Int must be an int type, got:\n\tInt = " ++ @typeName(Int) ++ "\n");
+
+        return switch (self) {
+            .no_trans => if (comptime Int == u8) 'N' else 111,
+            .trans => if (comptime Int == u8) 'T' else 112,
+            .conj_trans => if (comptime Int == u8) 'C' else 113,
+            .conj_no_trans => if (comptime Int == u8) 0 else 114,
+        };
+    }
+
+    pub fn invert(self: Transpose) Transpose {
+        return switch (self) {
+            .no_trans => .trans,
+            .trans => .no_trans,
+            .conj_no_trans => .conj_trans,
+            .conj_trans => .conj_no_trans,
+        };
+    }
+
+    pub fn reverse(self: Transpose) Transpose {
+        return switch (self) {
+            .no_trans => .conj_trans,
+            .trans => .conj_no_trans,
+            .conj_no_trans => .trans,
+            .conj_trans => .no_trans,
+        };
+    }
+};
+
+pub const Side = enum(u1) {
+    left,
+    right,
+
+    pub fn toInt(self: Side, comptime Int: type) Int {
+        comptime if (!meta.isNumeric(Int) or meta.numericType(Int) != .int)
+            @compileError("zsl.linalg.Side.toInt: Int must be an int type, got:\n\tInt = " ++ @typeName(Int) ++ "\n");
+
+        return switch (self) {
+            .left => if (comptime Int == u8) 'L' else 141,
+            .right => if (comptime Int == u8) 'R' else 142,
+        };
+    }
+
+    pub fn invert(self: Side) Side {
+        return switch (self) {
+            .left => .right,
+            .right => .left,
+        };
+    }
+};
+
 // Level 1
 pub const Asum = @import("blas/level1/asum.zig").Asum;
 pub const asum = @import("blas/level1/asum.zig").asum;

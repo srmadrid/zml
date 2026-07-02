@@ -40,7 +40,7 @@ const linalg = @import("../../../linalg.zig");
 ///
 /// ## Signature
 /// ```zig
-/// linalg.blas.trmv(layout: matrix.Layout, uplo: matrix.Uplo, transa: linalg.Transpose, diag: matrix.Diag, n: usize, a: [*]const A, lda: usize, x: [*]X, incx: isize) !void
+/// linalg.blas.trmv(layout: matrix.Layout, uplo: matrix.Uplo, transa: linalg.blas.Transpose, diag: matrix.Diag, n: usize, a: [*]const A, lda: usize, x: [*]X, incx: isize) !void
 /// ```
 ///
 /// ## Arguments
@@ -48,8 +48,8 @@ const linalg = @import("../../../linalg.zig");
 ///   storage is col-major or row-major.
 /// * `uplo` (`matrix.Uplo`): Specifies whether the matrix `A` is an upper or
 ///   lower triangular matrix:
-/// * `transa` (`linalg.Transpose`): Specifies the operation to be performed on
-///   `A`:
+/// * `transa` (`linalg.blas.Transpose`): Specifies the operation to be
+///   performed on `A`:
 ///   * `no_transpose`: `x = A * x`
 ///   * `transpose`: `x = Aᵀ * x`
 ///   * `conj_no_transpose`: `x = conj(A) * x`
@@ -90,7 +90,7 @@ const linalg = @import("../../../linalg.zig");
 pub fn trmv(
     layout: matrix.Layout,
     uplo: matrix.Uplo,
-    transa: linalg.Transpose,
+    transa: linalg.blas.Transpose,
     diag: matrix.Diag,
     n: usize,
     a: anytype,
@@ -160,7 +160,7 @@ pub fn trmv(
     const Worker = struct {
         fn execute(
             worker_uplo: matrix.Uplo,
-            worker_transa: linalg.Transpose,
+            worker_transa: linalg.blas.Transpose,
             worker_diag: matrix.Diag,
             worker_n: usize,
             worker_a: [*]const A,
@@ -228,7 +228,7 @@ pub fn trmv(
 
 pub fn k_trmv(
     uplo: matrix.Uplo,
-    transa: linalg.Transpose,
+    transa: linalg.blas.Transpose,
     diag: matrix.Diag,
     n: usize,
     a: anytype,
@@ -993,7 +993,7 @@ pub fn k_trmv(
 
 fn k_trmv_nd(
     uplo: matrix.Uplo,
-    transa: linalg.Transpose,
+    transa: linalg.blas.Transpose,
     diag: matrix.Diag,
     n: usize,
     a: anytype,

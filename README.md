@@ -14,32 +14,42 @@ Zsl lets you write numerical code once and run it over whatever numeric type you
   - Dyadic rationals
   - Complex numbers
 - Vectors (`vector`):
-  - Two storage formats:
+  - Three storage formats:
+    - `Static`
     - `Dense`
     - `Sparse`
   - Vector addition/subtraction and scalar multiplication/division
 - Matrices (`matrix`):
   - Diverse storage formats:
     - General (`general`):
+      - `Static`
       - `Dense`
       - `Sparse` (CSR, CSC)
     - Symmetric (`symmetric`):
+      - `Static`
       - `Dense`
       - `Sparse` (CSR, CSC)
     - Hermitian (`hermitian`):
+      - `Static`
       - `Dense`
       - `Sparse` (CSR, CSC)
     - Triangular (`triangular`):
+      - `Static`
       - `Dense`
       - `Sparse` (CSR, CSC)
-    - `Diagonal`
-    - `Permutation`
+    - Diagonal (`diagonal`):
+      - `Static`
+      - `Sparse`
+    - Permutation (`permutation`):
+      - `Static`
+      - `Sparse`
   - Matrix addition/subtraction/multiplication and scalar multiplication/division
   - Views
 - N-dimensional arrays (`array`):
-  - Two storage formats:
-    - `Dense` (plus `Strided` for views)
-    - `Sparse` (CSF): not implemented yet
+  - Three storage formats:
+    - `Static`
+    - `Dense`
+    - `Sparse` (CSF)
   - Broadcasting
   - Element-wise operations
   - Views

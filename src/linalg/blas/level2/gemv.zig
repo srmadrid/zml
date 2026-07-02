@@ -39,14 +39,14 @@ const linalg = @import("../../../linalg.zig");
 ///
 /// ## Signature
 /// ```zig
-/// linalg.blas.gemv(layout: matrix.Layout, transa: linalg.Transpose, m: usize, n: usize, alpha: Al, a: [*]const A, lda: usize, x: [*]const X, incx: isize, beta: Be, y: [*]Y, incy: isize) !void
+/// linalg.blas.gemv(layout: matrix.Layout, transa: linalg.blas.Transpose, m: usize, n: usize, alpha: Al, a: [*]const A, lda: usize, x: [*]const X, incx: isize, beta: Be, y: [*]Y, incy: isize) !void
 /// ```
 ///
 /// ## Arguments
 /// * `layout` (`matrix.Layout`): Specifies whether two-dimensional array
 ///   storage is col-major or row-major.
-/// * `transa` (`linalg.Transpose`): Specifies the operation to be performed on
-///   `A`:
+/// * `transa` (`linalg.blas.Transpose`): Specifies the operation to be
+///   performed on `A`:
 ///   * `no_transpose`: `y = alpha * A * x + beta * y`
 ///   * `transpose`: `y = alpha * Aᵀ * x + beta * y`
 ///   * `conj_no_transpose`: `y = alpha * conj(A) * x + beta * y`
@@ -93,7 +93,7 @@ const linalg = @import("../../../linalg.zig");
 ///   `max(1, n)`, or if `incx` or `incy` is 0.
 pub fn gemv(
     layout: matrix.Layout,
-    transa: linalg.Transpose,
+    transa: linalg.blas.Transpose,
     m: usize,
     n: usize,
     alpha: anytype,
@@ -179,7 +179,7 @@ pub fn gemv(
 
     const Worker = struct {
         fn execute(
-            worker_transa: linalg.Transpose,
+            worker_transa: linalg.blas.Transpose,
             worker_m: usize,
             worker_n: usize,
             worker_alpha: Al,
@@ -244,7 +244,7 @@ pub fn gemv(
         return err;
 }
 
-pub fn k_gemv(transa: linalg.Transpose, m: usize, n: usize, alpha: anytype, a: anytype, lda: usize, x: anytype, incx: isize, beta: anytype, y: anytype, incy: isize, comptime noconj: bool) void {
+pub fn k_gemv(transa: linalg.blas.Transpose, m: usize, n: usize, alpha: anytype, a: anytype, lda: usize, x: anytype, incx: isize, beta: anytype, y: anytype, incy: isize, comptime noconj: bool) void {
     const Al: type = @TypeOf(alpha);
     const A: type = meta.Child(@TypeOf(a));
     const X: type = meta.Child(@TypeOf(x));

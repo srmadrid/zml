@@ -29,7 +29,7 @@ const CBLAS_TRANSPOSE = enum(c_int) {
     CblasConjTrans = 113,
     CblasConjNoTrans = 114,
 
-    fn to_zsl(self: CBLAS_TRANSPOSE) zsl.linalg.Transpose {
+    fn to_zsl(self: CBLAS_TRANSPOSE) zsl.linalg.blas.Transpose {
         return switch (self) {
             .CblasNoTrans => .no_trans,
             .CblasTrans => .trans,
@@ -67,7 +67,7 @@ const CBLAS_SIDE = enum(c_int) {
     CblasLeft = 141,
     CblasRight = 142,
 
-    fn to_zsl(self: CBLAS_SIDE) zsl.linalg.Side {
+    fn to_zsl(self: CBLAS_SIDE) zsl.linalg.blas.Side {
         return switch (self) {
             .CblasLeft => .left,
             .CblasRight => .right,
