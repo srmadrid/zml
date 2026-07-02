@@ -8,20 +8,25 @@ pub fn main(init: std.process.Init) !void {
     // try blas_lv2_threshold_calibration(init);
 
     // const arena = init.arena.allocator();
-    // const gpa = init.gpa;
+    const gpa = init.gpa;
 
     const io = init.io;
 
     var xoshiro = std.Random.DefaultPrng.init(@bitCast(std.Io.Clock.real.now(io).toMicroseconds()));
     const prng = xoshiro.random();
-    const normal = zsl.stats.Normal(f32).init(0.0, 1.0);
+    const normal = zsl.stats.Normal(zsl.cf64).init(.zero, .{ .re = 1.0, .im = 1.0 });
 
-    const x: zsl.matrix.symmetric.Static(4, f32, .upper, .col_major) = try .initFn(zsl.stats.Normal(f32).sample, .{ normal, prng });
-    const y: zsl.matrix.general.Static(4, 4, f32, .row_major) = try .initFn(zsl.stats.Normal(f32).sample, .{ normal, prng });
+    var x: zsl.vector.Dense(zsl.cf64) = try .initFn(gpa, 20, zsl.stats.Normal(zsl.cf64).sample, .{ normal, prng });
+    defer x.deinit(gpa);
+    var A: zsl.matrix.general.Dense(zsl.cf64, .col_major) = try .initFn(gpa, 20, 20, zsl.stats.Normal(zsl.cf64).sample, .{ normal, prng });
+    defer A.deinit(gpa);
 
-    printMatrix("X", x);
-    printMatrix("Y", y);
-    printMatrix("X + Y", zsl.matrix.subUnchecked(x, y));
+    const start = std.Io.Clock.real.now(io).toNanoseconds();
+
+    var y = try zsl.linalg.matmulAlloc(gpa, A, x);
+    defer y.deinit(gpa);
+
+    std.debug.print("A * x took {d} ns\n", .{std.Io.Clock.real.now(io).toNanoseconds() - start});
 }
 
 pub fn blas_lv1_threshold_calibration(init: std.process.Init) !void {
@@ -1460,11 +1465,11 @@ fn printMatrix(desc: []const u8, A: anytype) void {
     std.debug.print("\nMatrix {s}:\n\n", .{desc});
 
     var i: u32 = 0;
-    while (i < @TypeOf(A).rows) : (i += 1) {
+    while (i < A.rows) : (i += 1) {
         std.debug.print("\t", .{});
 
         var j: u32 = 0;
-        while (j < @TypeOf(A).cols) : (j += 1) {
+        while (j < A.cols) : (j += 1) {
             // if (comptime zsl.meta.isComplex(zsl.meta.Numeric(@TypeOf(A)))) {
             //     std.debug.print("{d:7.4} + {d:7.4}i    ", .{ (A.get(i, j) catch unreachable).re, (A.get(i, j) catch unreachable).im });
             // } else {
@@ -1539,11 +1544,7 @@ fn printVector(desc: []const u8, v: anytype) void {
 
     var i: usize = 0;
     while (i < v.len) : (i += 1) {
-        if (comptime zsl.meta.isComplex(zsl.meta.Numeric(@TypeOf(v)))) {
-            std.debug.print("{d:7.4} + {d:7.4}i\n", .{ (v.get(i) catch unreachable).re, (v.get(i) catch unreachable).im });
-        } else {
-            std.debug.print("{d:5.4}\n", .{v.get(i) catch unreachable});
-        }
+        std.debug.print("{}\n", .{v.get(i) catch unreachable});
     }
     std.debug.print("\n", .{});
 }

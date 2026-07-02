@@ -2763,7 +2763,7 @@ pub fn matmulIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
                         .matrix => @compileError("zsl.linalg.matmulInto: vector output requires exactly one matrix and one vector as inputs\n\to: *" ++ @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y)),
                         .vector => switch (comptime meta.vectorType(Y)) {
                             .static => return @import("matmul/vecden_slow.zig").matmulIntoUnchecked(o, x, y), // return @import("matmul/vecden_matgenden_vecsta.zig").matmulIntoUnchecked(o, x, y),
-                            .dense => return @import("matmul/vecden_slow.zig").matmulIntoUnchecked(o, x, y), // return @import("matmul/vecden_matgenden_vecden.zig").matmulIntoUnchecked(o, x, y),
+                            .dense => return @import("matmul/vecden_matgenden_vecden.zig").matmulIntoUnchecked(o, x, y),
                             .sparse => return @import("matmul/vecden_slow.zig").matmulIntoUnchecked(o, x, y), // return @import("matmul/vecden_matgenden_vecspa.zig").matmulIntoUnchecked(o, x, y),
                             else => unreachable,
                         },
@@ -2938,7 +2938,7 @@ pub fn matmulIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
                     .dense => switch (comptime meta.domain(Y)) {
                         .matrix => switch (comptime meta.matrixType(Y)) {
                             .general_static => return @import("matmul/vecden_slow.zig").matmulIntoUnchecked(o, x, y), // return @import("matmul/vecden_vecden_matgensta.zig").matmulIntoUnchecked(o, x, y),
-                            .general_dense => return @import("matmul/vecden_slow.zig").matmulIntoUnchecked(o, x, y), // return @import("matmul/vecden_vecden_matgenden.zig").matmulIntoUnchecked(o, x, y),
+                            .general_dense => return @import("matmul/vecden_vecden_matgenden.zig").matmulIntoUnchecked(o, x, y),
                             .general_sparse => return @import("matmul/vecden_slow.zig").matmulIntoUnchecked(o, x, y), // return @import("matmul/vecden_vecden_matgenspa.zig").matmulIntoUnchecked(o, x, y),
                             .symmetric_static => return @import("matmul/vecden_slow.zig").matmulIntoUnchecked(o, x, y), // return @import("matmul/vecden_vecden_matsymsta.zig").matmulIntoUnchecked(o, x, y),
                             .symmetric_dense => return @import("matmul/vecden_slow.zig").matmulIntoUnchecked(o, x, y), // return @import("matmul/vecden_vecden_matsymden.zig").matmulIntoUnchecked(o, x, y),
