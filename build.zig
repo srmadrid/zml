@@ -56,6 +56,7 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("src/zsl.zig"),
         .target = target,
         .optimize = optimize,
+        .link_libc = opt_link_cblas != null or opt_link_lapacke != null,
     });
     module.addOptions("options", options);
 

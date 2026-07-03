@@ -54,13 +54,8 @@ pub fn norm(x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)
     if (comptime meta.isMatrix(X) and (meta.isDenseMatrix(X) or meta.isSparseMatrix(X)) and order == .l2)
         @compileError("zsl.linalg.norm: the l2-norm of heap-allocated matrices requires internal temporary allocations. For these inputs use zsl.linalg.normAlloc instead.");
 
-    return normAlloc(undefined, x, order) catch unreachable;
-}
-
-pub fn normAlloc(allocator: std.mem.Allocator, x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)))) !linalg.Norm(@TypeOf(x), order) {
-    const X: type = @TypeOf(x);
-
-    _ = allocator;
+    if (comptime meta.isMatrix(X) and order == .p)
+        @compileError("zsl.linalg.norm: the p-norm of matrices is not supported.");
 
     switch (comptime meta.domain(X)) {
         .vector => switch (comptime meta.vectorType(X)) {
@@ -70,7 +65,32 @@ pub fn normAlloc(allocator: std.mem.Allocator, x: anytype, comptime order: linal
             else => @compileError("zsl.linalg.normAlloc: not implemented yet for \n\tX = " ++ @typeName(X) ++ "\n"),
             .numeric => unreachable,
         },
-        .matrix => @compileError("zsl.linalg.normAlloc: not implemented yet for \n\tX = " ++ @typeName(X) ++ "\n"), // Only dense and sparse matrices need allocator, static ones can use stack allocated work array
+        .matrix => switch (comptime meta.matrixType(X)) {
+            .general_dense => return @import("norm/matgenden.zig").norm(x, order),
+            else => @compileError("zsl.linalg.normAlloc: not implemented yet for \n\tX = " ++ @typeName(X) ++ "\n"), // Only dense and sparse matrices need allocator, static ones can use stack allocated work array
+        },
+        else => unreachable,
+    }
+}
+
+pub fn normAlloc(allocator: std.mem.Allocator, x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)))) !linalg.Norm(@TypeOf(x), order) {
+    const X: type = @TypeOf(x);
+
+    if (comptime meta.isMatrix(X) and order == .p)
+        @compileError("zsl.linalg.normAlloc: the p-norm of matrices is not supported.");
+
+    switch (comptime meta.domain(X)) {
+        .vector => switch (comptime meta.vectorType(X)) {
+            .static => return @import("norm/vecsta.zig").norm(x, order),
+            // .dense => return @import("norm/de.zig").norm(x, norm_type),
+            // .sparse => return @import("norm/sp.zig").norm(x, norm_type),
+            else => @compileError("zsl.linalg.normAlloc: not implemented yet for \n\tX = " ++ @typeName(X) ++ "\n"),
+            .numeric => unreachable,
+        },
+        .matrix => switch (comptime meta.matrixType(X)) {
+            .general_dense => return @import("norm/matgenden.zig").normAlloc(allocator, x, order),
+            else => @compileError("zsl.linalg.normAlloc: not implemented yet for \n\tX = " ++ @typeName(X) ++ "\n"), // Only dense and sparse matrices need allocator, static ones can use stack allocated work array
+        },
         else => unreachable,
     }
 }

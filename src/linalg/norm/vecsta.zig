@@ -26,13 +26,11 @@ pub fn norm(x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)
             var sum = numeric.zero(meta.Accumulator(R));
 
             inline for (0..X.len) |i| {
-                const abs_x = numeric.abs(x.data[i]);
-
                 // sum += abs(x[i])²
                 numeric.addInto(
                     &sum,
                     sum,
-                    numeric.mul(abs_x, abs_x),
+                    numeric.abs2(x.data[i]),
                 );
             }
 

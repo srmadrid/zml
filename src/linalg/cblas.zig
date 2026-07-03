@@ -2,27 +2,32 @@ const complex = @import("../complex.zig");
 const cf32 = complex.cf32;
 const cf64 = complex.cf64;
 
-// Layout
-pub const row_major: c_int = 101;
-pub const col_major: c_int = 102;
+pub const layout = struct {
+    pub const row_major: c_int = 101;
+    pub const col_major: c_int = 102;
+};
 
-// Trans
-pub const no_trans: c_int = 111;
-pub const trans: c_int = 112;
-pub const conj_trans: c_int = 113;
-pub const conj_no_trans: c_int = 114;
+pub const trans = struct {
+    pub const no_trans: c_int = 111;
+    pub const trans: c_int = 112;
+    pub const conj_trans: c_int = 113;
+    pub const conj_no_trans: c_int = 114;
+};
 
-// Uplo
-pub const upper: c_int = 121;
-pub const lower: c_int = 122;
+pub const uplo = struct {
+    pub const upper: c_int = 121;
+    pub const lower: c_int = 122;
+};
 
-// Diag
-pub const non_unit: c_int = 131;
-pub const unit: c_int = 132;
+pub const diag = struct {
+    pub const non_unit: c_int = 131;
+    pub const unit: c_int = 132;
+};
 
-// Side
-pub const left: c_int = 141;
-pub const right: c_int = 142;
+pub const side = struct {
+    pub const left: c_int = 141;
+    pub const right: c_int = 142;
+};
 
 // Level 1
 extern fn cblas_sasum(n: isize, x: [*]const f32, incx: isize) f32;
