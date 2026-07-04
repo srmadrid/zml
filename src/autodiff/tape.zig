@@ -22,6 +22,8 @@ pub fn Tape(N: type) type {
             grad: N = numeric.zero(N),
         };
 
+        pub const Numeric = N;
+
         pub fn init(allocator: std.mem.Allocator, capacity: usize) !autodiff.Tape(N) {
             return .{
                 .nodes = (try allocator.alloc(Node, capacity)).ptr,

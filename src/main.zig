@@ -21,7 +21,7 @@ pub fn main(init: std.process.Init) !void {
 
     const f = struct {
         pub fn f(x: anytype, y: @TypeOf(x)) @TypeOf(x) {
-            return zsl.numeric.fma(zsl.numeric.mul(x, x), y, zsl.numeric.div(x, y));
+            return zsl.numeric.add(zsl.numeric.mul(zsl.numeric.mul(x, 2.0), y), zsl.numeric.div(x, y));
         }
     }.f;
 
@@ -30,14 +30,11 @@ pub fn main(init: std.process.Init) !void {
 
     const r = f(x, y);
 
-    // 19.5
     std.debug.print("f(3.0, 2.0) = {}\n", .{r.val()});
 
     r.backward();
 
-    // df/dx = 2xy + 1/y = 12 + 0.5 = 12.5
     std.debug.print("df/dx = {}\n", .{x.grad()});
-    // df/dy = x^2 - x/y^2 = 9 - 0.75 = 8.25
     std.debug.print("df/dy = {}\n", .{y.grad()});
 
     // const m = 4;
