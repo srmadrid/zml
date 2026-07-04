@@ -3,6 +3,8 @@ const std = @import("std");
 const meta = @import("../meta.zig");
 const numeric = @import("../numeric.zig");
 
+const int = @import("../int.zig");
+
 const autodiff = @import("../autodiff.zig");
 const stats = @import("../stats.zig");
 
@@ -40,8 +42,8 @@ pub fn Var(N: type) type {
         pub fn init(tape: *autodiff.Tape(N), value: N) Var(N) {
             const id = tape.pushAssumeCapacity(.{
                 .op = .@"var",
-                .left = 0,
-                .right = 0,
+                .left = int.maxVal(usize),
+                .right = int.maxVal(usize),
                 .val = value,
             });
 
@@ -49,22 +51,22 @@ pub fn Var(N: type) type {
         }
 
         // Basic operations
-        // pub const Abs = autodiff.@"var".Abs;
-        // pub const abs = autodiff.@"var".abs;
-        // pub const Abs1 = autodiff.@"var".Abs1;
-        // pub const abs1 = autodiff.@"var".abs1;
-        // pub const Abs2 = autodiff.@"var".Abs2;
-        // pub const abs2 = autodiff.@"var".abs2;
-        // pub const Neg = autodiff.@"var".Neg;
-        // pub const neg = autodiff.@"var".neg;
-        // pub const Re = autodiff.@"var".Re;
-        // pub const re = autodiff.@"var".re;
-        // pub const Im = autodiff.@"var".Im;
-        // pub const im = autodiff.@"var".im;
-        // pub const Conj = autodiff.@"var".Conj;
-        // pub const conj = autodiff.@"var".conj;
-        // pub const Sign = autodiff.@"var".Sign;
-        // pub const sign = autodiff.@"var".sign;
+        pub const Abs = autodiff.@"var".Abs;
+        pub const abs = autodiff.@"var".abs;
+        pub const Abs1 = autodiff.@"var".Abs1;
+        pub const abs1 = autodiff.@"var".abs1;
+        pub const Abs2 = autodiff.@"var".Abs2;
+        pub const abs2 = autodiff.@"var".abs2;
+        pub const Neg = autodiff.@"var".Neg;
+        pub const neg = autodiff.@"var".neg;
+        pub const Re = autodiff.@"var".Re;
+        pub const re = autodiff.@"var".re;
+        pub const Im = autodiff.@"var".Im;
+        pub const im = autodiff.@"var".im;
+        pub const Conj = autodiff.@"var".Conj;
+        pub const conj = autodiff.@"var".conj;
+        pub const Sign = autodiff.@"var".Sign;
+        pub const sign = autodiff.@"var".sign;
 
         // Arithmetic operations
         pub const Add = autodiff.@"var".Add;
@@ -143,41 +145,98 @@ pub fn Var(N: type) type {
                 .tracked => |t| {
                     t.tape.nodes[t.id].grad = numeric.one(N);
 
-                    var i: usize = t.id;
-                    while (true) : (i -= 1) {
+                    var i: usize = t.id + 1;
+                    while (i > 0) {
+                        i -= 1;
                         const node = &t.tape.nodes[i];
                         const g = node.grad;
 
                         if (numeric.eq(g, 0))
-                            if (i == 0) break else continue;
+                            continue;
 
                         switch (node.op) {
                             .@"var" => {},
-                            .add => {
+                            .abs => {
+                                if (!numeric.eq(node.val, 0)) {
+                                    numeric.addInto(
+                                        &t.tape.nodes[node.left].grad,
+                                        t.tape.nodes[node.left].grad,
+                                        numeric.div(numeric.mul(g, t.tape.nodes[node.left].val), node.val),
+                                    );
+                                }
+                            },
+                            .abs1 => {
                                 numeric.addInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
-                                    g,
+                                    numeric.mul(g, numeric.sign(t.tape.nodes[node.left].val)),
                                 );
-
+                            },
+                            .abs2 => {
                                 numeric.addInto(
-                                    &t.tape.nodes[node.right].grad,
-                                    t.tape.nodes[node.right].grad,
+                                    &t.tape.nodes[node.left].grad,
+                                    t.tape.nodes[node.left].grad,
+                                    numeric.mul(g, numeric.mul(numeric.two(N), t.tape.nodes[node.left].val)),
+                                );
+                            },
+                            .neg => {
+                                numeric.subInto(
+                                    &t.tape.nodes[node.left].grad,
+                                    t.tape.nodes[node.left].grad,
                                     g,
                                 );
                             },
-                            .sub => {
+                            .re => {
                                 numeric.addInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
-                                    g,
+                                    numeric.re(g),
                                 );
+                            },
+                            .im => {
+                                numeric.addInto(
+                                    &t.tape.nodes[node.left].grad,
+                                    t.tape.nodes[node.left].grad,
+                                    numeric.im(g),
+                                );
+                            },
+                            .conj => {
+                                numeric.addInto(
+                                    &t.tape.nodes[node.left].grad,
+                                    t.tape.nodes[node.left].grad,
+                                    numeric.conj(g),
+                                );
+                            },
+                            .sign => {},
+                            .add => {
+                                if (node.left != int.maxVal(usize))
+                                    numeric.addInto(
+                                        &t.tape.nodes[node.left].grad,
+                                        t.tape.nodes[node.left].grad,
+                                        g,
+                                    );
 
-                                numeric.subInto(
-                                    &t.tape.nodes[node.right].grad,
-                                    t.tape.nodes[node.right].grad,
-                                    g,
-                                );
+                                if (node.right != int.maxVal(usize))
+                                    numeric.addInto(
+                                        &t.tape.nodes[node.right].grad,
+                                        t.tape.nodes[node.right].grad,
+                                        g,
+                                    );
+                            },
+                            .sub => {
+                                if (node.left != int.maxVal(usize))
+                                    numeric.addInto(
+                                        &t.tape.nodes[node.left].grad,
+                                        t.tape.nodes[node.left].grad,
+                                        g,
+                                    );
+
+                                if (node.right != int.maxVal(usize))
+                                    numeric.subInto(
+                                        &t.tape.nodes[node.right].grad,
+                                        t.tape.nodes[node.right].grad,
+                                        g,
+                                    );
                             },
                             .mul => {
                                 numeric.addInto(
@@ -213,32 +272,36 @@ pub fn Var(N: type) type {
                             },
                             .max => {
                                 if (numeric.gt(t.tape.nodes[node.left].val, t.tape.nodes[node.right].val)) {
-                                    numeric.addInto(
-                                        &t.tape.nodes[node.left].grad,
-                                        t.tape.nodes[node.left].grad,
-                                        g,
-                                    );
+                                    if (node.left != int.maxVal(usize))
+                                        numeric.addInto(
+                                            &t.tape.nodes[node.left].grad,
+                                            t.tape.nodes[node.left].grad,
+                                            g,
+                                        );
                                 } else {
-                                    numeric.addInto(
-                                        &t.tape.nodes[node.right].grad,
-                                        t.tape.nodes[node.right].grad,
-                                        g,
-                                    );
+                                    if (node.right != int.maxVal(usize))
+                                        numeric.addInto(
+                                            &t.tape.nodes[node.right].grad,
+                                            t.tape.nodes[node.right].grad,
+                                            g,
+                                        );
                                 }
                             },
                             .min => {
                                 if (numeric.lt(t.tape.nodes[node.left].val, t.tape.nodes[node.right].val)) {
-                                    numeric.addInto(
-                                        &t.tape.nodes[node.left].grad,
-                                        t.tape.nodes[node.left].grad,
-                                        g,
-                                    );
+                                    if (node.left != int.maxVal(usize))
+                                        numeric.addInto(
+                                            &t.tape.nodes[node.left].grad,
+                                            t.tape.nodes[node.left].grad,
+                                            g,
+                                        );
                                 } else {
-                                    numeric.addInto(
-                                        &t.tape.nodes[node.right].grad,
-                                        t.tape.nodes[node.right].grad,
-                                        g,
-                                    );
+                                    if (node.right != int.maxVal(usize))
+                                        numeric.addInto(
+                                            &t.tape.nodes[node.right].grad,
+                                            t.tape.nodes[node.right].grad,
+                                            g,
+                                        );
                                 }
                             },
                             .exp => {
@@ -256,9 +319,6 @@ pub fn Var(N: type) type {
                                 );
                             },
                         }
-
-                        if (i == 0)
-                            break;
                     }
                 },
             }
@@ -292,841 +352,752 @@ pub fn Var(N: type) type {
     };
 }
 
-pub fn Add(comptime X: type, comptime Y: type) type {
-    comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or (!isVar(X) and !isVar(Y)))
-        @compileError("zsl.autodiff.@\"var\".Add: at least one of X or Y must be a var type, the other must be a numeric or a var type, got\n\tX = " ++
-            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+pub fn Abs(comptime X: type) type {
+    comptime if (!meta.isNumeric(X) or !isVar(X))
+        @compileError("zsl.autodiff.@\"var\".Abs: X must be a var type, got\n\tX = " ++ @typeName(X) ++ "\n");
 
-    const SX: type = if (isVar(X)) meta.Scalar(X) else X;
-    const SY: type = if (isVar(Y)) meta.Scalar(Y) else Y;
-
-    return Var(numeric.Add(SX, SY));
+    return X;
 }
 
-pub fn add(x: anytype, y: anytype) autodiff.@"var".Add(@TypeOf(x), @TypeOf(y)) {
-    if (comptime isVar(@TypeOf(x))) {
-        if (comptime isVar(@TypeOf(y))) {
-            switch (x) {
-                .constant => |cx| switch (y) {
-                    .constant => |cy| return .{ .constant = numeric.add(cx, cy) },
-                    .tracked => |ty| return .{
-                        .tracked = .{
-                            .tape = ty.tape,
-                            .id = ty.tape.pushAssumeCapacity(.{
-                                .op = .add,
-                                .left = ty.tape.pushAssumeCapacity(.{
-                                    .op = .@"var",
-                                    .left = 0,
-                                    .right = 0,
-                                    .val = cx,
-                                }),
-                                .right = ty.id,
-                                .val = numeric.add(
-                                    cx,
-                                    y.val(),
-                                ),
-                            }),
-                        },
-                    },
-                },
-                .tracked => |tx| switch (y) {
-                    .constant => |cy| return .{
-                        .tracked = .{
-                            .tape = tx.tape,
-                            .id = tx.tape.pushAssumeCapacity(.{
-                                .op = .add,
-                                .left = tx.id,
-                                .right = tx.tape.pushAssumeCapacity(.{
-                                    .op = .@"var",
-                                    .left = 0,
-                                    .right = 0,
-                                    .val = cy,
-                                }),
-                                .val = numeric.add(
-                                    x.val(),
-                                    cy,
-                                ),
-                            }),
-                        },
-                    },
-                    .tracked => |ty| {
-                        std.debug.assert(tx.tape == ty.tape);
+pub fn abs(x: anytype) autodiff.@"var".Abs(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
 
-                        return .{
-                            .tracked = .{
-                                .tape = tx.tape,
-                                .id = tx.tape.pushAssumeCapacity(.{
-                                    .op = .add,
-                                    .left = tx.id,
-                                    .right = ty.id,
-                                    .val = numeric.add(
-                                        x.val(),
-                                        y.val(),
-                                    ),
-                                }),
-                            },
-                        };
-                    },
-                },
-            }
-        } else {
-            switch (x) {
-                .constant => |cx| return .{ .constant = numeric.add(cx, y) },
-                .tracked => |tx| return .{
-                    .tracked = .{
-                        .tape = tx.tape,
-                        .id = tx.tape.pushAssumeCapacity(.{
-                            .op = .add,
-                            .left = tx.id,
-                            .right = tx.tape.pushAssumeCapacity(.{
-                                .op = .@"var",
-                                .left = 0,
-                                .right = 0,
-                                .val = y,
-                            }),
-                            .val = numeric.add(
-                                x.val(),
-                                y,
-                            ),
-                        }),
-                    },
-                },
-            }
-        }
-    } else {
-        switch (y) {
-            .constant => |cy| return .{ .constant = numeric.add(x, cy) },
-            .tracked => |ty| return .{
+    switch (x) {
+        .constant => |cx| {
+            var result: autodiff.@"var".Abs(X) = .{ .constant = undefined };
+
+            numeric.absInto(&result.constant, cx);
+
+            return result;
+        },
+        .tracked => |tx| {
+            var node: autodiff.Tape(meta.Scalar(X)).Node = .{
+                .op = .abs,
+                .left = tx.id,
+                .right = int.maxVal(usize),
+                .val = undefined,
+            };
+
+            numeric.absInto(&node.val, x.val());
+
+            return .{
                 .tracked = .{
-                    .tape = ty.tape,
-                    .id = ty.tape.pushAssumeCapacity(.{
-                        .op = .add,
-                        .left = ty.tape.pushAssumeCapacity(.{
-                            .op = .@"var",
-                            .left = 0,
-                            .right = 0,
-                            .val = x,
-                        }),
-                        .right = ty.id,
-                        .val = numeric.add(
-                            x,
-                            y.val(),
-                        ),
-                    }),
+                    .tape = tx.tape,
+                    .id = tx.tape.pushAssumeCapacity(node),
                 },
+            };
+        },
+    }
+}
+
+pub fn Abs1(comptime X: type) type {
+    comptime if (!meta.isNumeric(X) or !isVar(X))
+        @compileError("zsl.autodiff.@\"var\".Abs1: X must be a var type, got\n\tX = " ++ @typeName(X) ++ "\n");
+
+    return X;
+}
+
+pub fn abs1(x: anytype) autodiff.@"var".Abs1(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    switch (x) {
+        .constant => |cx| {
+            var result: autodiff.@"var".Abs1(X) = .{ .constant = undefined };
+
+            numeric.abs1Into(&result.constant, cx);
+
+            return result;
+        },
+        .tracked => |tx| {
+            var node: autodiff.Tape(meta.Scalar(X)).Node = .{
+                .op = .abs1,
+                .left = tx.id,
+                .right = int.maxVal(usize),
+                .val = undefined,
+            };
+
+            numeric.abs1Into(&node.val, x.val());
+
+            return .{
+                .tracked = .{
+                    .tape = tx.tape,
+                    .id = tx.tape.pushAssumeCapacity(node),
+                },
+            };
+        },
+    }
+}
+
+pub fn Abs2(comptime X: type) type {
+    comptime if (!meta.isNumeric(X) or !isVar(X))
+        @compileError("zsl.autodiff.@\"var\".Abs2: X must be a var type, got\n\tX = " ++ @typeName(X) ++ "\n");
+
+    return X;
+}
+
+pub fn abs2(x: anytype) autodiff.@"var".Abs2(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    switch (x) {
+        .constant => |cx| {
+            var result: autodiff.@"var".Abs2(X) = .{ .constant = undefined };
+
+            numeric.abs2Into(&result.constant, cx);
+
+            return result;
+        },
+        .tracked => |tx| {
+            var node: autodiff.Tape(meta.Scalar(X)).Node = .{
+                .op = .abs2,
+                .left = tx.id,
+                .right = int.maxVal(usize),
+                .val = undefined,
+            };
+
+            numeric.abs2Into(&node.val, x.val());
+
+            return .{
+                .tracked = .{
+                    .tape = tx.tape,
+                    .id = tx.tape.pushAssumeCapacity(node),
+                },
+            };
+        },
+    }
+}
+
+pub fn Neg(comptime X: type) type {
+    comptime if (!meta.isNumeric(X) or !isVar(X))
+        @compileError("zsl.autodiff.@\"var\".Neg: X must be a var type, got\n\tX = " ++ @typeName(X) ++ "\n");
+
+    return X;
+}
+
+pub fn neg(x: anytype) autodiff.@"var".Neg(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    switch (x) {
+        .constant => |cx| {
+            var result: autodiff.@"var".Neg(X) = .{ .constant = undefined };
+
+            numeric.negInto(&result.constant, cx);
+
+            return result;
+        },
+        .tracked => |tx| {
+            var node: autodiff.Tape(meta.Scalar(X)).Node = .{
+                .op = .neg,
+                .left = tx.id,
+                .right = int.maxVal(usize),
+                .val = undefined,
+            };
+
+            numeric.negInto(&node.val, x.val());
+
+            return .{
+                .tracked = .{
+                    .tape = tx.tape,
+                    .id = tx.tape.pushAssumeCapacity(node),
+                },
+            };
+        },
+    }
+}
+
+pub fn Re(comptime X: type) type {
+    comptime if (!meta.isNumeric(X) or !isVar(X))
+        @compileError("zsl.autodiff.@\"var\".Re: X must be a var type, got\n\tX = " ++ @typeName(X) ++ "\n");
+
+    return X;
+}
+
+pub fn re(x: anytype) autodiff.@"var".Re(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    switch (x) {
+        .constant => |cx| {
+            var result: autodiff.@"var".Re(X) = .{ .constant = undefined };
+
+            numeric.reInto(&result.constant, cx);
+
+            return result;
+        },
+        .tracked => |tx| {
+            var node: autodiff.Tape(meta.Scalar(X)).Node = .{
+                .op = .re,
+                .left = tx.id,
+                .right = int.maxVal(usize),
+                .val = undefined,
+            };
+
+            numeric.reInto(&node.val, x.val());
+
+            return .{
+                .tracked = .{
+                    .tape = tx.tape,
+                    .id = tx.tape.pushAssumeCapacity(node),
+                },
+            };
+        },
+    }
+}
+
+pub fn Im(comptime X: type) type {
+    comptime if (!meta.isNumeric(X) or !isVar(X))
+        @compileError("zsl.autodiff.@\"var\".Im: X must be a var type, got\n\tX = " ++ @typeName(X) ++ "\n");
+
+    return X;
+}
+
+pub fn im(x: anytype) autodiff.@"var".Im(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    switch (x) {
+        .constant => |cx| {
+            var result: autodiff.@"var".Im(X) = .{ .constant = undefined };
+
+            numeric.imInto(&result.constant, cx);
+
+            return result;
+        },
+        .tracked => |tx| {
+            var node: autodiff.Tape(meta.Scalar(X)).Node = .{
+                .op = .im,
+                .left = tx.id,
+                .right = int.maxVal(usize),
+                .val = undefined,
+            };
+
+            numeric.imInto(&node.val, x.val());
+
+            return .{
+                .tracked = .{
+                    .tape = tx.tape,
+                    .id = tx.tape.pushAssumeCapacity(node),
+                },
+            };
+        },
+    }
+}
+
+pub fn Conj(comptime X: type) type {
+    comptime if (!meta.isNumeric(X) or !isVar(X))
+        @compileError("zsl.autodiff.@\"var\".Conj: X must be a var type, got\n\tX = " ++ @typeName(X) ++ "\n");
+
+    return X;
+}
+
+pub fn conj(x: anytype) autodiff.@"var".Conj(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    switch (x) {
+        .constant => |cx| {
+            var result: autodiff.@"var".Conj(X) = .{ .constant = undefined };
+
+            numeric.conjInto(&result.constant, cx);
+
+            return result;
+        },
+        .tracked => |tx| {
+            var node: autodiff.Tape(meta.Scalar(X)).Node = .{
+                .op = .conj,
+                .left = tx.id,
+                .right = int.maxVal(usize),
+                .val = undefined,
+            };
+
+            numeric.conjInto(&node.val, x.val());
+
+            return .{
+                .tracked = .{
+                    .tape = tx.tape,
+                    .id = tx.tape.pushAssumeCapacity(node),
+                },
+            };
+        },
+    }
+}
+
+pub fn Sign(comptime X: type) type {
+    comptime if (!meta.isNumeric(X) or !isVar(X))
+        @compileError("zsl.autodiff.@\"var\".Sign: X must be a var type, got\n\tX = " ++ @typeName(X) ++ "\n");
+
+    return X;
+}
+
+pub fn sign(x: anytype) autodiff.@"var".Sign(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    switch (x) {
+        .constant => |cx| {
+            var result: autodiff.@"var".Sign(X) = .{ .constant = undefined };
+
+            numeric.signInto(&result.constant, cx);
+
+            return result;
+        },
+        .tracked => |tx| {
+            var node: autodiff.Tape(meta.Scalar(X)).Node = .{
+                .op = .sign,
+                .left = tx.id,
+                .right = int.maxVal(usize),
+                .val = undefined,
+            };
+
+            numeric.signInto(&node.val, x.val());
+
+            return .{
+                .tracked = .{
+                    .tape = tx.tape,
+                    .id = tx.tape.pushAssumeCapacity(node),
+                },
+            };
+        },
+    }
+}
+
+pub fn Add(comptime X: type, comptime Y: type) type {
+    comptime if (!meta.isNumeric(X) or !isVar(X) or X != Y)
+        @compileError("zsl.autodiff.@\"var\".Add: X and Y must be the same var type, got\n\tX = " ++
+            @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n");
+
+    return X;
+}
+
+pub fn add(x: anytype, y: @TypeOf(x)) autodiff.@"var".Add(@TypeOf(x), @TypeOf(y)) {
+    const X = @TypeOf(x);
+    const Y = @TypeOf(y);
+
+    switch (x) {
+        .constant => switch (y) {
+            .constant => {
+                var result: autodiff.@"var".Add(X, Y) = .{ .constant = undefined };
+
+                numeric.addInto(&result.constant, x.constant, y.constant);
+
+                return result;
             },
-        }
+            .tracked => {
+                var node: autodiff.Tape(meta.Scalar(Y)).Node = .{
+                    .op = .add,
+                    .left = int.maxVal(usize),
+                    .right = y.tracked.id,
+                    .val = undefined,
+                };
+
+                numeric.addInto(&node.val, x.val(), y.val());
+
+                return .{
+                    .tracked = .{
+                        .tape = y.tracked.tape,
+                        .id = y.tracked.tape.pushAssumeCapacity(node),
+                    },
+                };
+            },
+        },
+        .tracked => switch (y) {
+            .constant => {
+                var node: autodiff.Tape(meta.Scalar(X)).Node = .{
+                    .op = .add,
+                    .left = x.tracked.id,
+                    .right = int.maxVal(usize),
+                    .val = undefined,
+                };
+
+                numeric.addInto(&node.val, x.val(), y.val());
+
+                return .{
+                    .tracked = .{
+                        .tape = x.tracked.tape,
+                        .id = x.tracked.tape.pushAssumeCapacity(node),
+                    },
+                };
+            },
+            .tracked => {
+                var node: autodiff.Tape(meta.Scalar(X)).Node = .{
+                    .op = .add,
+                    .left = x.tracked.id,
+                    .right = y.tracked.id,
+                    .val = undefined,
+                };
+
+                numeric.addInto(&node.val, x.val(), y.val());
+
+                return .{
+                    .tracked = .{
+                        .tape = x.tracked.tape,
+                        .id = x.tracked.tape.pushAssumeCapacity(node),
+                    },
+                };
+            },
+        },
     }
 }
 
 pub fn Sub(comptime X: type, comptime Y: type) type {
-    comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or (!isVar(X) and !isVar(Y)))
-        @compileError("zsl.autodiff.@\"var\".Sub: at least one of X or Y must be a var type, the other must be a numeric or a var type, got\n\tX = " ++
-            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+    comptime if (!meta.isNumeric(X) or !isVar(X) or X != Y)
+        @compileError("zsl.autodiff.@\"var\".Sub: X and Y must be the same var type, got\n\tX = " ++
+            @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n");
 
-    const SX: type = if (isVar(X)) meta.Scalar(X) else X;
-    const SY: type = if (isVar(Y)) meta.Scalar(Y) else Y;
-
-    return Var(numeric.Sub(SX, SY));
+    return X;
 }
 
-pub fn sub(x: anytype, y: anytype) autodiff.@"var".Sub(@TypeOf(x), @TypeOf(y)) {
-    if (comptime isVar(@TypeOf(x))) {
-        if (comptime isVar(@TypeOf(y))) {
-            switch (x) {
-                .constant => |cx| switch (y) {
-                    .constant => |cy| return .{ .constant = numeric.sub(cx, cy) },
-                    .tracked => |ty| return .{
-                        .tracked = .{
-                            .tape = ty.tape,
-                            .id = ty.tape.pushAssumeCapacity(.{
-                                .op = .sub,
-                                .left = ty.tape.pushAssumeCapacity(.{
-                                    .op = .@"var",
-                                    .left = 0,
-                                    .right = 0,
-                                    .val = cx,
-                                }),
-                                .right = ty.id,
-                                .val = numeric.sub(
-                                    cx,
-                                    y.val(),
-                                ),
-                            }),
-                        },
-                    },
-                },
-                .tracked => |tx| switch (y) {
-                    .constant => |cy| return .{
-                        .tracked = .{
-                            .tape = tx.tape,
-                            .id = tx.tape.pushAssumeCapacity(.{
-                                .op = .sub,
-                                .left = tx.id,
-                                .right = tx.tape.pushAssumeCapacity(.{
-                                    .op = .@"var",
-                                    .left = 0,
-                                    .right = 0,
-                                    .val = cy,
-                                }),
-                                .val = numeric.sub(
-                                    x.val(),
-                                    cy,
-                                ),
-                            }),
-                        },
-                    },
-                    .tracked => |ty| {
-                        std.debug.assert(tx.tape == ty.tape);
+pub fn sub(x: anytype, y: @TypeOf(x)) autodiff.@"var".Sub(@TypeOf(x), @TypeOf(y)) {
+    const X = @TypeOf(x);
+    const Y = @TypeOf(y);
 
-                        return .{
-                            .tracked = .{
-                                .tape = tx.tape,
-                                .id = tx.tape.pushAssumeCapacity(.{
-                                    .op = .sub,
-                                    .left = tx.id,
-                                    .right = ty.id,
-                                    .val = numeric.sub(
-                                        x.val(),
-                                        y.val(),
-                                    ),
-                                }),
-                            },
-                        };
-                    },
-                },
-            }
-        } else {
-            switch (x) {
-                .constant => |cx| return .{ .constant = numeric.sub(cx, y) },
-                .tracked => |tx| return .{
-                    .tracked = .{
-                        .tape = tx.tape,
-                        .id = tx.tape.pushAssumeCapacity(.{
-                            .op = .sub,
-                            .left = tx.id,
-                            .right = tx.tape.pushAssumeCapacity(.{
-                                .op = .@"var",
-                                .left = 0,
-                                .right = 0,
-                                .val = y,
-                            }),
-                            .val = numeric.sub(
-                                x.val(),
-                                y,
-                            ),
-                        }),
-                    },
-                },
-            }
-        }
-    } else {
-        switch (y) {
-            .constant => |cy| return .{ .constant = numeric.sub(x, cy) },
-            .tracked => |ty| return .{
-                .tracked = .{
-                    .tape = ty.tape,
-                    .id = ty.tape.pushAssumeCapacity(.{
-                        .op = .sub,
-                        .left = ty.tape.pushAssumeCapacity(.{
-                            .op = .@"var",
-                            .left = 0,
-                            .right = 0,
-                            .val = x,
-                        }),
-                        .right = ty.id,
-                        .val = numeric.sub(
-                            x,
-                            y.val(),
-                        ),
-                    }),
-                },
+    switch (x) {
+        .constant => switch (y) {
+            .constant => {
+                var result: autodiff.@"var".Sub(X, Y) = .{ .constant = undefined };
+
+                numeric.subInto(&result.constant, x.constant, y.constant);
+
+                return result;
             },
-        }
+            .tracked => {
+                var node: autodiff.Tape(meta.Scalar(Y)).Node = .{
+                    .op = .sub,
+                    .left = int.maxVal(usize),
+                    .right = y.tracked.id,
+                    .val = undefined,
+                };
+
+                numeric.subInto(&node.val, x.val(), y.val());
+
+                return .{
+                    .tracked = .{
+                        .tape = y.tracked.tape,
+                        .id = y.tracked.tape.pushAssumeCapacity(node),
+                    },
+                };
+            },
+        },
+        .tracked => switch (y) {
+            .constant => {
+                var node: autodiff.Tape(meta.Scalar(X)).Node = .{
+                    .op = .sub,
+                    .left = x.tracked.id,
+                    .right = int.maxVal(usize),
+                    .val = undefined,
+                };
+
+                numeric.subInto(&node.val, x.val(), y.val());
+
+                return .{
+                    .tracked = .{
+                        .tape = x.tracked.tape,
+                        .id = x.tracked.tape.pushAssumeCapacity(node),
+                    },
+                };
+            },
+            .tracked => {
+                var node: autodiff.Tape(meta.Scalar(X)).Node = .{
+                    .op = .sub,
+                    .left = x.tracked.id,
+                    .right = y.tracked.id,
+                    .val = undefined,
+                };
+
+                numeric.subInto(&node.val, x.val(), y.val());
+
+                return .{
+                    .tracked = .{
+                        .tape = x.tracked.tape,
+                        .id = x.tracked.tape.pushAssumeCapacity(node),
+                    },
+                };
+            },
+        },
     }
 }
 
 pub fn Mul(comptime X: type, comptime Y: type) type {
-    comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or (!isVar(X) and !isVar(Y)))
-        @compileError("zsl.autodiff.@\"var\".Mul: at least one of X or Y must be a var type, the other must be a numeric or a var type, got\n\tX = " ++
-            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+    comptime if (!meta.isNumeric(X) or !isVar(X) or X != Y)
+        @compileError("zsl.autodiff.@\"var\".Mul: X and Y must be the same var type, got\n\tX = " ++
+            @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n");
 
-    const SX: type = if (isVar(X)) meta.Scalar(X) else X;
-    const SY: type = if (isVar(Y)) meta.Scalar(Y) else Y;
-
-    return Var(numeric.Mul(SX, SY));
+    return X;
 }
 
-pub fn mul(x: anytype, y: anytype) autodiff.@"var".Mul(@TypeOf(x), @TypeOf(y)) {
-    if (comptime isVar(@TypeOf(x))) {
-        if (comptime isVar(@TypeOf(y))) {
-            switch (x) {
-                .constant => |cx| switch (y) {
-                    .constant => |cy| return .{ .constant = numeric.mul(cx, cy) },
-                    .tracked => |ty| return .{
-                        .tracked = .{
-                            .tape = ty.tape,
-                            .id = ty.tape.pushAssumeCapacity(.{
-                                .op = .mul,
-                                .left = ty.tape.pushAssumeCapacity(.{
-                                    .op = .@"var",
-                                    .left = 0,
-                                    .right = 0,
-                                    .val = cx,
-                                }),
-                                .right = ty.id,
-                                .val = numeric.mul(cx, y.val()),
-                            }),
-                        },
-                    },
-                },
-                .tracked => |tx| switch (y) {
-                    .constant => |cy| return .{
-                        .tracked = .{
-                            .tape = tx.tape,
-                            .id = tx.tape.pushAssumeCapacity(.{
-                                .op = .mul,
-                                .left = tx.id,
-                                .right = tx.tape.pushAssumeCapacity(.{
-                                    .op = .@"var",
-                                    .left = 0,
-                                    .right = 0,
-                                    .val = cy,
-                                }),
-                                .val = numeric.mul(x.val(), cy),
-                            }),
-                        },
-                    },
-                    .tracked => |ty| {
-                        std.debug.assert(tx.tape == ty.tape);
-                        return .{
-                            .tracked = .{
-                                .tape = tx.tape,
-                                .id = tx.tape.pushAssumeCapacity(.{
-                                    .op = .mul,
-                                    .left = tx.id,
-                                    .right = ty.id,
-                                    .val = numeric.mul(x.val(), y.val()),
-                                }),
-                            },
-                        };
-                    },
-                },
-            }
-        } else {
-            switch (x) {
-                .constant => |cx| return .{ .constant = numeric.mul(cx, y) },
-                .tracked => |tx| return .{
-                    .tracked = .{
-                        .tape = tx.tape,
-                        .id = tx.tape.pushAssumeCapacity(.{
-                            .op = .mul,
-                            .left = tx.id,
-                            .right = tx.tape.pushAssumeCapacity(.{
-                                .op = .@"var",
-                                .left = 0,
-                                .right = 0,
-                                .val = y,
-                            }),
-                            .val = numeric.mul(x.val(), y),
-                        }),
-                    },
-                },
-            }
-        }
-    } else {
-        switch (y) {
-            .constant => |cy| return .{ .constant = numeric.mul(x, cy) },
-            .tracked => |ty| return .{
-                .tracked = .{
-                    .tape = ty.tape,
-                    .id = ty.tape.pushAssumeCapacity(.{
-                        .op = .mul,
-                        .left = ty.tape.pushAssumeCapacity(.{
-                            .op = .@"var",
-                            .left = 0,
-                            .right = 0,
-                            .val = x,
-                        }),
-                        .right = ty.id,
-                        .val = numeric.mul(x, y.val()),
-                    }),
-                },
-            },
-        }
+pub fn mul(x: anytype, y: @TypeOf(x)) autodiff.@"var".Mul(@TypeOf(x), @TypeOf(y)) {
+    const X = @TypeOf(x);
+
+    if (x == .constant and y == .constant) {
+        var result: autodiff.@"var".Mul(X, X) = .{ .constant = undefined };
+
+        numeric.mulInto(&result.constant, x.constant, y.constant);
+
+        return result;
     }
+
+    const tape = if (std.meta.activeTag(x) == .tracked) x.tracked.tape else y.tracked.tape;
+
+    const left_id = ensureTracked(tape, x);
+    const right_id = ensureTracked(tape, y);
+
+    var node: autodiff.Tape(meta.Scalar(X)).Node = .{
+        .op = .mul,
+        .left = left_id,
+        .right = right_id,
+        .val = undefined,
+    };
+
+    numeric.mulInto(&node.val, x.val(), y.val());
+
+    return .{
+        .tracked = .{
+            .tape = tape,
+            .id = tape.pushAssumeCapacity(node),
+        },
+    };
 }
 
 pub fn Fma(comptime X: type, comptime Y: type, comptime Z: type) type {
-    comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or !meta.isNumeric(Z) or (!isVar(X) and !isVar(Y) and !isVar(Z)))
-        @compileError("zsl.autodiff.@\"var\".Fma: at least one of X, Y or Z must be a var type, the others must be numeric or var types, got\n\tX = " ++
+    comptime if (!meta.isNumeric(X) or !isVar(X) or X != Y or X != Z)
+        @compileError("zsl.autodiff.@\"var\".Fma: X, Y and Z must be the same var type, got\n\tX = " ++
             @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n\tZ = " ++ @typeName(Z) ++ "\n");
 
-    const SX: type = if (isVar(X)) meta.Scalar(X) else X;
-    const SY: type = if (isVar(Y)) meta.Scalar(Y) else Y;
-    const SZ: type = if (isVar(Z)) meta.Scalar(Z) else Z;
-
-    return Var(numeric.Fma(SX, SY, SZ));
+    return X;
 }
 
-pub fn fma(x: anytype, y: anytype, z: anytype) autodiff.@"var".Fma(@TypeOf(x), @TypeOf(y), @TypeOf(z)) {
+pub fn fma(x: anytype, y: @TypeOf(x), z: @TypeOf(x)) autodiff.@"var".Fma(@TypeOf(x), @TypeOf(y), @TypeOf(z)) {
     const X = @TypeOf(x);
-    const Y = @TypeOf(y);
-    const Z = @TypeOf(z);
 
-    const vx = if (comptime isVar(X)) x.val() else x;
-    const vy = if (comptime isVar(Y)) y.val() else y;
-    const vz = if (comptime isVar(Z)) z.val() else z;
-    const vr = numeric.fma(vx, vy, vz);
+    if (std.meta.activeTag(x) == .constant and
+        std.meta.activeTag(y) == .constant and
+        std.meta.activeTag(z) == .constant)
+    {
+        var result: autodiff.@"var".Fma(X, X, X) = .{ .constant = undefined };
 
-    const x_tracked = (comptime isVar(X)) and x == .tracked;
-    const y_tracked = (comptime isVar(Y)) and y == .tracked;
-    const z_tracked = (comptime isVar(Z)) and z == .tracked;
+        numeric.fmaInto(&result.constant, x.constant, y.constant, z.constant);
 
-    if (!x_tracked and !y_tracked and !z_tracked) {
-        return .{ .constant = vr };
+        return result;
     }
 
-    const tape = if (x_tracked) x.tracked.tape else if (y_tracked) y.tracked.tape else z.tracked.tape;
+    const tape = if (std.meta.activeTag(x) == .tracked)
+        x.tracked.tape
+    else if (std.meta.activeTag(y) == .tracked)
+        y.tracked.tape
+    else
+        z.tracked.tape;
 
-    if (x_tracked and y_tracked) std.debug.assert(x.tracked.tape == y.tracked.tape);
-    if (y_tracked and z_tracked) std.debug.assert(y.tracked.tape == z.tracked.tape);
-    if (x_tracked and z_tracked) std.debug.assert(x.tracked.tape == z.tracked.tape);
+    const idx = ensureTracked(tape, x);
+    const idy = ensureTracked(tape, y);
+    const idz = ensureTracked(tape, z);
 
-    const idx = if (x_tracked) x.tracked.id else tape.pushAssumeCapacity(.{ .op = .@"var", .left = 0, .right = 0, .val = vx });
-    const idy = if (y_tracked) y.tracked.id else tape.pushAssumeCapacity(.{ .op = .@"var", .left = 0, .right = 0, .val = vy });
-    const idz = if (z_tracked) z.tracked.id else tape.pushAssumeCapacity(.{ .op = .@"var", .left = 0, .right = 0, .val = vz });
+    var mul_val: meta.Scalar(X) = undefined;
+    numeric.mulInto(&mul_val, x.val(), y.val());
 
-    const idm = tape.pushAssumeCapacity(.{
+    const id_mul = tape.pushAssumeCapacity(.{
         .op = .mul,
         .left = idx,
         .right = idy,
-        .val = numeric.mul(vx, vy),
+        .val = mul_val,
     });
 
-    return .{ .tracked = .{
-        .tape = tape,
-        .id = tape.pushAssumeCapacity(.{
-            .op = .add,
-            .left = idm,
-            .right = idz,
-            .val = vr,
-        }),
-    } };
+    var fma_val: meta.Scalar(X) = undefined;
+    numeric.fmaInto(&fma_val, x.val(), y.val(), z.val());
+
+    return .{
+        .tracked = .{
+            .tape = tape,
+            .id = tape.pushAssumeCapacity(.{
+                .op = .add,
+                .left = id_mul,
+                .right = idz,
+                .val = fma_val,
+            }),
+        },
+    };
 }
 
 pub fn Div(comptime X: type, comptime Y: type) type {
-    comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or (!isVar(X) and !isVar(Y)))
-        @compileError("zsl.autodiff.@\"var\".Div: at least one of X or Y must be a var type, the other must be a numeric or a var type, got\n\tX = " ++
+    comptime if (!meta.isNumeric(X) or !isVar(X) or X != Y)
+        @compileError("zsl.autodiff.@\"var\".Div: X and Y must be the same var type, got\n\tX = " ++
             @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n");
 
-    const SX: type = if (isVar(X)) meta.Scalar(X) else X;
-    const SY: type = if (isVar(Y)) meta.Scalar(Y) else Y;
-
-    return Var(numeric.Div(SX, SY));
+    return X;
 }
 
-pub fn div(x: anytype, y: anytype) autodiff.@"var".Div(@TypeOf(x), @TypeOf(y)) {
-    if (comptime isVar(@TypeOf(x))) {
-        if (comptime isVar(@TypeOf(y))) {
-            switch (x) {
-                .constant => |cx| switch (y) {
-                    .constant => |cy| return .{ .constant = numeric.div(cx, cy) },
-                    .tracked => |ty| return .{
-                        .tracked = .{
-                            .tape = ty.tape,
-                            .id = ty.tape.pushAssumeCapacity(.{
-                                .op = .div,
-                                .left = ty.tape.pushAssumeCapacity(.{
-                                    .op = .@"var",
-                                    .left = 0,
-                                    .right = 0,
-                                    .val = cx,
-                                }),
-                                .right = ty.id,
-                                .val = numeric.div(cx, y.val()),
-                            }),
-                        },
-                    },
-                },
-                .tracked => |tx| switch (y) {
-                    .constant => |cy| return .{
-                        .tracked = .{
-                            .tape = tx.tape,
-                            .id = tx.tape.pushAssumeCapacity(.{
-                                .op = .div,
-                                .left = tx.id,
-                                .right = tx.tape.pushAssumeCapacity(.{
-                                    .op = .@"var",
-                                    .left = 0,
-                                    .right = 0,
-                                    .val = cy,
-                                }),
-                                .val = numeric.div(x.val(), cy),
-                            }),
-                        },
-                    },
-                    .tracked => |ty| {
-                        std.debug.assert(tx.tape == ty.tape);
-                        return .{
-                            .tracked = .{
-                                .tape = tx.tape,
-                                .id = tx.tape.pushAssumeCapacity(.{
-                                    .op = .div,
-                                    .left = tx.id,
-                                    .right = ty.id,
-                                    .val = numeric.div(x.val(), y.val()),
-                                }),
-                            },
-                        };
-                    },
-                },
-            }
-        } else {
-            switch (x) {
-                .constant => |cx| return .{ .constant = numeric.div(cx, y) },
-                .tracked => |tx| return .{
-                    .tracked = .{
-                        .tape = tx.tape,
-                        .id = tx.tape.pushAssumeCapacity(.{
-                            .op = .div,
-                            .left = tx.id,
-                            .right = tx.tape.pushAssumeCapacity(.{
-                                .op = .@"var",
-                                .left = 0,
-                                .right = 0,
-                                .val = y,
-                            }),
-                            .val = numeric.div(x.val(), y),
-                        }),
-                    },
-                },
-            }
-        }
-    } else {
-        switch (y) {
-            .constant => |cy| return .{ .constant = numeric.div(x, cy) },
-            .tracked => |ty| return .{
-                .tracked = .{
-                    .tape = ty.tape,
-                    .id = ty.tape.pushAssumeCapacity(.{
-                        .op = .div,
-                        .left = ty.tape.pushAssumeCapacity(.{
-                            .op = .@"var",
-                            .left = 0,
-                            .right = 0,
-                            .val = x,
-                        }),
-                        .right = ty.id,
-                        .val = numeric.div(x, y.val()),
-                    }),
-                },
-            },
-        }
+pub fn div(x: anytype, y: @TypeOf(x)) autodiff.@"var".Div(@TypeOf(x), @TypeOf(y)) {
+    const X = @TypeOf(x);
+
+    if (x == .constant and y == .constant) {
+        var result: autodiff.@"var".Div(X, X) = .{ .constant = undefined };
+
+        numeric.divInto(&result.constant, x.constant, y.constant);
+
+        return result;
     }
+
+    const tape = if (std.meta.activeTag(x) == .tracked) x.tracked.tape else y.tracked.tape;
+
+    const left_id = ensureTracked(tape, x);
+    const right_id = ensureTracked(tape, y);
+
+    var node: autodiff.Tape(meta.Scalar(X)).Node = .{
+        .op = .div,
+        .left = left_id,
+        .right = right_id,
+        .val = undefined,
+    };
+
+    numeric.divInto(&node.val, x.val(), y.val());
+
+    return .{
+        .tracked = .{
+            .tape = tape,
+            .id = tape.pushAssumeCapacity(node),
+        },
+    };
 }
 
-pub fn eq(x: anytype, y: anytype) bool {
+pub fn eq(x: anytype, y: @TypeOf(x)) bool {
     const X: type = @TypeOf(x);
-    const Y: type = @TypeOf(y);
 
-    comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or (!isVar(X) and !isVar(Y)))
-        @compileError("zsl.autodiff.@\"var\".eq: at least one of x or y must be a var, the other must be a numeric or a var, got\n\tx: " ++
-            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+    comptime if (!meta.isNumeric(X) or !isVar(X))
+        @compileError("zsl.autodiff.@\"var\".eq: x and y must be vars, got\n\tx, y: " ++
+            @typeName(X) ++ "\n");
 
-    return numeric.eq(
-        if (comptime isVar(X)) x.val() else x,
-        if (comptime isVar(Y)) y.val() else y,
-    );
+    return numeric.eq(x.val(), y.val());
 }
 
 pub fn ne(x: anytype, y: anytype) bool {
     const X: type = @TypeOf(x);
-    const Y: type = @TypeOf(y);
 
-    comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or (!isVar(X) and !isVar(Y)))
-        @compileError("zsl.autodiff.@\"var\".ne: at least one of x or y must be a var, the other must be a numeric or a var, got\n\tx: " ++
-            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+    comptime if (!meta.isNumeric(X) or !isVar(X))
+        @compileError("zsl.autodiff.@\"var\".ne: x and y must be vars, got\n\tx, y: " ++
+            @typeName(X) ++ "\n");
 
-    return numeric.ne(
-        if (comptime isVar(X)) x.val() else x,
-        if (comptime isVar(Y)) y.val() else y,
-    );
+    return numeric.ne(x.val(), y.val());
 }
 
 pub fn lt(x: anytype, y: anytype) bool {
     const X: type = @TypeOf(x);
-    const Y: type = @TypeOf(y);
 
-    comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or (!isVar(X) and !isVar(Y)))
-        @compileError("zsl.autodiff.@\"var\".lt: at least one of x or y must be a var, the other must be a numeric or a var, got\n\tx: " ++
-            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+    comptime if (!meta.isNumeric(X) or !isVar(X))
+        @compileError("zsl.autodiff.@\"var\".lt: x and y must be vars, got\n\tx, y: " ++
+            @typeName(X) ++ "\n");
 
-    return numeric.lt(
-        if (comptime isVar(X)) x.val() else x,
-        if (comptime isVar(Y)) y.val() else y,
-    );
+    return numeric.lt(x.val(), y.val());
 }
 
 pub fn le(x: anytype, y: anytype) bool {
     const X: type = @TypeOf(x);
-    const Y: type = @TypeOf(y);
 
-    comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or (!isVar(X) and !isVar(Y)))
-        @compileError("zsl.autodiff.@\"var\".le: at least one of x or y must be a var, the other must be a numeric or a var, got\n\tx: " ++
-            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+    comptime if (!meta.isNumeric(X) or !isVar(X))
+        @compileError("zsl.autodiff.@\"var\".le: x and y must be vars, got\n\tx, y: " ++
+            @typeName(X) ++ "\n");
 
-    return numeric.le(
-        if (comptime isVar(X)) x.val() else x,
-        if (comptime isVar(Y)) y.val() else y,
-    );
+    return numeric.le(x.val(), y.val());
 }
 
 pub fn gt(x: anytype, y: anytype) bool {
     const X: type = @TypeOf(x);
-    const Y: type = @TypeOf(y);
 
-    comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or (!isVar(X) and !isVar(Y)))
-        @compileError("zsl.autodiff.@\"var\".gt: at least one of x or y must be a var, the other must be a numeric or a var, got\n\tx: " ++
-            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+    comptime if (!meta.isNumeric(X) or !isVar(X))
+        @compileError("zsl.autodiff.@\"var\".gt: x and y must be vars, got\n\tx, y: " ++
+            @typeName(X) ++ "\n");
 
-    return numeric.gt(
-        if (comptime isVar(X)) x.val() else x,
-        if (comptime isVar(Y)) y.val() else y,
-    );
+    return numeric.gt(x.val(), y.val());
 }
 
 pub fn ge(x: anytype, y: anytype) bool {
     const X: type = @TypeOf(x);
-    const Y: type = @TypeOf(y);
 
-    comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or (!isVar(X) and !isVar(Y)))
-        @compileError("zsl.autodiff.@\"var\".ge: at least one of x or y must be a var, the other must be a numeric or a var, got\n\tx: " ++
-            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+    comptime if (!meta.isNumeric(X) or !isVar(X))
+        @compileError("zsl.autodiff.@\"var\".ge: x and y must be vars, got\n\tx, y: " ++
+            @typeName(X) ++ "\n");
 
-    return numeric.ge(
-        if (comptime isVar(X)) x.val() else x,
-        if (comptime isVar(Y)) y.val() else y,
-    );
+    return numeric.ge(x.val(), y.val());
 }
 
 pub fn Max(comptime X: type, comptime Y: type) type {
-    comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or (!isVar(X) and !isVar(Y)))
-        @compileError("zsl.autodiff.@\"var\".Max: at least one of X or Y must be a var type...\n");
+    comptime if (!meta.isNumeric(X) or !isVar(X) or X != Y)
+        @compileError("zsl.autodiff.@\"var\".Max: X and Y must be the same var type, got\n\tX = " ++
+            @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n");
 
-    const SX: type = if (isVar(X)) meta.Scalar(X) else X;
-    const SY: type = if (isVar(Y)) meta.Scalar(Y) else Y;
-
-    return Var(numeric.Max(SX, SY));
+    return X;
 }
 
-pub fn max(x: anytype, y: anytype) autodiff.@"var".Max(@TypeOf(x), @TypeOf(y)) {
-    if (comptime isVar(@TypeOf(x))) {
-        if (comptime isVar(@TypeOf(y))) {
-            switch (x) {
-                .constant => |cx| switch (y) {
-                    .constant => |cy| return .{ .constant = numeric.max(cx, cy) },
-                    .tracked => |ty| return .{
-                        .tracked = .{
-                            .tape = ty.tape,
-                            .id = ty.tape.pushAssumeCapacity(.{
-                                .op = .max,
-                                .left = ty.tape.pushAssumeCapacity(.{
-                                    .op = .@"var",
-                                    .left = 0,
-                                    .right = 0,
-                                    .val = cx,
-                                }),
-                                .right = ty.id,
-                                .val = numeric.max(cx, y.val()),
-                            }),
-                        },
-                    },
-                },
-                .tracked => |tx| switch (y) {
-                    .constant => |cy| return .{
-                        .tracked = .{
-                            .tape = tx.tape,
-                            .id = tx.tape.pushAssumeCapacity(.{
-                                .op = .max,
-                                .left = tx.id,
-                                .right = tx.tape.pushAssumeCapacity(.{
-                                    .op = .@"var",
-                                    .left = 0,
-                                    .right = 0,
-                                    .val = cy,
-                                }),
-                                .val = numeric.max(x.val(), cy),
-                            }),
-                        },
-                    },
-                    .tracked => |ty| {
-                        std.debug.assert(tx.tape == ty.tape);
-                        return .{
-                            .tracked = .{
-                                .tape = tx.tape,
-                                .id = tx.tape.pushAssumeCapacity(.{
-                                    .op = .max,
-                                    .left = tx.id,
-                                    .right = ty.id,
-                                    .val = numeric.max(x.val(), y.val()),
-                                }),
-                            },
-                        };
-                    },
-                },
-            }
-        } else {
-            switch (x) {
-                .constant => |cx| return .{ .constant = numeric.max(cx, y) },
-                .tracked => |tx| return .{
-                    .tracked = .{
-                        .tape = tx.tape,
-                        .id = tx.tape.pushAssumeCapacity(.{
-                            .op = .max,
-                            .left = tx.id,
-                            .right = tx.tape.pushAssumeCapacity(.{
-                                .op = .@"var",
-                                .left = 0,
-                                .right = 0,
-                                .val = y,
-                            }),
-                            .val = numeric.max(x.val(), y),
-                        }),
-                    },
-                },
-            }
-        }
-    } else {
-        switch (y) {
-            .constant => |cy| return .{ .constant = numeric.max(x, cy) },
-            .tracked => |ty| return .{
+pub fn max(x: anytype, y: @TypeOf(x)) autodiff.@"var".Max(@TypeOf(x), @TypeOf(y)) {
+    const X = @TypeOf(x);
+
+    switch (.{ std.meta.activeTag(x), std.meta.activeTag(y) }) {
+        .{ .constant, .constant } => {
+            var result: autodiff.@"var".Max(X, X) = .{ .constant = undefined };
+
+            numeric.maxInto(&result.constant, x.constant, y.constant);
+
+            return result;
+        },
+        else => {
+            const tape = if (std.meta.activeTag(x) == .tracked) x.tracked.tape else y.tracked.tape;
+
+            const left_id = ensureTracked(tape, x);
+            const right_id = ensureTracked(tape, y);
+
+            var node: autodiff.Tape(meta.Scalar(X)).Node = .{
+                .op = .max,
+                .left = left_id,
+                .right = right_id,
+                .val = undefined,
+            };
+
+            numeric.maxInto(&node.val, x.val(), y.val());
+
+            return .{
                 .tracked = .{
-                    .tape = ty.tape,
-                    .id = ty.tape.pushAssumeCapacity(.{
-                        .op = .max,
-                        .left = ty.tape.pushAssumeCapacity(.{
-                            .op = .@"var",
-                            .left = 0,
-                            .right = 0,
-                            .val = x,
-                        }),
-                        .right = ty.id,
-                        .val = numeric.max(x, y.val()),
-                    }),
+                    .tape = tape,
+                    .id = tape.pushAssumeCapacity(node),
                 },
-            },
-        }
+            };
+        },
     }
 }
 
 pub fn Min(comptime X: type, comptime Y: type) type {
-    comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or (!isVar(X) and !isVar(Y)))
-        @compileError("zsl.autodiff.@\"var\".Min: at least one of X or Y must be a var type...\n");
+    comptime if (!meta.isNumeric(X) or !isVar(X) or X != Y)
+        @compileError("zsl.autodiff.@\"var\".Min: X and Y must be the same var type, got\n\tX = " ++
+            @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n");
 
-    const SX: type = if (isVar(X)) meta.Scalar(X) else X;
-    const SY: type = if (isVar(Y)) meta.Scalar(Y) else Y;
-
-    return Var(numeric.Min(SX, SY));
+    return X;
 }
 
 pub fn min(x: anytype, y: anytype) autodiff.@"var".Min(@TypeOf(x), @TypeOf(y)) {
-    if (comptime isVar(@TypeOf(x))) {
-        if (comptime isVar(@TypeOf(y))) {
-            switch (x) {
-                .constant => |cx| switch (y) {
-                    .constant => |cy| return .{ .constant = numeric.min(cx, cy) },
-                    .tracked => |ty| return .{
-                        .tracked = .{
-                            .tape = ty.tape,
-                            .id = ty.tape.pushAssumeCapacity(.{
-                                .op = .min,
-                                .left = ty.tape.pushAssumeCapacity(.{
-                                    .op = .@"var",
-                                    .left = 0,
-                                    .right = 0,
-                                    .val = cx,
-                                }),
-                                .right = ty.id,
-                                .val = numeric.min(cx, y.val()),
-                            }),
-                        },
-                    },
-                },
-                .tracked => |tx| switch (y) {
-                    .constant => |cy| return .{
-                        .tracked = .{
-                            .tape = tx.tape,
-                            .id = tx.tape.pushAssumeCapacity(.{
-                                .op = .min,
-                                .left = tx.id,
-                                .right = tx.tape.pushAssumeCapacity(.{
-                                    .op = .@"var",
-                                    .left = 0,
-                                    .right = 0,
-                                    .val = cy,
-                                }),
-                                .val = numeric.min(x.val(), cy),
-                            }),
-                        },
-                    },
-                    .tracked => |ty| {
-                        std.debug.assert(tx.tape == ty.tape);
-                        return .{
-                            .tracked = .{
-                                .tape = tx.tape,
-                                .id = tx.tape.pushAssumeCapacity(.{
-                                    .op = .min,
-                                    .left = tx.id,
-                                    .right = ty.id,
-                                    .val = numeric.min(x.val(), y.val()),
-                                }),
-                            },
-                        };
-                    },
-                },
-            }
-        } else {
-            switch (x) {
-                .constant => |cx| return .{ .constant = numeric.min(cx, y) },
-                .tracked => |tx| return .{
-                    .tracked = .{
-                        .tape = tx.tape,
-                        .id = tx.tape.pushAssumeCapacity(.{
-                            .op = .min,
-                            .left = tx.id,
-                            .right = tx.tape.pushAssumeCapacity(.{
-                                .op = .@"var",
-                                .left = 0,
-                                .right = 0,
-                                .val = y,
-                            }),
-                            .val = numeric.min(x.val(), y),
-                        }),
-                    },
-                },
-            }
-        }
-    } else {
-        switch (y) {
-            .constant => |cy| return .{ .constant = numeric.min(x, cy) },
-            .tracked => |ty| return .{
+    const X = @TypeOf(x);
+
+    switch (.{ std.meta.activeTag(x), std.meta.activeTag(y) }) {
+        .{ .constant, .constant } => {
+            var result: autodiff.@"var".Min(X, X) = .{ .constant = undefined };
+
+            numeric.minInto(&result.constant, x.constant, y.constant);
+
+            return result;
+        },
+        else => {
+            const tape = if (std.meta.activeTag(x) == .tracked) x.tracked.tape else y.tracked.tape;
+
+            const left_id = ensureTracked(tape, x);
+            const right_id = ensureTracked(tape, y);
+
+            var node: autodiff.Tape(meta.Scalar(X)).Node = .{
+                .op = .min,
+                .left = left_id,
+                .right = right_id,
+                .val = undefined,
+            };
+
+            numeric.minInto(&node.val, x.val(), y.val());
+
+            return .{
                 .tracked = .{
-                    .tape = ty.tape,
-                    .id = ty.tape.pushAssumeCapacity(.{
-                        .op = .min,
-                        .left = ty.tape.pushAssumeCapacity(.{
-                            .op = .@"var",
-                            .left = 0,
-                            .right = 0,
-                            .val = x,
-                        }),
-                        .right = ty.id,
-                        .val = numeric.min(x, y.val()),
-                    }),
+                    .tape = tape,
+                    .id = tape.pushAssumeCapacity(node),
                 },
-            },
-        }
+            };
+        },
     }
 }
 
@@ -1134,22 +1105,36 @@ pub fn Exp(comptime X: type) type {
     comptime if (!meta.isNumeric(X) or !isVar(X))
         @compileError("zsl.autodiff.@\"var\".Exp: X must be a var type, got\n\tX = " ++ @typeName(X) ++ "\n");
 
-    return Var(numeric.Exp(meta.Scalar(X)));
+    return X;
 }
 
 pub fn exp(x: anytype) autodiff.@"var".Exp(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
     switch (x) {
-        .constant => |cx| return .{ .constant = numeric.exp(cx) },
-        .tracked => |tx| return .{
-            .tracked = .{
-                .tape = tx.tape,
-                .id = tx.tape.pushAssumeCapacity(.{
-                    .op = .exp,
-                    .left = tx.id,
-                    .right = 0,
-                    .val = numeric.exp(x.val()),
-                }),
-            },
+        .constant => |cx| {
+            var result: autodiff.@"var".Exp(X) = .{ .constant = undefined };
+
+            numeric.expInto(&result.constant, cx);
+
+            return result;
+        },
+        .tracked => |tx| {
+            var node: autodiff.Tape(meta.Scalar(X)).Node = .{
+                .op = .exp,
+                .left = tx.id,
+                .right = int.maxVal(usize),
+                .val = undefined,
+            };
+
+            numeric.expInto(&node.val, x.val());
+
+            return .{
+                .tracked = .{
+                    .tape = tx.tape,
+                    .id = tx.tape.pushAssumeCapacity(node),
+                },
+            };
         },
     }
 }
@@ -1158,22 +1143,48 @@ pub fn Ln(comptime X: type) type {
     comptime if (!meta.isNumeric(X) or !isVar(X))
         @compileError("zsl.autodiff.@\"var\".Ln: X must be a var type, got\n\tX = " ++ @typeName(X) ++ "\n");
 
-    return Var(numeric.Ln(meta.Scalar(X)));
+    return X;
 }
 
 pub fn ln(x: anytype) autodiff.@"var".Ln(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
     switch (x) {
-        .constant => |cx| return .{ .constant = numeric.ln(cx) },
-        .tracked => |tx| return .{
-            .tracked = .{
-                .tape = tx.tape,
-                .id = tx.tape.pushAssumeCapacity(.{
-                    .op = .ln,
-                    .left = tx.id,
-                    .right = 0,
-                    .val = numeric.ln(x.val()),
-                }),
-            },
+        .constant => |cx| {
+            var result: autodiff.@"var".Ln(X) = .{ .constant = undefined };
+
+            numeric.lnInto(&result.constant, cx);
+
+            return result;
+        },
+        .tracked => |tx| {
+            var node: autodiff.Tape(meta.Scalar(X)).Node = .{
+                .op = .ln,
+                .left = tx.id,
+                .right = int.maxVal(usize),
+                .val = undefined,
+            };
+
+            numeric.lnInto(&node.val, x.val());
+
+            return .{
+                .tracked = .{
+                    .tape = tx.tape,
+                    .id = tx.tape.pushAssumeCapacity(node),
+                },
+            };
         },
     }
+}
+
+inline fn ensureTracked(tape: anytype, x: anytype) usize {
+    return switch (x) {
+        .tracked => |t| t.id,
+        .constant => |c| tape.pushAssumeCapacity(.{
+            .op = .@"var",
+            .left = int.maxVal(usize),
+            .right = int.maxVal(usize),
+            .val = c,
+        }),
+    };
 }

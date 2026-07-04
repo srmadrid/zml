@@ -5,7 +5,7 @@ const std = @import("std");
 const meta = @import("../meta.zig");
 
 /// Checks if the input type is a supported type (numeric, vector, matrix,
-/// array, or expression).
+/// array).
 ///
 /// ## Arguments
 /// * `T` (`comptime type`): The type to check.
@@ -16,8 +16,7 @@ pub fn isSupportedType(comptime T: type) bool {
     return isNumeric(T) or
         isVector(T) or
         isMatrix(T) or
-        isArray(T) or
-        isExpression(T);
+        isArray(T);
 }
 
 /// Checks if the input type is a one-item pointer.
@@ -671,12 +670,6 @@ pub fn isBuilderSparseArray(comptime T: type) bool {
         .@"struct" => return @hasDecl(T, "is_array") and T.is_array and @hasDecl(T, "is_builder") and T.is_builder and @hasDecl(T, "is_sparse") and T.is_sparse,
         else => return false,
     }
-}
-
-pub fn isExpression(comptime T: type) bool {
-    _ = T;
-    return false;
-    // return T == Expression;
 }
 
 /// Checks if the input numeric type is integral.

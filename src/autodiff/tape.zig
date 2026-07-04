@@ -22,7 +22,7 @@ pub fn Tape(N: type) type {
             grad: N = numeric.zero(N),
         };
 
-        pub fn init(allocator: std.mem.Allocator, capacity: usize) !Tape(N) {
+        pub fn init(allocator: std.mem.Allocator, capacity: usize) !autodiff.Tape(N) {
             return .{
                 .nodes = (try allocator.alloc(Node, capacity)).ptr,
                 .len = 0,
@@ -30,20 +30,20 @@ pub fn Tape(N: type) type {
             };
         }
 
-        pub fn deinit(self: *Tape(N), allocator: std.mem.Allocator) void {
+        pub fn deinit(self: *autodiff.Tape(N), allocator: std.mem.Allocator) void {
             allocator.free(self.nodes[0..self._nlen]);
 
             self.* = undefined;
         }
 
-        pub fn pushAssumeCapacity(self: *Tape(N), node: Node) usize {
+        pub fn pushAssumeCapacity(self: *autodiff.Tape(N), node: autodiff.Tape(N).Node) usize {
             const id = self.len;
             self.nodes[id] = node;
             self.len += 1;
             return id;
         }
 
-        pub fn clear(self: *Tape(N)) void {
+        pub fn clear(self: *autodiff.Tape(N)) void {
             self.len = 0;
         }
     };

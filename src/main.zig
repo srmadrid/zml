@@ -10,68 +10,92 @@ pub fn main(init: std.process.Init) !void {
     // const arena = init.arena.allocator();
     const gpa = init.gpa;
 
-    const io = init.io;
+    // const io = init.io;
 
-    var xoshiro = std.Random.DefaultPrng.init(@bitCast(std.Io.Clock.real.now(io).toMicroseconds()));
-    const prng = xoshiro.random();
-    const normal = zsl.stats.Normal(f64).init(0.0, 1.0);
+    // var xoshiro = std.Random.DefaultPrng.init(@bitCast(std.Io.Clock.real.now(io).toMicroseconds()));
+    // const prng = xoshiro.random();
+    // const normal = zsl.stats.Normal(f64).init(0.0, 1.0);
 
-    const m = 4;
-    const n = 4;
+    var tape: zsl.autodiff.Tape(f64) = try .init(gpa, 1000);
+    defer tape.deinit(gpa);
 
-    var a: zsl.matrix.general.Dense(f64, .col_major) = try .initFn(gpa, m, n, zsl.stats.Normal(f64).sample, .{ normal, prng });
-    defer a.deinit(gpa);
+    const f = struct {
+        pub fn f(x: anytype, y: @TypeOf(x)) @TypeOf(x) {
+            return zsl.numeric.fma(zsl.numeric.mul(x, x), y, zsl.numeric.div(x, y));
+        }
+    }.f;
 
-    var a_clone = try a.clone(gpa);
-    defer a_clone.deinit(gpa);
+    const x: zsl.autodiff.Var(f64) = .init(&tape, 3.0);
+    const y: zsl.autodiff.Var(f64) = .init(&tape, 2.0);
 
-    var s: zsl.matrix.diagonal.Sparse(f64) = try .init(gpa, m, n);
-    defer s.deinit(gpa);
-    var u: zsl.matrix.general.Dense(f64, .col_major) = try .init(gpa, m, m);
-    defer u.deinit(gpa);
-    var vt: zsl.matrix.general.Dense(f64, .col_major) = try .init(gpa, n, n);
-    defer vt.deinit(gpa);
+    const r = f(x, y);
 
-    const superb_len = zsl.int.max(1, zsl.int.min(m, n));
-    const superb = try gpa.alloc(f64, superb_len);
-    defer gpa.free(superb);
+    // 19.5
+    std.debug.print("f(3.0, 2.0) = {}\n", .{r.val()});
 
-    const info = zsl.linalg.lapacke.dgesvd(
-        zsl.linalg.cblas.layout.col_major,
-        zsl.linalg.lapacke.job.all,
-        zsl.linalg.lapacke.job.all,
-        m,
-        n,
-        a_clone.data,
-        zsl.numeric.cast(isize, a_clone.ld),
-        s.data,
-        u.data,
-        zsl.numeric.cast(isize, u.ld),
-        vt.data,
-        zsl.numeric.cast(isize, vt.ld),
-        superb.ptr,
-    );
+    r.backward();
 
-    if (info != 0)
-        return error.SVD;
+    // df/dx = 2xy + 1/y = 12 + 0.5 = 12.5
+    std.debug.print("df/dx = {}\n", .{x.grad()});
+    // df/dy = x^2 - x/y^2 = 9 - 0.75 = 8.25
+    std.debug.print("df/dy = {}\n", .{y.grad()});
 
-    var us = try zsl.linalg.matmulAlloc(gpa, u, s);
-    defer us.deinit(gpa);
-    var a_reconstructed = try zsl.linalg.matmulAlloc(gpa, us, vt);
-    defer a_reconstructed.deinit(gpa);
+    // const m = 4;
+    // const n = 4;
 
-    printMatrix("A = U S V^T", a);
-    printMatrix("U", u);
-    printMatrix("S", s);
-    printMatrix("V^T", vt);
-    printMatrix("A = U S V^T (reconstructed)", a_reconstructed);
+    // var a: zsl.matrix.general.Dense(f64, .col_major) = try .initFn(gpa, m, n, zsl.stats.Normal(f64).sample, .{ normal, prng });
+    // defer a.deinit(gpa);
 
-    var diff = try zsl.matrix.subAlloc(gpa, a_reconstructed, a);
-    defer diff.deinit(gpa);
+    // var a_clone = try a.clone(gpa);
+    // defer a_clone.deinit(gpa);
 
-    const diff_norm = try zsl.linalg.normAlloc(gpa, diff, .frobenius);
+    // var s: zsl.matrix.diagonal.Sparse(f64) = try .init(gpa, m, n);
+    // defer s.deinit(gpa);
+    // var u: zsl.matrix.general.Dense(f64, .col_major) = try .init(gpa, m, m);
+    // defer u.deinit(gpa);
+    // var vt: zsl.matrix.general.Dense(f64, .col_major) = try .init(gpa, n, n);
+    // defer vt.deinit(gpa);
 
-    std.debug.print("‖A - U S V^T‖ = {e}\n", .{diff_norm});
+    // const superb_len = zsl.int.max(1, zsl.int.min(m, n));
+    // const superb = try gpa.alloc(f64, superb_len);
+    // defer gpa.free(superb);
+
+    // const info = zsl.linalg.lapacke.dgesvd(
+    //     zsl.linalg.cblas.layout.col_major,
+    //     zsl.linalg.lapacke.job.all,
+    //     zsl.linalg.lapacke.job.all,
+    //     m,
+    //     n,
+    //     a_clone.data,
+    //     zsl.numeric.cast(isize, a_clone.ld),
+    //     s.data,
+    //     u.data,
+    //     zsl.numeric.cast(isize, u.ld),
+    //     vt.data,
+    //     zsl.numeric.cast(isize, vt.ld),
+    //     superb.ptr,
+    // );
+
+    // if (info != 0)
+    //     return error.SVD;
+
+    // var us = try zsl.linalg.matmulAlloc(gpa, u, s);
+    // defer us.deinit(gpa);
+    // var a_reconstructed = try zsl.linalg.matmulAlloc(gpa, us, vt);
+    // defer a_reconstructed.deinit(gpa);
+
+    // printMatrix("A = U S V^T", a);
+    // printMatrix("U", u);
+    // printMatrix("S", s);
+    // printMatrix("V^T", vt);
+    // printMatrix("A = U S V^T (reconstructed)", a_reconstructed);
+
+    // var diff = try zsl.matrix.subAlloc(gpa, a_reconstructed, a);
+    // defer diff.deinit(gpa);
+
+    // const diff_norm = try zsl.linalg.normAlloc(gpa, diff, .frobenius);
+
+    // std.debug.print("‖A - U S V^T‖ = {e}\n", .{diff_norm});
 }
 
 pub fn blas_lv1_threshold_calibration(init: std.process.Init) !void {

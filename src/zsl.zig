@@ -22,10 +22,3 @@ pub const array = @import("array.zig");
 pub const stats = @import("stats.zig");
 pub const linalg = @import("linalg.zig");
 pub const autodiff = @import("autodiff.zig");
-
-// Symbolic system.
-//pub const Expression = @import("expression/expression.zig").Expression;
-//pub const Symbol = @import("symbol.zig").Symbol;
-//pub const Element = @import("element.zig").Element;
-//pub const Variable = @import("variable.zig").Variable;
-//pub const Set = @import("set.zig").Set;

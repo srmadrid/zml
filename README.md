@@ -1,6 +1,6 @@
 # zsl: zig scientific library
 
-A generic numerical and symbolic mathematics library for Zig.
+A generic numerical mathematics library for Zig.
 
 > ⚠️ Zsl is in the early stages of development. APIs change frequently, results may be incorrect, and many features are missing or partial. Use with care, and please [open an issue](https://github.com/srmadrid/zsl/issues) if you hit a bug or have a suggestion.
 
@@ -65,8 +65,6 @@ Zsl lets you write numerical code once and run it over whatever numeric type you
 - Automatic Differentiation (`autodiff`):
   - Dual numbers (forward)
   - Tape and Var numbers (backward)
-- Symbolic System:
-  - Nothing implemented yet
 
 ## Installation
 

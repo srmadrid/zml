@@ -9,6 +9,16 @@ pub const Op = enum {
     // Leaf
     @"var",
 
+    // Basic operations
+    abs,
+    abs1,
+    abs2,
+    neg,
+    re,
+    im,
+    conj,
+    sign,
+
     // Arithmetic operations
     add,
     mul,

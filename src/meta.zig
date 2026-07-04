@@ -123,7 +123,6 @@ pub const Domain = enum {
     vector,
     matrix,
     array,
-    expression,
 };
 
 /// A useless allocator that does nothing, always signalling allocation failure.
@@ -372,9 +371,6 @@ pub fn domain(comptime T: type) Domain {
     if (comptime isArray(T))
         return .array;
 
-    if (comptime isExpression(T))
-        return .expression;
-
     @compileError("zsl.meta.domain: " ++ @typeName(T) ++ " does not belong to any supported domain");
 }
 
@@ -425,7 +421,6 @@ pub const isDenseArray = type_checks.isDenseArray;
 pub const isStridedArray = type_checks.isStridedArray;
 pub const isSparseArray = type_checks.isSparseArray;
 pub const isBuilderSparseArray = type_checks.isBuilderSparseArray;
-pub const isExpression = type_checks.isExpression;
 pub const isIntegral = type_checks.isIntegral;
 pub const isNonIntegral = type_checks.isNonIntegral;
 pub const isReal = type_checks.isReal;
@@ -568,7 +563,6 @@ pub fn Numeric(comptime T: type) type {
             else => return T.Numeric,
             .numeric => return T,
         },
-        .expression => return T,
     }
 }
 
