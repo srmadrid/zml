@@ -1,6 +1,7 @@
 pub const Uniform = @import("stats/uniform.zig").Uniform;
 pub const Normal = @import("stats/normal.zig").Normal;
 pub const Poisson = @import("stats/poisson.zig").Poisson;
+pub const Exponential = @import("stats/exponential.zig").Exponential;
 
 // Array operations
 // mean (over whole array, or specific axes if array is static)

@@ -20,22 +20,24 @@ pub fn main(init: std.process.Init) !void {
     defer tape.deinit(gpa);
 
     const f = struct {
-        pub fn f(x: anytype, y: anytype) @TypeOf(x) {
-            return zsl.numeric.mul(x, zsl.numeric.sqrt(zsl.numeric.add(x, y)));
+        pub fn f(x: anytype, y: anytype, z: anytype) @TypeOf(x) {
+            return zsl.numeric.sin(zsl.numeric.mul(x, zsl.numeric.sin(zsl.numeric.mul(y, zsl.numeric.sin(zsl.numeric.ln(z))))));
         }
     }.f;
 
-    const x: zsl.autodiff.Var(f64) = .init(&tape, 3.0);
-    const y: zsl.autodiff.Var(f64) = .init(&tape, 2.0);
+    const x: zsl.autodiff.Var(f64) = .init(&tape, 5.0);
+    const y: zsl.autodiff.Var(f64) = .init(&tape, 3.0);
+    const z: zsl.autodiff.Var(f64) = .init(&tape, 1.01);
 
-    const r = f(x, y);
+    const r = f(x, y, z);
 
-    std.debug.print("f(3.0, 2.0) = {}\n", .{r.val()});
+    std.debug.print("f(5.0, 3.0, 1.01) = {}\n", .{r.val()});
 
     r.backward();
 
     std.debug.print("df/dx = {}\n", .{x.grad()});
     std.debug.print("df/dy = {}\n", .{y.grad()});
+    std.debug.print("df/dz = {}\n", .{z.grad()});
 
     // const m = 4;
     // const n = 4;
