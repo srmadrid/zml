@@ -32,6 +32,29 @@ pub const Op = enum {
     // Exponential functions
     exp,
     ln,
+
+    // Power functions
+    pow,
+    sqrt,
+    cbrt,
+    hypot,
+
+    // Trigonometric functions
+    sin,
+    cos,
+    tan,
+    asin,
+    acos,
+    atan,
+    atan2,
+
+    // Hyperbolic functions
+    sinh,
+    cosh,
+    tanh,
+    asinh,
+    acosh,
+    atanh,
 };
 
 pub const Tape = @import("autodiff/tape.zig").Tape;

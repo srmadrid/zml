@@ -20,8 +20,8 @@ pub fn main(init: std.process.Init) !void {
     defer tape.deinit(gpa);
 
     const f = struct {
-        pub fn f(x: anytype, y: @TypeOf(x)) @TypeOf(x) {
-            return zsl.numeric.add(zsl.numeric.mul(zsl.numeric.mul(x, 2.0), y), zsl.numeric.div(x, y));
+        pub fn f(x: anytype, y: anytype) @TypeOf(x) {
+            return zsl.numeric.mul(x, zsl.numeric.sqrt(zsl.numeric.add(x, y)));
         }
     }.f;
 

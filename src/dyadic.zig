@@ -47,6 +47,7 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
         pub const nan: Dyadic(mantissa_bits, exponent_bits) = .{ .mantissa = 1, .exponent = int.maxVal(Exponent), .positive = true };
         pub const zero: Dyadic(mantissa_bits, exponent_bits) = .{ .mantissa = 0, .exponent = int.minVal(Exponent), .positive = true };
         pub const one: Dyadic(mantissa_bits, exponent_bits) = .{ .mantissa = @as(Mantissa, 1) << (mantissa_bits - 1), .exponent = -numeric.cast(Exponent, mantissa_bits - 1), .positive = true };
+        pub const two: Dyadic(mantissa_bits, exponent_bits) = .{ .mantissa = @as(Mantissa, 1) << (mantissa_bits - 1), .exponent = -numeric.cast(Exponent, mantissa_bits), .positive = true };
 
         pub fn isInf(self: Dyadic(mantissa_bits, exponent_bits)) bool {
             return self.exponent == int.maxVal(Exponent) and self.mantissa == 0;

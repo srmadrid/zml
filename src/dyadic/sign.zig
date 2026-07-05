@@ -18,5 +18,5 @@ pub fn sign(x: anytype) @TypeOf(x) {
     comptime if (!meta.isNumeric(X) or meta.numericType(X) != .dyadic)
         @compileError("zml.dyadic.sign: x must be an dyadic, got \n\tx: " ++ @typeName(X) ++ "\n");
 
-    return if (x.isZero()) .zero else if (x.positive) .one else .negOne;
+    return if (x.isZero()) .zero else if (x.positive) .one else X.one.neg();
 }

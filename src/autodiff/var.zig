@@ -100,44 +100,44 @@ pub fn Var(N: type) type {
         pub const ln = autodiff.@"var".ln;
 
         // Power functions
-        // pub const Pow = autodiff.@"var".Pow;
-        // pub const pow = autodiff.@"var".pow;
-        // pub const Sqrt = autodiff.@"var".Sqrt;
-        // pub const sqrt = autodiff.@"var".sqrt;
-        // pub const Cbrt = autodiff.@"var".Cbrt;
-        // pub const cbrt = autodiff.@"var".cbrt;
-        // pub const Hypot = autodiff.@"var".Hypot;
-        // pub const hypot = autodiff.@"var".hypot;
+        pub const Pow = autodiff.@"var".Pow;
+        pub const pow = autodiff.@"var".pow;
+        pub const Sqrt = autodiff.@"var".Sqrt;
+        pub const sqrt = autodiff.@"var".sqrt;
+        pub const Cbrt = autodiff.@"var".Cbrt;
+        pub const cbrt = autodiff.@"var".cbrt;
+        pub const Hypot = autodiff.@"var".Hypot;
+        pub const hypot = autodiff.@"var".hypot;
 
         // Trigonometric functions
-        // pub const Sin = autodiff.@"var".Sin;
-        // pub const sin = autodiff.@"var".sin;
-        // pub const Cos = autodiff.@"var".Cos;
-        // pub const cos = autodiff.@"var".cos;
-        // pub const Tan = autodiff.@"var".Tan;
-        // pub const tan = autodiff.@"var".tan;
-        // pub const Asin = autodiff.@"var".Asin;
-        // pub const asin = autodiff.@"var".asin;
-        // pub const Acos = autodiff.@"var".Acos;
-        // pub const acos = autodiff.@"var".acos;
-        // pub const Atan = autodiff.@"var".Atan;
-        // pub const atan = autodiff.@"var".atan;
-        // pub const Atan2 = autodiff.@"var".Atan2;
-        // pub const atan2 = autodiff.@"var".atan2;
+        pub const Sin = autodiff.@"var".Sin;
+        pub const sin = autodiff.@"var".sin;
+        pub const Cos = autodiff.@"var".Cos;
+        pub const cos = autodiff.@"var".cos;
+        pub const Tan = autodiff.@"var".Tan;
+        pub const tan = autodiff.@"var".tan;
+        pub const Asin = autodiff.@"var".Asin;
+        pub const asin = autodiff.@"var".asin;
+        pub const Acos = autodiff.@"var".Acos;
+        pub const acos = autodiff.@"var".acos;
+        pub const Atan = autodiff.@"var".Atan;
+        pub const atan = autodiff.@"var".atan;
+        pub const Atan2 = autodiff.@"var".Atan2;
+        pub const atan2 = autodiff.@"var".atan2;
 
         // Hyperbolic functions
-        // pub const Sinh = autodiff.@"var".Sinh;
-        // pub const sinh = autodiff.@"var".sinh;
-        // pub const Cosh = autodiff.@"var".Cosh;
-        // pub const cosh = autodiff.@"var".cosh;
-        // pub const Tanh = autodiff.@"var".Tanh;
-        // pub const tanh = autodiff.@"var".tanh;
-        // pub const Asinh = autodiff.@"var".Asinh;
-        // pub const asinh = autodiff.@"var".asinh;
-        // pub const Acosh = autodiff.@"var".Acosh;
-        // pub const acosh = autodiff.@"var".acosh;
-        // pub const Atanh = autodiff.@"var".Atanh;
-        // pub const atanh = autodiff.@"var".atanh;
+        pub const Sinh = autodiff.@"var".Sinh;
+        pub const sinh = autodiff.@"var".sinh;
+        pub const Cosh = autodiff.@"var".Cosh;
+        pub const cosh = autodiff.@"var".cosh;
+        pub const Tanh = autodiff.@"var".Tanh;
+        pub const tanh = autodiff.@"var".tanh;
+        pub const Asinh = autodiff.@"var".Asinh;
+        pub const asinh = autodiff.@"var".asinh;
+        pub const Acosh = autodiff.@"var".Acosh;
+        pub const acosh = autodiff.@"var".acosh;
+        pub const Atanh = autodiff.@"var".Atanh;
+        pub const atanh = autodiff.@"var".atanh;
 
         pub fn backward(self: Var(N)) void {
             switch (self) {
@@ -157,6 +157,7 @@ pub fn Var(N: type) type {
                         switch (node.op) {
                             .@"var" => {},
                             .abs => {
+                                // d/dx |x| = x / |x| = x / node.val (x != 0)
                                 if (!numeric.eq(node.val, 0)) {
                                     numeric.addInto(
                                         &t.tape.nodes[node.left].grad,
@@ -166,6 +167,7 @@ pub fn Var(N: type) type {
                                 }
                             },
                             .abs1 => {
+                                // d/dx abs1(x) = sign(x)
                                 numeric.addInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
@@ -173,6 +175,7 @@ pub fn Var(N: type) type {
                                 );
                             },
                             .abs2 => {
+                                // d/dx |x|² = 2x
                                 numeric.addInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
@@ -180,6 +183,7 @@ pub fn Var(N: type) type {
                                 );
                             },
                             .neg => {
+                                // d/dx (-x) = -1
                                 numeric.subInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
@@ -187,6 +191,7 @@ pub fn Var(N: type) type {
                                 );
                             },
                             .re => {
+                                // d/dx re(x) = re(g)
                                 numeric.addInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
@@ -194,6 +199,7 @@ pub fn Var(N: type) type {
                                 );
                             },
                             .im => {
+                                // d/dx im(x) = im(g)
                                 numeric.addInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
@@ -201,14 +207,18 @@ pub fn Var(N: type) type {
                                 );
                             },
                             .conj => {
+                                // d/dx conj(x) = conj(g)
                                 numeric.addInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
                                     numeric.conj(g),
                                 );
                             },
-                            .sign => {},
+                            .sign => {
+                                // d/dx sign(x) = 0 (almost everywhere)
+                            },
                             .add => {
+                                // d/dx (x + y) = 1
                                 if (node.left != int.maxVal(usize))
                                     numeric.addInto(
                                         &t.tape.nodes[node.left].grad,
@@ -216,6 +226,7 @@ pub fn Var(N: type) type {
                                         g,
                                     );
 
+                                // d/dy (x + y) = 1
                                 if (node.right != int.maxVal(usize))
                                     numeric.addInto(
                                         &t.tape.nodes[node.right].grad,
@@ -224,6 +235,7 @@ pub fn Var(N: type) type {
                                     );
                             },
                             .sub => {
+                                // d/dx (x - y) = 1
                                 if (node.left != int.maxVal(usize))
                                     numeric.addInto(
                                         &t.tape.nodes[node.left].grad,
@@ -231,6 +243,7 @@ pub fn Var(N: type) type {
                                         g,
                                     );
 
+                                // d/dy (x - y) = -1
                                 if (node.right != int.maxVal(usize))
                                     numeric.subInto(
                                         &t.tape.nodes[node.right].grad,
@@ -239,12 +252,14 @@ pub fn Var(N: type) type {
                                     );
                             },
                             .mul => {
+                                // d/dx (x * y) = y
                                 numeric.addInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
                                     numeric.mul(g, t.tape.nodes[node.right].val),
                                 );
 
+                                // d/dy (x * y) = x
                                 numeric.addInto(
                                     &t.tape.nodes[node.right].grad,
                                     t.tape.nodes[node.right].grad,
@@ -252,6 +267,7 @@ pub fn Var(N: type) type {
                                 );
                             },
                             .div => {
+                                // d/dx (x / y) = 1 / y
                                 numeric.addInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
@@ -261,6 +277,7 @@ pub fn Var(N: type) type {
                                     ),
                                 );
 
+                                // d/dy (x / y) = -x / y²
                                 numeric.subInto(
                                     &t.tape.nodes[node.right].grad,
                                     t.tape.nodes[node.right].grad,
@@ -271,40 +288,37 @@ pub fn Var(N: type) type {
                                 );
                             },
                             .max => {
-                                if (numeric.gt(t.tape.nodes[node.left].val, t.tape.nodes[node.right].val)) {
-                                    if (node.left != int.maxVal(usize))
-                                        numeric.addInto(
-                                            &t.tape.nodes[node.left].grad,
-                                            t.tape.nodes[node.left].grad,
-                                            g,
-                                        );
-                                } else {
-                                    if (node.right != int.maxVal(usize))
-                                        numeric.addInto(
-                                            &t.tape.nodes[node.right].grad,
-                                            t.tape.nodes[node.right].grad,
-                                            g,
-                                        );
-                                }
+                                // d/dx max(x, y) = if x > y  1  else  0
+                                if (numeric.gt(t.tape.nodes[node.left].val, t.tape.nodes[node.right].val))
+                                    numeric.addInto(
+                                        &t.tape.nodes[node.left].grad,
+                                        t.tape.nodes[node.left].grad,
+                                        g,
+                                    )
+                                else // d/dy max(x, y) = if y >= x  1  else  0
+                                    numeric.addInto(
+                                        &t.tape.nodes[node.right].grad,
+                                        t.tape.nodes[node.right].grad,
+                                        g,
+                                    );
                             },
                             .min => {
-                                if (numeric.lt(t.tape.nodes[node.left].val, t.tape.nodes[node.right].val)) {
-                                    if (node.left != int.maxVal(usize))
-                                        numeric.addInto(
-                                            &t.tape.nodes[node.left].grad,
-                                            t.tape.nodes[node.left].grad,
-                                            g,
-                                        );
-                                } else {
-                                    if (node.right != int.maxVal(usize))
-                                        numeric.addInto(
-                                            &t.tape.nodes[node.right].grad,
-                                            t.tape.nodes[node.right].grad,
-                                            g,
-                                        );
-                                }
+                                // d/dx min(x, y) = if x < y  1  else  0
+                                if (numeric.lt(t.tape.nodes[node.left].val, t.tape.nodes[node.right].val))
+                                    numeric.addInto(
+                                        &t.tape.nodes[node.left].grad,
+                                        t.tape.nodes[node.left].grad,
+                                        g,
+                                    )
+                                else // d/dy min(x, y) = if y <= x  1  else  0
+                                    numeric.addInto(
+                                        &t.tape.nodes[node.right].grad,
+                                        t.tape.nodes[node.right].grad,
+                                        g,
+                                    );
                             },
                             .exp => {
+                                // d/dx exp(x) = exp(x) = node.val
                                 numeric.addInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
@@ -312,10 +326,288 @@ pub fn Var(N: type) type {
                                 );
                             },
                             .ln => {
+                                // d/dx ln(x) = 1 / x
                                 numeric.addInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
                                     numeric.div(g, t.tape.nodes[node.left].val),
+                                );
+                            },
+                            .pow => {
+                                // d/dx (x^y) = y * x^(y - 1) = (y * node.val) / x
+                                numeric.addInto(
+                                    &t.tape.nodes[node.left].grad,
+                                    t.tape.nodes[node.left].grad,
+                                    numeric.mul(
+                                        g,
+                                        numeric.div(
+                                            numeric.mul(t.tape.nodes[node.right].val, node.val),
+                                            t.tape.nodes[node.left].val,
+                                        ),
+                                    ),
+                                );
+
+                                // d/dy (x^y) = x^y * ln(x) = node.val * ln(x)
+                                numeric.addInto(
+                                    &t.tape.nodes[node.right].grad,
+                                    t.tape.nodes[node.right].grad,
+                                    numeric.mul(
+                                        g,
+                                        numeric.mul(
+                                            node.val,
+                                            numeric.ln(t.tape.nodes[node.left].val),
+                                        ),
+                                    ),
+                                );
+                            },
+                            .sqrt => {
+                                // d/dx sqrt(x) = 1 / (2 * sqrt(x)) = 1 / (2 * node.val)
+                                numeric.addInto(
+                                    &t.tape.nodes[node.left].grad,
+                                    t.tape.nodes[node.left].grad,
+                                    numeric.div(g, numeric.mul(numeric.two(N), node.val)),
+                                );
+                            },
+                            .cbrt => {
+                                // d/dx cbrt(x) = 1 / (3 * cbrt(x)²) = 1 / (3 * node.val²)
+                                numeric.addInto(
+                                    &t.tape.nodes[node.left].grad,
+                                    t.tape.nodes[node.left].grad,
+                                    numeric.div(
+                                        g,
+                                        numeric.mul(numeric.add(numeric.one(N), numeric.two(N)), numeric.mul(node.val, node.val)),
+                                    ),
+                                );
+                            },
+                            .hypot => {
+                                // d/dx hypot(x, y) = x / hypot(x, y) = x / node.val
+                                if (node.left != int.maxVal(usize))
+                                    numeric.addInto(
+                                        &t.tape.nodes[node.left].grad,
+                                        t.tape.nodes[node.left].grad,
+                                        numeric.div(
+                                            numeric.mul(g, t.tape.nodes[node.left].val),
+                                            node.val,
+                                        ),
+                                    );
+
+                                // d/dy hypot(x, y) = y / hypot(x, y) = y / node.val
+                                if (node.right != int.maxVal(usize))
+                                    numeric.addInto(
+                                        &t.tape.nodes[node.right].grad,
+                                        t.tape.nodes[node.right].grad,
+                                        numeric.div(
+                                            numeric.mul(g, t.tape.nodes[node.right].val),
+                                            node.val,
+                                        ),
+                                    );
+                            },
+                            .sin => {
+                                // d/dx sin(x) = cos(x)
+                                numeric.addInto(
+                                    &t.tape.nodes[node.left].grad,
+                                    t.tape.nodes[node.left].grad,
+                                    numeric.mul(g, numeric.cos(t.tape.nodes[node.left].val)),
+                                );
+                            },
+                            .cos => {
+                                // d/dx cos(x) = -sin(x)
+                                numeric.subInto(
+                                    &t.tape.nodes[node.left].grad,
+                                    t.tape.nodes[node.left].grad,
+                                    numeric.mul(g, numeric.sin(t.tape.nodes[node.left].val)),
+                                );
+                            },
+                            .tan => {
+                                // d/dx tan(x) = sec²(x) = 1 + tan²(x) = 1 + node.val²
+                                numeric.addInto(
+                                    &t.tape.nodes[node.left].grad,
+                                    t.tape.nodes[node.left].grad,
+                                    numeric.mul(g, numeric.add(numeric.one(N), numeric.mul(node.val, node.val))),
+                                );
+                            },
+                            .asin => {
+                                // d/dx asin(x) = 1 / sqrt(1 - x²)
+                                numeric.addInto(
+                                    &t.tape.nodes[node.left].grad,
+                                    t.tape.nodes[node.left].grad,
+                                    numeric.div(
+                                        g,
+                                        numeric.sqrt(
+                                            numeric.sub(
+                                                numeric.one(N),
+                                                numeric.mul(
+                                                    t.tape.nodes[node.left].val,
+                                                    t.tape.nodes[node.left].val,
+                                                ),
+                                            ),
+                                        ),
+                                    ),
+                                );
+                            },
+                            .acos => {
+                                // d/dx acos(x) = -1 / sqrt(1 - x²)
+                                numeric.subInto(
+                                    &t.tape.nodes[node.left].grad,
+                                    t.tape.nodes[node.left].grad,
+                                    numeric.div(
+                                        g,
+                                        numeric.sqrt(
+                                            numeric.sub(
+                                                numeric.one(N),
+                                                numeric.mul(
+                                                    t.tape.nodes[node.left].val,
+                                                    t.tape.nodes[node.left].val,
+                                                ),
+                                            ),
+                                        ),
+                                    ),
+                                );
+                            },
+                            .atan => {
+                                // d/dx atan(x) = 1 / (1 + x²)
+                                numeric.addInto(
+                                    &t.tape.nodes[node.left].grad,
+                                    t.tape.nodes[node.left].grad,
+                                    numeric.div(
+                                        g,
+                                        numeric.add(
+                                            numeric.one(N),
+                                            numeric.mul(
+                                                t.tape.nodes[node.left].val,
+                                                t.tape.nodes[node.left].val,
+                                            ),
+                                        ),
+                                    ),
+                                );
+                            },
+                            .atan2 => {
+                                const denom = numeric.add(
+                                    numeric.mul(
+                                        t.tape.nodes[node.left].val,
+                                        t.tape.nodes[node.left].val,
+                                    ),
+                                    numeric.mul(
+                                        t.tape.nodes[node.right].val,
+                                        t.tape.nodes[node.right].val,
+                                    ),
+                                );
+
+                                // d/dx atan2(x, y) = y / (x² + y²)
+                                numeric.addInto(
+                                    &t.tape.nodes[node.left].grad,
+                                    t.tape.nodes[node.left].grad,
+                                    numeric.div(
+                                        numeric.mul(
+                                            g,
+                                            t.tape.nodes[node.right].val,
+                                        ),
+                                        denom,
+                                    ),
+                                );
+
+                                // d/dy atan2(x, y) = -x / (x² + y²)
+                                numeric.subInto(
+                                    &t.tape.nodes[node.right].grad,
+                                    t.tape.nodes[node.right].grad,
+                                    numeric.div(
+                                        numeric.mul(
+                                            g,
+                                            t.tape.nodes[node.left].val,
+                                        ),
+                                        denom,
+                                    ),
+                                );
+                            },
+                            .sinh => {
+                                // d/dx sinh(x) = cosh(x)
+                                numeric.addInto(
+                                    &t.tape.nodes[node.left].grad,
+                                    t.tape.nodes[node.left].grad,
+                                    numeric.mul(
+                                        g,
+                                        numeric.cosh(t.tape.nodes[node.left].val),
+                                    ),
+                                );
+                            },
+                            .cosh => {
+                                // d/dx cosh(x) = sinh(x)
+                                numeric.addInto(
+                                    &t.tape.nodes[node.left].grad,
+                                    t.tape.nodes[node.left].grad,
+                                    numeric.mul(
+                                        g,
+                                        numeric.sinh(t.tape.nodes[node.left].val),
+                                    ),
+                                );
+                            },
+                            .tanh => {
+                                // d/dx tanh(x) = sech²(x) = 1 - tanh²(x) = 1 - node.val²
+                                numeric.addInto(
+                                    &t.tape.nodes[node.left].grad,
+                                    t.tape.nodes[node.left].grad,
+                                    numeric.mul(
+                                        g,
+                                        numeric.sub(
+                                            numeric.one(N),
+                                            numeric.mul(node.val, node.val),
+                                        ),
+                                    ),
+                                );
+                            },
+                            .asinh => {
+                                // d/dx asinh(x) = 1 / sqrt(x² + 1)
+                                numeric.addInto(
+                                    &t.tape.nodes[node.left].grad,
+                                    t.tape.nodes[node.left].grad,
+                                    numeric.div(
+                                        g,
+                                        numeric.sqrt(
+                                            numeric.add(
+                                                numeric.mul(
+                                                    t.tape.nodes[node.left].val,
+                                                    t.tape.nodes[node.left].val,
+                                                ),
+                                                numeric.one(N),
+                                            ),
+                                        ),
+                                    ),
+                                );
+                            },
+                            .acosh => {
+                                // d/dx acosh(x) = 1 / sqrt(x² - 1)
+                                numeric.addInto(
+                                    &t.tape.nodes[node.left].grad,
+                                    t.tape.nodes[node.left].grad,
+                                    numeric.div(
+                                        g,
+                                        numeric.sqrt(
+                                            numeric.sub(
+                                                numeric.mul(
+                                                    t.tape.nodes[node.left].val,
+                                                    t.tape.nodes[node.left].val,
+                                                ),
+                                                numeric.one(N),
+                                            ),
+                                        ),
+                                    ),
+                                );
+                            },
+                            .atanh => {
+                                // d/dx atanh(x) = 1 / (1 - x²)
+                                numeric.addInto(
+                                    &t.tape.nodes[node.left].grad,
+                                    t.tape.nodes[node.left].grad,
+                                    numeric.div(
+                                        g,
+                                        numeric.sub(
+                                            numeric.one(N),
+                                            numeric.mul(
+                                                t.tape.nodes[node.left].val,
+                                                t.tape.nodes[node.left].val,
+                                            ),
+                                        ),
+                                    ),
                                 );
                             },
                         }
@@ -1155,6 +1447,677 @@ pub fn ln(x: anytype) autodiff.@"var".Ln(@TypeOf(x)) {
     }
 }
 
+pub fn Pow(comptime X: type, comptime Y: type) type {
+    comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or (!isVar(X) and !isVar(Y)))
+        @compileError("zsl.autodiff.@\"var\".Pow: at least one of X or Y must be a var type, the other must be a numeric or a var type, got\n\tX = " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+
+    comptime if (isVar(X) and isVar(Y) and X != Y)
+        @compileError("zsl.autodiff.@\"var\".Pow: if X and Y are both var types, they must be equal, got\n\tX = " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+
+    return if (comptime isVar(X)) X else Y;
+}
+
+pub fn pow(x: anytype, y: anytype) autodiff.@"var".Pow(@TypeOf(x), @TypeOf(y)) {
+    const X = @TypeOf(x);
+    const Y = @TypeOf(y);
+    const R = autodiff.@"var".Pow(X, Y);
+
+    const x_val = valOf(x);
+    const y_val = valOf(y);
+
+    if (!isTracked(x) and !isTracked(y)) {
+        var result: R = .{ .constant = undefined };
+
+        numeric.powInto(&result.constant, x_val, y_val);
+
+        return result;
+    }
+
+    const tape = getTape2(x, y);
+    var node: autodiff.Tape(meta.Scalar(R)).Node = .{
+        .op = .pow,
+        .left = ensureTracked(tape, x),
+        .right = ensureTracked(tape, y),
+        .val = undefined,
+    };
+
+    numeric.powInto(&node.val, x_val, y_val);
+
+    return .{
+        .tracked = .{
+            .tape = tape,
+            .id = tape.pushAssumeCapacity(node),
+        },
+    };
+}
+
+pub fn Sqrt(comptime X: type) type {
+    comptime if (!meta.isNumeric(X) or !isVar(X))
+        @compileError("zsl.autodiff.@\"var\".Sqrt: X must be a var type, got\n\tX = " ++ @typeName(X) ++ "\n");
+
+    return X;
+}
+
+pub fn sqrt(x: anytype) autodiff.@"var".Sqrt(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    switch (x) {
+        .constant => |cx| {
+            var result: autodiff.@"var".Sqrt(X) = .{ .constant = undefined };
+
+            numeric.sqrtInto(&result.constant, cx);
+
+            return result;
+        },
+        .tracked => |tx| {
+            var node: autodiff.Tape(meta.Scalar(X)).Node = .{
+                .op = .sqrt,
+                .left = tx.id,
+                .right = int.maxVal(usize),
+                .val = undefined,
+            };
+
+            numeric.sqrtInto(&node.val, x.val());
+
+            return .{
+                .tracked = .{
+                    .tape = tx.tape,
+                    .id = tx.tape.pushAssumeCapacity(node),
+                },
+            };
+        },
+    }
+}
+
+pub fn Cbrt(comptime X: type) type {
+    comptime if (!meta.isNumeric(X) or !isVar(X))
+        @compileError("zsl.autodiff.@\"var\".Cbrt: X must be a var type, got\n\tX = " ++ @typeName(X) ++ "\n");
+
+    return X;
+}
+
+pub fn cbrt(x: anytype) autodiff.@"var".Cbrt(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    switch (x) {
+        .constant => |cx| {
+            var result: autodiff.@"var".Cbrt(X) = .{ .constant = undefined };
+
+            numeric.cbrtInto(&result.constant, cx);
+
+            return result;
+        },
+        .tracked => |tx| {
+            var node: autodiff.Tape(meta.Scalar(X)).Node = .{
+                .op = .cbrt,
+                .left = tx.id,
+                .right = int.maxVal(usize),
+                .val = undefined,
+            };
+
+            numeric.cbrtInto(&node.val, x.val());
+
+            return .{
+                .tracked = .{
+                    .tape = tx.tape,
+                    .id = tx.tape.pushAssumeCapacity(node),
+                },
+            };
+        },
+    }
+}
+
+pub fn Hypot(comptime X: type, comptime Y: type) type {
+    comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or (!isVar(X) and !isVar(Y)))
+        @compileError("zsl.autodiff.@\"var\".Hypot: at least one of X or Y must be a var type, the other must be a numeric or a var type, got\n\tX = " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+
+    comptime if (isVar(X) and isVar(Y) and X != Y)
+        @compileError("zsl.autodiff.@\"var\".Hypot: if X and Y are both var types, they must be equal, got\n\tX = " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+
+    return if (comptime isVar(X)) X else Y;
+}
+
+pub fn hypot(x: anytype, y: anytype) autodiff.@"var".Hypot(@TypeOf(x), @TypeOf(y)) {
+    const X = @TypeOf(x);
+    const Y = @TypeOf(y);
+    const R = autodiff.@"var".Hypot(X, Y);
+
+    const x_val = valOf(x);
+    const y_val = valOf(y);
+
+    if (!isTracked(x) and !isTracked(y)) {
+        var result: R = .{ .constant = undefined };
+
+        numeric.hypotInto(&result.constant, x_val, y_val);
+
+        return result;
+    }
+
+    const tape = getTape2(x, y);
+    var node: autodiff.Tape(meta.Scalar(R)).Node = .{
+        .op = .hypot,
+        .left = idOf(x),
+        .right = idOf(y),
+        .val = undefined,
+    };
+
+    numeric.hypotInto(&node.val, x_val, y_val);
+
+    return .{
+        .tracked = .{
+            .tape = tape,
+            .id = tape.pushAssumeCapacity(node),
+        },
+    };
+}
+
+pub fn Sin(comptime X: type) type {
+    comptime if (!meta.isNumeric(X) or !isVar(X))
+        @compileError("zsl.autodiff.@\"var\".Sin: X must be a var type, got\n\tX = " ++ @typeName(X) ++ "\n");
+
+    return X;
+}
+
+pub fn sin(x: anytype) autodiff.@"var".Sin(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    switch (x) {
+        .constant => |cx| {
+            var result: autodiff.@"var".Sin(X) = .{ .constant = undefined };
+
+            numeric.sinInto(&result.constant, cx);
+
+            return result;
+        },
+        .tracked => |tx| {
+            var node: autodiff.Tape(meta.Scalar(X)).Node = .{
+                .op = .sin,
+                .left = tx.id,
+                .right = int.maxVal(usize),
+                .val = undefined,
+            };
+
+            numeric.sinInto(&node.val, x.val());
+
+            return .{
+                .tracked = .{
+                    .tape = tx.tape,
+                    .id = tx.tape.pushAssumeCapacity(node),
+                },
+            };
+        },
+    }
+}
+
+pub fn Cos(comptime X: type) type {
+    comptime if (!meta.isNumeric(X) or !isVar(X))
+        @compileError("zsl.autodiff.@\"var\".Cos: X must be a var type, got\n\tX = " ++ @typeName(X) ++ "\n");
+
+    return X;
+}
+
+pub fn cos(x: anytype) autodiff.@"var".Cos(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    switch (x) {
+        .constant => |cx| {
+            var result: autodiff.@"var".Cos(X) = .{ .constant = undefined };
+
+            numeric.cosInto(&result.constant, cx);
+
+            return result;
+        },
+        .tracked => |tx| {
+            var node: autodiff.Tape(meta.Scalar(X)).Node = .{
+                .op = .cos,
+                .left = tx.id,
+                .right = int.maxVal(usize),
+                .val = undefined,
+            };
+
+            numeric.cosInto(&node.val, x.val());
+
+            return .{
+                .tracked = .{
+                    .tape = tx.tape,
+                    .id = tx.tape.pushAssumeCapacity(node),
+                },
+            };
+        },
+    }
+}
+
+pub fn Tan(comptime X: type) type {
+    comptime if (!meta.isNumeric(X) or !isVar(X))
+        @compileError("zsl.autodiff.@\"var\".Tan: X must be a var type, got\n\tX = " ++ @typeName(X) ++ "\n");
+
+    return X;
+}
+
+pub fn tan(x: anytype) autodiff.@"var".Tan(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    switch (x) {
+        .constant => |cx| {
+            var result: autodiff.@"var".Tan(X) = .{ .constant = undefined };
+
+            numeric.tanInto(&result.constant, cx);
+
+            return result;
+        },
+        .tracked => |tx| {
+            var node: autodiff.Tape(meta.Scalar(X)).Node = .{
+                .op = .tan,
+                .left = tx.id,
+                .right = int.maxVal(usize),
+                .val = undefined,
+            };
+
+            numeric.tanInto(&node.val, x.val());
+
+            return .{
+                .tracked = .{
+                    .tape = tx.tape,
+                    .id = tx.tape.pushAssumeCapacity(node),
+                },
+            };
+        },
+    }
+}
+
+pub fn Asin(comptime X: type) type {
+    comptime if (!meta.isNumeric(X) or !isVar(X))
+        @compileError("zsl.autodiff.@\"var\".Asin: X must be a var type, got\n\tX = " ++ @typeName(X) ++ "\n");
+
+    return X;
+}
+
+pub fn asin(x: anytype) autodiff.@"var".Asin(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    switch (x) {
+        .constant => |cx| {
+            var result: autodiff.@"var".Asin(X) = .{ .constant = undefined };
+
+            numeric.asinInto(&result.constant, cx);
+
+            return result;
+        },
+        .tracked => |tx| {
+            var node: autodiff.Tape(meta.Scalar(X)).Node = .{
+                .op = .asin,
+                .left = tx.id,
+                .right = int.maxVal(usize),
+                .val = undefined,
+            };
+
+            numeric.asinInto(&node.val, x.val());
+
+            return .{
+                .tracked = .{
+                    .tape = tx.tape,
+                    .id = tx.tape.pushAssumeCapacity(node),
+                },
+            };
+        },
+    }
+}
+
+pub fn Acos(comptime X: type) type {
+    comptime if (!meta.isNumeric(X) or !isVar(X))
+        @compileError("zsl.autodiff.@\"var\".Acos: X must be a var type, got\n\tX = " ++ @typeName(X) ++ "\n");
+
+    return X;
+}
+
+pub fn acos(x: anytype) autodiff.@"var".Acos(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    switch (x) {
+        .constant => |cx| {
+            var result: autodiff.@"var".Acos(X) = .{ .constant = undefined };
+
+            numeric.acosInto(&result.constant, cx);
+
+            return result;
+        },
+        .tracked => |tx| {
+            var node: autodiff.Tape(meta.Scalar(X)).Node = .{
+                .op = .acos,
+                .left = tx.id,
+                .right = int.maxVal(usize),
+                .val = undefined,
+            };
+
+            numeric.acosInto(&node.val, x.val());
+
+            return .{
+                .tracked = .{
+                    .tape = tx.tape,
+                    .id = tx.tape.pushAssumeCapacity(node),
+                },
+            };
+        },
+    }
+}
+
+pub fn Atan(comptime X: type) type {
+    comptime if (!meta.isNumeric(X) or !isVar(X))
+        @compileError("zsl.autodiff.@\"var\".Atan: X must be a var type, got\n\tX = " ++ @typeName(X) ++ "\n");
+
+    return X;
+}
+
+pub fn atan(x: anytype) autodiff.@"var".Atan(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    switch (x) {
+        .constant => |cx| {
+            var result: autodiff.@"var".Atan(X) = .{ .constant = undefined };
+
+            numeric.atanInto(&result.constant, cx);
+
+            return result;
+        },
+        .tracked => |tx| {
+            var node: autodiff.Tape(meta.Scalar(X)).Node = .{
+                .op = .atan,
+                .left = tx.id,
+                .right = int.maxVal(usize),
+                .val = undefined,
+            };
+
+            numeric.atanInto(&node.val, x.val());
+
+            return .{
+                .tracked = .{
+                    .tape = tx.tape,
+                    .id = tx.tape.pushAssumeCapacity(node),
+                },
+            };
+        },
+    }
+}
+
+pub fn Atan2(comptime X: type, comptime Y: type) type {
+    comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or (!isVar(X) and !isVar(Y)))
+        @compileError("zsl.autodiff.@\"var\".Atan2: at least one of X or Y must be a var type, the other must be a numeric or a var type, got\n\tX = " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+
+    comptime if (isVar(X) and isVar(Y) and X != Y)
+        @compileError("zsl.autodiff.@\"var\".Atan2: if X and Y are both var types, they must be equal, got\n\tX = " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+
+    return if (comptime isVar(X)) X else Y;
+}
+
+pub fn atan2(x: anytype, y: anytype) autodiff.@"var".Atan2(@TypeOf(x), @TypeOf(y)) {
+    const X = @TypeOf(x);
+    const Y = @TypeOf(y);
+    const R = autodiff.@"var".Atan2(X, Y);
+
+    const x_val = valOf(x);
+    const y_val = valOf(y);
+
+    if (!isTracked(x) and !isTracked(y)) {
+        var result: R = .{ .constant = undefined };
+
+        numeric.atan2Into(&result.constant, x_val, y_val);
+
+        return result;
+    }
+
+    const tape = getTape2(x, y);
+    var node: autodiff.Tape(meta.Scalar(R)).Node = .{
+        .op = .atan2,
+        .left = ensureTracked(tape, x),
+        .right = ensureTracked(tape, y),
+        .val = undefined,
+    };
+
+    numeric.atan2Into(&node.val, x_val, y_val);
+
+    return .{
+        .tracked = .{
+            .tape = tape,
+            .id = tape.pushAssumeCapacity(node),
+        },
+    };
+}
+
+pub fn Sinh(comptime X: type) type {
+    comptime if (!meta.isNumeric(X) or !isVar(X))
+        @compileError("zsl.autodiff.@\"var\".Sinh: X must be a var type, got\n\tX = " ++ @typeName(X) ++ "\n");
+
+    return X;
+}
+
+pub fn sinh(x: anytype) autodiff.@"var".Sinh(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    switch (x) {
+        .constant => |cx| {
+            var result: autodiff.@"var".Sinh(X) = .{ .constant = undefined };
+
+            numeric.sinhInto(&result.constant, cx);
+
+            return result;
+        },
+        .tracked => |tx| {
+            var node: autodiff.Tape(meta.Scalar(X)).Node = .{
+                .op = .sinh,
+                .left = tx.id,
+                .right = int.maxVal(usize),
+                .val = undefined,
+            };
+
+            numeric.sinhInto(&node.val, x.val());
+
+            return .{
+                .tracked = .{
+                    .tape = tx.tape,
+                    .id = tx.tape.pushAssumeCapacity(node),
+                },
+            };
+        },
+    }
+}
+
+pub fn Cosh(comptime X: type) type {
+    comptime if (!meta.isNumeric(X) or !isVar(X))
+        @compileError("zsl.autodiff.@\"var\".Cosh: X must be a var type, got\n\tX = " ++ @typeName(X) ++ "\n");
+
+    return X;
+}
+
+pub fn cosh(x: anytype) autodiff.@"var".Cosh(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    switch (x) {
+        .constant => |cx| {
+            var result: autodiff.@"var".Cosh(X) = .{ .constant = undefined };
+
+            numeric.coshInto(&result.constant, cx);
+
+            return result;
+        },
+        .tracked => |tx| {
+            var node: autodiff.Tape(meta.Scalar(X)).Node = .{
+                .op = .cosh,
+                .left = tx.id,
+                .right = int.maxVal(usize),
+                .val = undefined,
+            };
+
+            numeric.coshInto(&node.val, x.val());
+
+            return .{
+                .tracked = .{
+                    .tape = tx.tape,
+                    .id = tx.tape.pushAssumeCapacity(node),
+                },
+            };
+        },
+    }
+}
+
+pub fn Tanh(comptime X: type) type {
+    comptime if (!meta.isNumeric(X) or !isVar(X))
+        @compileError("zsl.autodiff.@\"var\".Tanh: X must be a var type, got\n\tX = " ++ @typeName(X) ++ "\n");
+
+    return X;
+}
+
+pub fn tanh(x: anytype) autodiff.@"var".Tanh(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    switch (x) {
+        .constant => |cx| {
+            var result: autodiff.@"var".Tanh(X) = .{ .constant = undefined };
+
+            numeric.tanhInto(&result.constant, cx);
+
+            return result;
+        },
+        .tracked => |tx| {
+            var node: autodiff.Tape(meta.Scalar(X)).Node = .{
+                .op = .tanh,
+                .left = tx.id,
+                .right = int.maxVal(usize),
+                .val = undefined,
+            };
+
+            numeric.tanhInto(&node.val, x.val());
+
+            return .{
+                .tracked = .{
+                    .tape = tx.tape,
+                    .id = tx.tape.pushAssumeCapacity(node),
+                },
+            };
+        },
+    }
+}
+
+pub fn Asinh(comptime X: type) type {
+    comptime if (!meta.isNumeric(X) or !isVar(X))
+        @compileError("zsl.autodiff.@\"var\".Asinh: X must be a var type, got\n\tX = " ++ @typeName(X) ++ "\n");
+
+    return X;
+}
+
+pub fn asinh(x: anytype) autodiff.@"var".Asinh(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    switch (x) {
+        .constant => |cx| {
+            var result: autodiff.@"var".Asinh(X) = .{ .constant = undefined };
+
+            numeric.asinhInto(&result.constant, cx);
+
+            return result;
+        },
+        .tracked => |tx| {
+            var node: autodiff.Tape(meta.Scalar(X)).Node = .{
+                .op = .asinh,
+                .left = tx.id,
+                .right = int.maxVal(usize),
+                .val = undefined,
+            };
+
+            numeric.asinhInto(&node.val, x.val());
+
+            return .{
+                .tracked = .{
+                    .tape = tx.tape,
+                    .id = tx.tape.pushAssumeCapacity(node),
+                },
+            };
+        },
+    }
+}
+
+pub fn Acosh(comptime X: type) type {
+    comptime if (!meta.isNumeric(X) or !isVar(X))
+        @compileError("zsl.autodiff.@\"var\".Acosh: X must be a var type, got\n\tX = " ++ @typeName(X) ++ "\n");
+
+    return X;
+}
+
+pub fn acosh(x: anytype) autodiff.@"var".Acosh(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    switch (x) {
+        .constant => |cx| {
+            var result: autodiff.@"var".Acosh(X) = .{ .constant = undefined };
+
+            numeric.acoshInto(&result.constant, cx);
+
+            return result;
+        },
+        .tracked => |tx| {
+            var node: autodiff.Tape(meta.Scalar(X)).Node = .{
+                .op = .acosh,
+                .left = tx.id,
+                .right = int.maxVal(usize),
+                .val = undefined,
+            };
+
+            numeric.acoshInto(&node.val, x.val());
+
+            return .{
+                .tracked = .{
+                    .tape = tx.tape,
+                    .id = tx.tape.pushAssumeCapacity(node),
+                },
+            };
+        },
+    }
+}
+
+pub fn Atanh(comptime X: type) type {
+    comptime if (!meta.isNumeric(X) or !isVar(X))
+        @compileError("zsl.autodiff.@\"var\".Atanh: X must be a var type, got\n\tX = " ++ @typeName(X) ++ "\n");
+
+    return X;
+}
+
+pub fn atanh(x: anytype) autodiff.@"var".Atanh(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    switch (x) {
+        .constant => |cx| {
+            var result: autodiff.@"var".Atanh(X) = .{ .constant = undefined };
+
+            numeric.atanhInto(&result.constant, cx);
+
+            return result;
+        },
+        .tracked => |tx| {
+            var node: autodiff.Tape(meta.Scalar(X)).Node = .{
+                .op = .atanh,
+                .left = tx.id,
+                .right = int.maxVal(usize),
+                .val = undefined,
+            };
+
+            numeric.atanhInto(&node.val, x.val());
+
+            return .{
+                .tracked = .{
+                    .tape = tx.tape,
+                    .id = tx.tape.pushAssumeCapacity(node),
+                },
+            };
+        },
+    }
+}
+
+// Utils
 inline fn valOf(x: anytype) if (isVar(@TypeOf(x))) meta.Scalar(@TypeOf(x)) else @TypeOf(x) {
     return if (comptime isVar(@TypeOf(x)))
         x.val()
