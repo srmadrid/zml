@@ -616,6 +616,20 @@ pub fn isArray(comptime T: type) bool {
     }
 }
 
+/// Checks if the input type is an instance of a static array.
+///
+/// ## Arguments
+/// * `T` (`comptime type`): The type to check.
+///
+/// ## Returns
+/// `bool`: `true` if the type is a static array, `false` otherwise.
+pub fn isStaticArray(comptime T: type) bool {
+    switch (comptime @typeInfo(T)) {
+        .@"struct" => return @hasDecl(T, "is_array") and T.is_array and @hasDecl(T, "is_static") and T.is_static,
+        else => return false,
+    }
+}
+
 /// Checks if the input type is an instance of a dense array.
 ///
 /// ## Arguments
@@ -626,20 +640,6 @@ pub fn isArray(comptime T: type) bool {
 pub fn isDenseArray(comptime T: type) bool {
     switch (comptime @typeInfo(T)) {
         .@"struct" => return @hasDecl(T, "is_array") and T.is_array and @hasDecl(T, "is_dense") and T.is_dense,
-        else => return false,
-    }
-}
-
-/// Checks if the input type is an instance of a strided array.
-///
-/// ## Arguments
-/// * `T` (`comptime type`): The type to check.
-///
-/// ## Returns
-/// `bool`: `true` if the type is a strided array, `false` otherwise.
-pub fn isStridedArray(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_array") and T.is_array and @hasDecl(T, "is_strided") and T.is_strided,
         else => return false,
     }
 }

@@ -19,17 +19,24 @@ pub const Sparse = sparse.Sparse;
 
 pub const builder = @import("array/builder.zig");
 
+const arrops = @import("array/ops.zig");
+pub const Apply1 = arrops.Apply1;
+pub const apply1 = arrops.apply1;
+pub const apply1Unchecked = arrops.apply1Unchecked;
+pub const apply1Alloc = arrops.apply1Alloc;
+pub const apply1Into = arrops.apply1Into;
+pub const apply1IntoUnchecked = arrops.apply1IntoUnchecked;
+pub const Apply2 = arrops.Apply2;
+pub const apply2 = arrops.apply2;
+pub const apply2Unchecked = arrops.apply2Unchecked;
+pub const apply2Alloc = arrops.apply2Alloc;
+pub const apply2Into = arrops.apply2Into;
+pub const apply2IntoUnchecked = arrops.apply2IntoUnchecked;
+
+// These here or in stats?
 // sum, prod, min, max, argmin, argmax (over whole array, or specific axes if array is static)
 // _Alloc (over specific axes)
 // _Into
-
-// const arrops = @import("array/ops.zig");
-// pub const apply1 = arrops.apply1;
-// pub const apply1Alloc = arrops.apply1Alloc;
-// pub const apply1Into = arrops.apply1Into;
-// pub const apply2 = arrops.apply2;
-// pub const apply2Alloc = arrops.apply2Alloc;
-// pub const apply2Into = arrops.apply2Into;
 
 pub const Order = enum(u1) {
     c,

@@ -547,6 +547,10 @@ pub fn apply2Into(o: anytype, x: anytype, y: anytype, comptime opInto: anytype) 
         @compileError("zsl.matrix.apply2Into: o must be a mutable one-itme pointer to a matrix, at least one of x or y must be a matrix, the other must be a matrix or a numeric, and opInto must be a function of three arguments, got\n\to: " ++
             @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\topInto: " ++ @typeName(OpInto) ++ "\n");
 
+    comptime if (meta.isBuilderMatrix(X) or meta.isBuilderMatrix(Y))
+        @compileError("zsl.matrix.apply2Into: builder matrix types are not allowed as inputs, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+
     comptime if (opInto != numeric.addInto and opInto != numeric.subInto and opInto != numeric.mulInto and opInto != numeric.divInto)
         @compileError("zsl.matrix.apply2IntoUnchecked: opInto must be zsl.numeric.addInto, zsl.numeric.subInto, zsl.numeric.mulInto or zsl.numeric.divInto, got\n\topInto: " ++ @typeName(OpInto) ++ "\n");
 
@@ -638,6 +642,10 @@ pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: 
         opinfo != .@"fn" or opinfo.@"fn".params.len != 3)
         @compileError("zsl.matrix.apply2Into: o must be a mutable one-itme pointer to a matrix, at least one of x or y must be a matrix, the other must be a matrix or a numeric, and opInto must be a function of three arguments, got\n\to: " ++
             @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\topInto: " ++ @typeName(Op) ++ "\n");
+
+    comptime if (meta.isBuilderMatrix(X) or meta.isBuilderMatrix(Y))
+        @compileError("zsl.matrix.apply2Into: builder matrix types are not allowed as inputs, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
     O = meta.Child(O);
 

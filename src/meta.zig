@@ -112,7 +112,6 @@ pub const MatrixStorage = enum {
 
 pub const ArrayType = enum {
     dense,
-    strided,
     sparse,
     builder_sparse,
     numeric, // Fallback for numeric types that are not arrays
@@ -339,9 +338,6 @@ pub fn arrayType(comptime A: type) ArrayType {
     if (comptime isDenseArray(A))
         return .dense;
 
-    if (comptime isStridedArray(A))
-        return .strided;
-
     if (comptime isSparseArray(A))
         return .sparse;
 
@@ -417,8 +413,8 @@ pub const isStaticMatrix = type_checks.isStaticMatrix;
 pub const isDenseMatrix = type_checks.isDenseMatrix;
 pub const isSparseMatrix = type_checks.isSparseMatrix;
 pub const isArray = type_checks.isArray;
+pub const isStaticArray = type_checks.isStaticArray;
 pub const isDenseArray = type_checks.isDenseArray;
-pub const isStridedArray = type_checks.isStridedArray;
 pub const isSparseArray = type_checks.isSparseArray;
 pub const isBuilderSparseArray = type_checks.isBuilderSparseArray;
 pub const isIntegral = type_checks.isIntegral;

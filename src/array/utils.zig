@@ -1,5 +1,7 @@
 const int = @import("../int.zig");
 
+const numeric = @import("../numeric.zig");
+
 const array = @import("../array.zig");
 
 pub fn broadcastShapes(shapes: []const []const usize) !struct { ndim: usize, shape: [array.max_dimensions]usize } {
@@ -54,6 +56,43 @@ pub fn broadcastShapes(shapes: []const []const usize) !struct { ndim: usize, sha
     };
 }
 
+/// Determines the optimal memory layout order (`.c` or `.f`) for an output
+/// array so that simultaneous iteration with an input array achieves optimal
+/// cache locality.
+pub fn orderFromStrides(strides: []const isize) array.Order {
+    if (strides.len <= 1)
+        return array.Order.default;
+
+    var c_votes: usize = 0;
+    var f_votes: usize = 0;
+    var prev_stride: ?usize = null;
+
+    for (strides) |stride| {
+        const abs_stride = int.abs(stride);
+
+        if (abs_stride == 0)
+            continue;
+
+        if (prev_stride) |prev| {
+            if (prev > abs_stride) {
+                c_votes += 1;
+            } else if (prev < abs_stride) {
+                f_votes += 1;
+            }
+        }
+
+        prev_stride = abs_stride;
+    }
+
+    if (c_votes > f_votes)
+        return .c;
+
+    if (f_votes > c_votes)
+        return .f;
+
+    return array.Order.default;
+}
+
 /// Checks if the given axes form a valid permutation of `[0, ..., ndim - 1]`.
 pub fn isPermutation(axes: []const usize) bool {
     if (axes.len > array.max_dimensions)
@@ -81,4 +120,11 @@ pub fn checkIndex(shape: []const usize, index: []const usize) !void {
             return array.Error.PositionOutOfBounds;
         }
     }
+}
+
+inline fn getPtr(ptr: anytype, offset: isize) @TypeOf(ptr) {
+    return if (offset >= 0)
+        ptr + numeric.cast(usize, offset)
+    else
+        ptr - numeric.cast(usize, -offset);
 }

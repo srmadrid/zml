@@ -47,6 +47,58 @@ pub fn Sparse(N: type, comptime order: array.Order) type {
             .flags = .{ .owns_data = false },
         };
 
+        /// Initializes a new sparse array with the same shape and CSF tree
+        /// topology as `other`, allocating memory for `.data` but leaving the
+        /// numeric values uninitialized.
+        ///
+        /// ## Arguments
+        /// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
+        ///   allocations.
+        /// * `other` (`anytype`): The input sparse array whose topology will be
+        ///   cloned.
+        ///
+        /// ## Returns
+        /// `array.Sparse(N, order)`: The newly allocated sparse array structure.
+        ///
+        /// ## Errors
+        /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
+        pub fn initLike(allocator: std.mem.Allocator, other: anytype) !array.Sparse(N, order) {
+            var self: array.Sparse(N, order) = .empty;
+            self.flags = .{ .owns_data = true, .noconj = true };
+            self.ndim = other.ndim;
+            self.nnz = other.nnz;
+            self.shape = other.shape;
+
+            errdefer self.deinit(allocator);
+
+            if (other._dlen > 0) {
+                self.data = try allocator.alloc(N, other._dlen).ptr;
+                self._dlen = other._dlen;
+            }
+
+            for (0..self.ndim) |k| {
+                if (other._ilen[k] > 0) {
+                    const idx_slice = try allocator.alloc(usize, other._ilen[k]);
+                    @memcpy(idx_slice, other.idx[k][0..other._ilen[k]]);
+                    self.idx[k] = idx_slice.ptr;
+                    self._ilen[k] = other._ilen[k];
+                }
+            }
+
+            if (self.ndim >= 2) {
+                for (0..self.ndim - 1) |k| {
+                    if (other._plen[k] > 0) {
+                        const ptr_slice = try allocator.alloc(usize, other._plen[k]);
+                        @memcpy(ptr_slice, other.ptr[k][0..other._plen[k]]);
+                        self.ptr[k] = ptr_slice.ptr;
+                        self._plen[k] = other._plen[k];
+                    }
+                }
+            }
+
+            return self;
+        }
+
         /// Deinitializes the array, freeing any allocated memory and
         /// invalidating it.
         ///
