@@ -118,11 +118,19 @@ pub const ArrayType = enum {
     numeric, // Fallback for numeric types that are not arrays
 };
 
+pub const PolyType = enum {
+    static,
+    dense,
+    sparse,
+    numeric, // Fallback for numeric types that are not polynomials
+};
+
 pub const Domain = enum {
     numeric,
     vector,
     matrix,
     array,
+    poly,
 };
 
 /// A useless allocator that does nothing, always signalling allocation failure.
@@ -351,6 +359,26 @@ pub fn arrayType(comptime A: type) ArrayType {
     return .numeric; // Fallback for numeric types that are not arrays
 }
 
+/// Determines the polynomial type of the input type `P`.
+///
+/// ## Arguments
+/// * `P` (`comptime type`): The type to check.
+///
+/// ## Returns
+/// `meta.PolyType`: The corresponding `meta.PolyType` enum value.
+pub fn polyType(comptime V: type) PolyType {
+    if (comptime isStaticPoly(V))
+        return .static;
+
+    if (comptime isDensePoly(V))
+        return .dense;
+
+    if (comptime isSparsePoly(V))
+        return .sparse;
+
+    return .numeric; // Fallback for numeric types that are not polynomials
+}
+
 /// Determines the domain of the input type `T`.
 ///
 /// ## Arguments
@@ -370,6 +398,9 @@ pub fn domain(comptime T: type) Domain {
 
     if (comptime isArray(T))
         return .array;
+
+    if (comptime isPoly(T))
+        return .poly;
 
     @compileError("zsl.meta.domain: " ++ @typeName(T) ++ " does not belong to any supported domain");
 }
@@ -421,6 +452,10 @@ pub const isStaticArray = type_checks.isStaticArray;
 pub const isDenseArray = type_checks.isDenseArray;
 pub const isSparseArray = type_checks.isSparseArray;
 pub const isBuilderSparseArray = type_checks.isBuilderSparseArray;
+pub const isPoly = type_checks.isPoly;
+pub const isStaticPoly = type_checks.isStaticPoly;
+pub const isDensePoly = type_checks.isDensePoly;
+pub const isSparsePoly = type_checks.isSparsePoly;
 pub const isIntegral = type_checks.isIntegral;
 pub const isNonIntegral = type_checks.isNonIntegral;
 pub const isReal = type_checks.isReal;
@@ -560,6 +595,10 @@ pub fn Numeric(comptime T: type) type {
             .numeric => return T,
         },
         .array => switch (comptime arrayType(T)) {
+            else => return T.Numeric,
+            .numeric => return T,
+        },
+        .poly => switch (comptime polyType(T)) {
             else => return T.Numeric,
             .numeric => return T,
         },

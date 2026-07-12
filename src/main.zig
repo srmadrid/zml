@@ -10,30 +10,25 @@ pub fn main(init: std.process.Init) !void {
     // const arena = init.arena.allocator();
     const gpa = init.gpa;
 
-    const io = init.io;
+    // const io = init.io;
 
-    var xoshiro = std.Random.DefaultPrng.init(@bitCast(std.Io.Clock.real.now(io).toMicroseconds()));
-    const prng = xoshiro.random();
-    const normal = zsl.stats.Normal(f64).init(0.0, 1.0);
+    // var xoshiro = std.Random.DefaultPrng.init(@bitCast(std.Io.Clock.real.now(io).toMicroseconds()));
+    // const prng = xoshiro.random();
+    // const normal = zsl.stats.Normal(f64).init(0.0, 1.0);
 
-    const nnz = 5;
-    var ab: zsl.array.builder.Sparse(f64) = try .init(gpa, &.{ 4, 4, 4 }, nnz);
-    for (0..nnz) |_| {
-        const idx: []const usize = &.{
-            prng.intRangeAtMost(usize, 0, ab.shape[0] - 1),
-            prng.intRangeAtMost(usize, 0, ab.shape[1] - 1),
-            prng.intRangeAtMost(usize, 0, ab.shape[2] - 1),
-        };
-        const val: f64 = normal.sample(prng);
+    var p: zsl.poly.Sparse(f64) = try .init(gpa, 10);
+    defer p.deinit(gpa);
 
-        std.debug.print("Appended {any}: {e}\n", .{ idx, val });
+    try p.set(gpa, 123, 2.0);
+    try p.set(gpa, 0, 4.0);
+    try p.set(gpa, 3, 4.0);
 
-        ab.appendAssumeCapacity(idx, val);
-    }
-    var a = try ab.compile(gpa, .c);
-    defer a.deinit(gpa);
+    std.debug.print("{f}\n", .{p});
 
-    std.debug.print("a: {f}\n", .{a});
+    var dp = try p.derivative(gpa);
+    defer dp.deinit(gpa);
+
+    std.debug.print("{f}\n", .{dp});
 
     // const m = 4;
     // const n = 4;

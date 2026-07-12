@@ -5,7 +5,7 @@ const std = @import("std");
 const meta = @import("../meta.zig");
 
 /// Checks if the input type is a supported type (numeric, vector, matrix,
-/// array).
+/// array, polynomial).
 ///
 /// ## Arguments
 /// * `T` (`comptime type`): The type to check.
@@ -16,7 +16,8 @@ pub fn isSupportedType(comptime T: type) bool {
     return isNumeric(T) or
         isVector(T) or
         isMatrix(T) or
-        isArray(T);
+        isArray(T) or
+        isPoly(T);
 }
 
 /// Checks if the input type is a one-item pointer.
@@ -668,6 +669,62 @@ pub fn isSparseArray(comptime T: type) bool {
 pub fn isBuilderSparseArray(comptime T: type) bool {
     switch (comptime @typeInfo(T)) {
         .@"struct" => return @hasDecl(T, "is_array") and T.is_array and @hasDecl(T, "is_builder") and T.is_builder and @hasDecl(T, "is_sparse") and T.is_sparse,
+        else => return false,
+    }
+}
+
+/// Checks if the input type is an instance of a polynomial.
+///
+/// ## Arguments
+/// * `T` (`comptime type`): The type to check.
+///
+/// ## Returns
+/// `bool`: `true` if the type is a polynomial, `false` otherwise.
+pub fn isPoly(comptime T: type) bool {
+    switch (comptime @typeInfo(T)) {
+        .@"struct" => return @hasDecl(T, "is_poly") and T.is_poly,
+        else => return false,
+    }
+}
+
+/// Checks if the input type is an instance of a static polynomial.
+///
+/// ## Arguments
+/// * `T` (`comptime type`): The type to check.
+///
+/// ## Returns
+/// `bool`: `true` if the type is a static polynomial, `false` otherwise.
+pub fn isStaticPoly(comptime T: type) bool {
+    switch (comptime @typeInfo(T)) {
+        .@"struct" => return @hasDecl(T, "is_poly") and T.is_poly and @hasDecl(T, "is_static") and T.is_static,
+        else => return false,
+    }
+}
+
+/// Checks if the input type is an instance of a dense polynomial.
+///
+/// ## Arguments
+/// * `T` (`comptime type`): The type to check.
+///
+/// ## Returns
+/// `bool`: `true` if the type is a dense polynomial, `false` otherwise.
+pub fn isDensePoly(comptime T: type) bool {
+    switch (comptime @typeInfo(T)) {
+        .@"struct" => return @hasDecl(T, "is_poly") and T.is_poly and @hasDecl(T, "is_dense") and T.is_dense,
+        else => return false,
+    }
+}
+
+/// Checks if the input type is an instance of a sparse polynomial.
+///
+/// ## Arguments
+/// * `T` (`comptime type`): The type to check.
+///
+/// ## Returns
+/// `bool`: `true` if the type is a sparse polynomial, `false` otherwise.
+pub fn isSparsePoly(comptime T: type) bool {
+    switch (comptime @typeInfo(T)) {
+        .@"struct" => return @hasDecl(T, "is_poly") and T.is_poly and @hasDecl(T, "is_sparse") and T.is_sparse,
         else => return false,
     }
 }

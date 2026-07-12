@@ -18,6 +18,7 @@ pub const numeric = @import("numeric.zig");
 pub const vector = @import("vector.zig");
 pub const matrix = @import("matrix.zig");
 pub const array = @import("array.zig");
+pub const poly = @import("poly.zig");
 
 // Module namespaces
 pub const stats = @import("stats.zig");
