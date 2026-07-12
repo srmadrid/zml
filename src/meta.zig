@@ -111,6 +111,7 @@ pub const MatrixStorage = enum {
 };
 
 pub const ArrayType = enum {
+    static,
     dense,
     sparse,
     builder_sparse,
@@ -335,6 +336,9 @@ pub fn matrixStorage(comptime M: type) MatrixStorage {
 /// ## Returns
 /// `meta.ArrayType`: The corresponding `meta.ArrayType` enum value.
 pub fn arrayType(comptime A: type) ArrayType {
+    if (comptime isStaticArray(A))
+        return .static;
+
     if (comptime isDenseArray(A))
         return .dense;
 

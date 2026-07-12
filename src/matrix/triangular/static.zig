@@ -1,3 +1,5 @@
+const std = @import("std");
+
 const meta = @import("../../meta.zig");
 
 const numeric = @import("../../numeric.zig");
@@ -5,6 +7,8 @@ const numeric = @import("../../numeric.zig");
 const int = @import("../../int.zig");
 
 const matrix = @import("../../matrix.zig");
+
+const matutils = @import("../utils.zig");
 
 /// Static triangular matrix type, represented as a contiguous array of
 /// `rows × cols` elements of type `N`, depending on `uplo`, stored in either
@@ -520,6 +524,26 @@ pub fn Static(rows_: comptime_int, cols_: comptime_int, N: type, uplo: matrix.Up
                 r + c * rows
             else
                 r * cols + c;
+        }
+
+        pub fn format(self: matrix.triangular.Static(rows, cols, N, uplo, diag, layout), writer: *std.Io.Writer) !void {
+            try self.formatter("{e}").format(writer);
+        }
+
+        pub fn formatter(self: *const matrix.triangular.Static(rows, cols, N, uplo, diag, layout), comptime num_fmt: []const u8) Formatter(num_fmt) {
+            return .{ .matrix = self };
+        }
+
+        pub fn Formatter(comptime num_fmt: []const u8) type {
+            return struct {
+                matrix: *const matrix.triangular.Static(rows, cols, N, uplo, diag, layout),
+
+                pub fn format(self: matrix.triangular.Static(rows, cols, N, uplo, diag, layout).Formatter(num_fmt), writer: *std.Io.Writer) !void {
+                    try writer.print("zsl.matrix.triangular.Static({d}, {d}, {s}, .{s}, .{s}, .{s}) ({d} × {d}):\n\n", .{ rows, cols, @typeName(N), @tagName(uplo), @tagName(diag), @tagName(layout), rows, cols });
+
+                    return matutils.format(self, num_fmt, rows, cols, writer);
+                }
+            };
         }
     };
 }

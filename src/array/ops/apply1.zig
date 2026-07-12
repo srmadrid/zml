@@ -11,7 +11,7 @@ pub fn Apply1(comptime X: type, comptime op: anytype) type {
     const Op = @TypeOf(op);
     const opinfo = @typeInfo(Op);
 
-    comptime if (meta.isArray(X) or
+    comptime if (!meta.isArray(X) or
         opinfo != .@"fn" or opinfo.@"fn".params.len != 1)
         @compileError("zsl.array.Apply1: X must be an array type, and op must be a function of one argument, got\n\tX = " ++
             @typeName(X) ++ "\n\tOp = " ++ @typeName(Op) ++ "\n");
@@ -206,8 +206,8 @@ pub fn apply1Into(o: anytype, x: anytype, comptime opInto: anytype) !void {
 
     O = meta.Child(O);
 
-    const o_shape = if (comptime meta.isStaticArray(O)) O.shape[0..O.ndim] else o.shape[0..o.shape];
-    const x_shape = if (comptime meta.isStaticArray(X)) X.shape[0..X.ndim] else x.shape[0..x.shape];
+    const o_shape = if (comptime meta.isStaticArray(O)) O.shape[0..O.ndim] else o.shape[0..o.ndim];
+    const x_shape = if (comptime meta.isStaticArray(X)) X.shape[0..X.ndim] else x.shape[0..x.ndim];
 
     const broadcast_shape = if (comptime meta.isStaticArray(O) and meta.isStaticArray(X))
         comptime arrutils.broadcastShapes(&.{ o_shape, x_shape }) catch

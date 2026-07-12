@@ -9,6 +9,8 @@ const matrix = @import("../../matrix.zig");
 
 const array = @import("../../array.zig");
 
+const matutils = @import("../utils.zig");
+
 /// Dense triangular matrix type, represented as a contiguous array of
 /// `rows × cols` elements of type `N`, depending on `uplo`, stored in either
 /// column-major or row-major order with a specified leading dimension. Only the
@@ -785,6 +787,29 @@ pub fn Dense(N: type, uplo: matrix.Uplo, diag: matrix.Diag, layout: matrix.Layou
                 r + c * self.ld
             else
                 r * self.ld + c;
+        }
+
+        pub fn format(self: matrix.triangular.Dense(N, uplo, diag, layout), writer: *std.Io.Writer) !void {
+            try self.formatter("{e}").format(writer);
+        }
+
+        pub fn formatter(self: *const matrix.triangular.Dense(N, uplo, diag, layout), comptime num_fmt: []const u8) Formatter(num_fmt) {
+            return .{ .matrix = self };
+        }
+
+        pub fn Formatter(comptime num_fmt: []const u8) type {
+            return struct {
+                matrix: *const matrix.triangular.Dense(N, uplo, diag, layout),
+
+                pub fn format(self: matrix.triangular.Dense(N, uplo, diag, layout).Formatter(num_fmt), writer: *std.Io.Writer) !void {
+                    const rows = self.matrix.rows;
+                    const cols = self.matrix.cols;
+
+                    try writer.print("zsl.matrix.triangular.Dense({s}, .{s}, .{s}, .{s}) ({d} × {d}):\n\n", .{ @typeName(N), @tagName(uplo), @tagName(diag), @tagName(layout), rows, cols });
+
+                    return matutils.format(self, num_fmt, rows, cols, writer);
+                }
+            };
         }
     };
 }

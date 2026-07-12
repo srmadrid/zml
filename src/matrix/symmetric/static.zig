@@ -1,8 +1,12 @@
+const std = @import("std");
+
 const meta = @import("../../meta.zig");
 
 const numeric = @import("../../numeric.zig");
 
 const matrix = @import("../../matrix.zig");
+
+const matutils = @import("../utils.zig");
 
 /// Static symmetric matrix type, represented as a contiguous array of
 /// `size × size` elements of type `N`, stored in either column-major or
@@ -441,6 +445,26 @@ pub fn Static(size_: comptime_int, N: type, uplo: matrix.Uplo, layout: matrix.La
                 r + c * size
             else
                 r * size + c;
+        }
+
+        pub fn format(self: matrix.symmetric.Static(size, N, uplo, layout), writer: *std.Io.Writer) !void {
+            try self.formatter("{e}").format(writer);
+        }
+
+        pub fn formatter(self: *const matrix.symmetric.Static(size, N, uplo, layout), comptime num_fmt: []const u8) Formatter(num_fmt) {
+            return .{ .matrix = self };
+        }
+
+        pub fn Formatter(comptime num_fmt: []const u8) type {
+            return struct {
+                matrix: *const matrix.symmetric.Static(size, N, uplo, layout),
+
+                pub fn format(self: matrix.symmetric.Static(size, N, uplo, layout).Formatter(num_fmt), writer: *std.Io.Writer) !void {
+                    try writer.print("zsl.matrix.symmetric.Static({d}, {s}, .{s}, .{s}) ({d} × {d}):\n\n", .{ size, @typeName(N), @tagName(uplo), @tagName(layout), rows, cols });
+
+                    return matutils.format(self, num_fmt, rows, cols, writer);
+                }
+            };
         }
     };
 }

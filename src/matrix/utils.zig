@@ -1,3 +1,5 @@
+const std = @import("std");
+
 const meta = @import("../meta.zig");
 
 /// Determines whether a matrix type utilizes compressed pointer-and-index
@@ -62,4 +64,48 @@ pub fn hasNZ(m: anytype, row: usize, col: usize) bool {
         .triangular_sparse => ((comptime meta.diagOf(M) == .unit) and row == col) or hasExplicit(m, row, col),
         else => unreachable,
     };
+}
+
+pub fn format(formatter: anytype, comptime num_fmt: []const u8, rows: usize, cols: usize, writer: *std.Io.Writer) !void {
+    const gap_size: usize = 3;
+    const gap_str = " " ** gap_size;
+
+    var cell_width: usize = 0;
+    for (0..rows) |i| {
+        for (0..cols) |j| {
+            const val = formatter.matrix.get(i, j) catch unreachable;
+            const val_len = std.fmt.count(num_fmt, .{val});
+            if (val_len > cell_width)
+                cell_width = val_len;
+        }
+    }
+
+    if (cell_width == 0)
+        cell_width = 1;
+
+    const inner_width = (cols * cell_width) + ((cols - 1) * gap_size);
+
+    // Top border
+    try writer.writeAll("          ┌");
+    for (0..inner_width + 2) |_| try writer.writeAll(" ");
+    try writer.writeAll("┐\n");
+
+    // Data
+    for (0..rows) |i| {
+        try writer.writeAll("          │ ");
+        for (0..cols) |j| {
+            if (j > 0) try writer.writeAll(gap_str);
+            const val = formatter.matrix.get(i, j) catch unreachable;
+            const val_len = std.fmt.count(num_fmt, .{val});
+
+            for (0..(cell_width - val_len)) |_| try writer.writeAll(" ");
+            try writer.print(num_fmt, .{val});
+        }
+        try writer.writeAll(" │\n");
+    }
+
+    // Bot Border
+    try writer.writeAll("          └");
+    for (0..inner_width + 2) |_| try writer.writeAll(" ");
+    try writer.writeAll("┘");
 }

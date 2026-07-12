@@ -1,9 +1,13 @@
+const std = @import("std");
+
 const meta = @import("../../meta.zig");
 
 const numeric = @import("../../numeric.zig");
 
 const vector = @import("../../vector.zig");
 const matrix = @import("../../matrix.zig");
+
+const matutils = @import("../utils.zig");
 
 /// Static general matrix type, represented as a contiguous array of
 /// `rows × cols` elements of type `N`, stored in either column-major or
@@ -539,6 +543,26 @@ pub fn Static(rows_: comptime_int, cols_: comptime_int, N: type, layout: matrix.
                 r + c * rows
             else
                 r * cols + c;
+        }
+
+        pub fn format(self: matrix.general.Static(rows, cols, N, layout), writer: *std.Io.Writer) !void {
+            try self.formatter("{e}").format(writer);
+        }
+
+        pub fn formatter(self: *const matrix.general.Static(rows, cols, N, layout), comptime num_fmt: []const u8) Formatter(num_fmt) {
+            return .{ .matrix = self };
+        }
+
+        pub fn Formatter(comptime num_fmt: []const u8) type {
+            return struct {
+                matrix: *const matrix.general.Static(rows, cols, N, layout),
+
+                pub fn format(self: matrix.general.Static(rows, cols, N, layout).Formatter(num_fmt), writer: *std.Io.Writer) !void {
+                    try writer.print("zsl.matrix.general.Static({d}, {d}, {s}, .{s}) ({d} × {d}):\n\n", .{ rows, cols, @typeName(N), @tagName(layout), rows, cols });
+
+                    return matutils.format(self, num_fmt, rows, cols, writer);
+                }
+            };
         }
     };
 }

@@ -1,6 +1,10 @@
+const std = @import("std");
+
 const meta = @import("../meta.zig");
 
 const vector = @import("../vector.zig");
+
+const vecutils = @import("utils.zig");
 
 /// Static vector type, represented as a contiguous array of elements of type
 /// `N`.
@@ -162,6 +166,26 @@ pub fn Static(len_: comptime_int, N: type) type {
         /// `void`
         pub fn setArray(self: *vector.Static(len, N), values: [len]N) void {
             self.data = values;
+        }
+
+        pub fn format(self: vector.Static(len, N), writer: *std.Io.Writer) !void {
+            try self.formatter("{e}").format(writer);
+        }
+
+        pub fn formatter(self: *const vector.Static(len, N), comptime num_fmt: []const u8) Formatter(num_fmt) {
+            return .{ .vector = self };
+        }
+
+        pub fn Formatter(comptime num_fmt: []const u8) type {
+            return struct {
+                vector: *const vector.Static(len, N),
+
+                pub fn format(self: vector.Static(len, N).Formatter(num_fmt), writer: *std.Io.Writer) !void {
+                    try writer.print("zsl.vector.Static({d}, {s}) ({d}):\n\n", .{ len, @typeName(N), len });
+
+                    return vecutils.format(self, num_fmt, len, writer);
+                }
+            };
         }
     };
 }

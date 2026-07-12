@@ -8,6 +8,8 @@ const matrix = @import("../matrix.zig");
 
 const int = @import("../int.zig");
 
+const vecutils = @import("utils.zig");
+
 /// Dense vector type, represented as a contiguous array of elements of type
 /// `N` and a stride.
 pub fn Dense(N: type) type {
@@ -301,6 +303,28 @@ pub fn Dense(N: type) type {
                 index * numeric.cast(usize, self.inc)
             else
                 numeric.cast(usize, (numeric.cast(isize, index) - numeric.cast(isize, self.len) + 1) * self.inc);
+        }
+
+        pub fn format(self: vector.Dense(N), writer: *std.Io.Writer) !void {
+            try self.formatter("{e}").format(writer);
+        }
+
+        pub fn formatter(self: *const vector.Dense(N), comptime num_fmt: []const u8) Formatter(num_fmt) {
+            return .{ .vector = self };
+        }
+
+        pub fn Formatter(comptime num_fmt: []const u8) type {
+            return struct {
+                vector: *const vector.Dense(N),
+
+                pub fn format(self: vector.Dense(N).Formatter(num_fmt), writer: *std.Io.Writer) !void {
+                    const len = self.vector.len;
+
+                    try writer.print("zsl.vector.Dense({s}) ({d}):\n\n", .{ @typeName(N), len });
+
+                    return vecutils.format(self, num_fmt, len, writer);
+                }
+            };
         }
     };
 }

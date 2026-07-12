@@ -7,6 +7,8 @@ const int = @import("../../int.zig");
 
 const matrix = @import("../../matrix.zig");
 
+const matutils = @import("../utils.zig");
+
 /// Static permutation matrix type, represented as a contiguous array of `size`
 /// elements of type `usize` holding a permutation of `0 .. size`. If
 /// `direction` is forward, the element at index `i` indicates the column
@@ -149,6 +151,26 @@ pub fn Static(size_: comptime_int, N: type, direction_: matrix.permutation.Direc
                 .rows = cols,
                 .cols = rows,
                 .flags = .{ .owns_data = false },
+            };
+        }
+
+        pub fn format(self: matrix.permutation.Static(size, N), writer: *std.Io.Writer) !void {
+            try self.formatter("{e}").format(writer);
+        }
+
+        pub fn formatter(self: *const matrix.permutation.Static(size, N), comptime num_fmt: []const u8) Formatter(num_fmt) {
+            return .{ .matrix = self };
+        }
+
+        pub fn Formatter(comptime num_fmt: []const u8) type {
+            return struct {
+                matrix: *const matrix.permutation.Static(size, N),
+
+                pub fn format(self: matrix.permutation.Static(size, N).Formatter(num_fmt), writer: *std.Io.Writer) !void {
+                    try writer.print("zsl.matrix.permutation.Static({d}, {s}) ({d} × {d}):\n\n", .{ size, @typeName(N), rows, cols });
+
+                    return matutils.format(self, num_fmt, rows, cols, writer);
+                }
             };
         }
     };

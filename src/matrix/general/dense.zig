@@ -9,6 +9,8 @@ const vector = @import("../../vector.zig");
 const matrix = @import("../../matrix.zig");
 const array = @import("../../array.zig");
 
+const matutils = @import("../utils.zig");
+
 /// Dense general matrix type, represented as a contiguous array of
 /// `rows × cols` elements of type `N`, stored in either column-major or
 /// row-major order with a specified leading dimension.
@@ -608,6 +610,29 @@ pub fn Dense(N: type, layout: matrix.Layout) type {
                 r + c * self.ld
             else
                 r * self.ld + c;
+        }
+
+        pub fn format(self: matrix.general.Dense(N, layout), writer: *std.Io.Writer) !void {
+            try self.formatter("{e}").format(writer);
+        }
+
+        pub fn formatter(self: *const matrix.general.Dense(N, layout), comptime num_fmt: []const u8) Formatter(num_fmt) {
+            return .{ .matrix = self };
+        }
+
+        pub fn Formatter(comptime num_fmt: []const u8) type {
+            return struct {
+                matrix: *const matrix.general.Dense(N, layout),
+
+                pub fn format(self: matrix.general.Dense(N, layout).Formatter(num_fmt), writer: *std.Io.Writer) !void {
+                    const rows = self.matrix.rows;
+                    const cols = self.matrix.cols;
+
+                    try writer.print("zsl.matrix.general.Dense({s}, .{s}) ({d} × {d}):\n\n", .{ @typeName(N), @tagName(layout), rows, cols });
+
+                    return matutils.format(self, num_fmt, rows, cols, writer);
+                }
+            };
         }
     };
 }

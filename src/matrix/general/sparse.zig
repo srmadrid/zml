@@ -6,6 +6,8 @@ const numeric = @import("../../numeric.zig");
 
 const matrix = @import("../../matrix.zig");
 
+const matutils = @import("../utils.zig");
+
 /// Sparse general matrix type, represented in either CSC or CSR format,
 /// depending on if `layout` is column-major or row-major, respectively.
 pub fn Sparse(N: type, layout: matrix.Layout) type {
@@ -195,6 +197,29 @@ pub fn Sparse(N: type, layout: matrix.Layout) type {
             }
 
             return matrix.Error.BreaksStructure;
+        }
+
+        pub fn format(self: matrix.general.Sparse(N, layout), writer: *std.Io.Writer) !void {
+            try self.formatter("{e}").format(writer);
+        }
+
+        pub fn formatter(self: *const matrix.general.Sparse(N, layout), comptime num_fmt: []const u8) Formatter(num_fmt) {
+            return .{ .matrix = self };
+        }
+
+        pub fn Formatter(comptime num_fmt: []const u8) type {
+            return struct {
+                matrix: *const matrix.general.Sparse(N, layout),
+
+                pub fn format(self: matrix.general.Sparse(N, layout).Formatter(num_fmt), writer: *std.Io.Writer) !void {
+                    const rows = self.matrix.rows;
+                    const cols = self.matrix.cols;
+
+                    try writer.print("zsl.matrix.general.Sparse({s}, .{s}) ({d} × {d}):\n\n", .{ @typeName(N), @tagName(layout), rows, cols });
+
+                    return matutils.format(self, num_fmt, rows, cols, writer);
+                }
+            };
         }
     };
 }

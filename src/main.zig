@@ -10,34 +10,30 @@ pub fn main(init: std.process.Init) !void {
     // const arena = init.arena.allocator();
     const gpa = init.gpa;
 
-    // const io = init.io;
+    const io = init.io;
 
-    // var xoshiro = std.Random.DefaultPrng.init(@bitCast(std.Io.Clock.real.now(io).toMicroseconds()));
-    // const prng = xoshiro.random();
-    // const normal = zsl.stats.Normal(f64).init(0.0, 1.0);
+    var xoshiro = std.Random.DefaultPrng.init(@bitCast(std.Io.Clock.real.now(io).toMicroseconds()));
+    const prng = xoshiro.random();
+    const normal = zsl.stats.Normal(f64).init(0.0, 1.0);
 
-    var tape: zsl.autodiff.Tape(f64) = try .init(gpa, 1000);
-    defer tape.deinit(gpa);
+    const nnz = 5;
+    var ab: zsl.array.builder.Sparse(f64) = try .init(gpa, &.{ 4, 4, 4 }, nnz);
+    for (0..nnz) |_| {
+        const idx: []const usize = &.{
+            prng.intRangeAtMost(usize, 0, ab.shape[0] - 1),
+            prng.intRangeAtMost(usize, 0, ab.shape[1] - 1),
+            prng.intRangeAtMost(usize, 0, ab.shape[2] - 1),
+        };
+        const val: f64 = normal.sample(prng);
 
-    const f = struct {
-        pub fn f(x: anytype, y: anytype, z: anytype) @TypeOf(x) {
-            return zsl.numeric.sin(zsl.numeric.mul(x, zsl.numeric.sin(zsl.numeric.mul(y, zsl.numeric.sin(zsl.numeric.ln(z))))));
-        }
-    }.f;
+        std.debug.print("Appended {any}: {e}\n", .{ idx, val });
 
-    const x: zsl.autodiff.Var(f64) = .init(&tape, 5.0);
-    const y: zsl.autodiff.Var(f64) = .init(&tape, 3.0);
-    const z: zsl.autodiff.Var(f64) = .init(&tape, 1.01);
+        ab.appendAssumeCapacity(idx, val);
+    }
+    var a = try ab.compile(gpa, .c);
+    defer a.deinit(gpa);
 
-    const r = f(x, y, z);
-
-    std.debug.print("f(5.0, 3.0, 1.01) = {}\n", .{r.val()});
-
-    r.backward();
-
-    std.debug.print("df/dx = {}\n", .{x.grad()});
-    std.debug.print("df/dy = {}\n", .{y.grad()});
-    std.debug.print("df/dz = {}\n", .{z.grad()});
+    std.debug.print("a: {f}\n", .{a});
 
     // const m = 4;
     // const n = 4;
@@ -1282,253 +1278,6 @@ pub fn dyadicToString(allocator: std.mem.Allocator, x: anytype) ![]u8 {
 //     }
 // }
 
-fn randomPermutation(rand: std.Random, data: []usize) void {
-    // Initialize with identity permutation
-    var i: usize = 0;
-    while (i < data.len) : (i += 1) {
-        data[i] = i;
-    }
-
-    // Shuffle using Fisher-Yates algorithm
-    i = data.len - 1;
-    while (i > 0) : (i -= 1) {
-        const j = rand.intRangeAtMost(usize, 0, i);
-        const temp = data[i];
-        data[i] = data[j];
-        data[j] = temp;
-    }
-}
-
-fn randomMatrix(comptime M: type, allocator: std.mem.Allocator, rand: std.Random, rows: usize, cols: usize) !M {
-    switch (comptime zsl.meta.matrixType(M)) {
-        .general_dense => {
-            var result: M = try .init(allocator, rows, cols);
-
-            var i: usize = 0;
-            while (i < rows) : (i += 1) {
-                var j: usize = 0;
-                while (j < cols) : (j += 1) {
-                    result.set(
-                        i,
-                        j,
-                        zsl.numeric.cast(
-                            zsl.meta.Numeric(M),
-                            if (comptime zsl.meta.isComplex(zsl.meta.Numeric(M)))
-                                zsl.cf64{ .re = rand.float(f64), .im = rand.float(f64) }
-                            else
-                                rand.float(f64),
-                        ),
-                    ) catch unreachable;
-                }
-            }
-
-            return result;
-        },
-        .symmetric_dense, .hermitian_dense => {
-            var result: M = try .init(allocator, rows);
-
-            var i: usize = 0;
-            while (i < rows) : (i += 1) {
-                var j: usize = i;
-                while (j < rows) : (j += 1) {
-                    result.set(
-                        i,
-                        j,
-                        zsl.numeric.cast(
-                            zsl.meta.Numeric(M),
-                            if (comptime zsl.meta.isComplex(zsl.meta.Numeric(M)))
-                                zsl.cf64{ .re = rand.float(f64), .im = if ((comptime zsl.meta.isHermitianMatrix(M)) and i == j) 0.0 else rand.float(f64) }
-                            else
-                                rand.float(f64),
-                        ),
-                    ) catch unreachable;
-                }
-            }
-
-            return result;
-        },
-        .triangular_dense => {
-            var result: M = try M.init(allocator, rows, cols);
-
-            if (comptime zsl.meta.uploOf(M) == .upper) {
-                var i: usize = 0;
-                while (i < zsl.int.min(rows, cols)) : (i += 1) {
-                    if (comptime zsl.meta.diagOf(M) == .non_unit) {
-                        result.set(
-                            i,
-                            i,
-                            zsl.numeric.cast(
-                                zsl.meta.Numeric(M),
-                                if (comptime zsl.meta.isComplex(zsl.meta.Numeric(M)))
-                                    zsl.cf64{ .re = rand.float(f64), .im = rand.float(f64) }
-                                else
-                                    rand.float(f64),
-                            ),
-                        ) catch unreachable;
-                    }
-
-                    var j: usize = i + 1;
-                    while (j < cols) : (j += 1) {
-                        result.set(
-                            i,
-                            j,
-                            zsl.numeric.cast(
-                                zsl.meta.Numeric(M),
-                                if (comptime zsl.meta.isComplex(zsl.meta.Numeric(M)))
-                                    zsl.cf64{ .re = rand.float(f64), .im = rand.float(f64) }
-                                else
-                                    rand.float(f64),
-                            ),
-                        ) catch unreachable;
-                    }
-                }
-            } else {
-                var i: usize = 0;
-                while (i < rows) : (i += 1) {
-                    var j: usize = 0;
-                    while (j < i and j < cols) : (j += 1) {
-                        result.set(
-                            i,
-                            j,
-                            zsl.numeric.cast(
-                                zsl.meta.Numeric(M),
-                                if (comptime zsl.meta.isComplex(zsl.meta.Numeric(M)))
-                                    zsl.cf64{ .re = rand.float(f64), .im = rand.float(f64) }
-                                else
-                                    rand.float(f64),
-                            ),
-                        ) catch unreachable;
-                    }
-
-                    if ((comptime zsl.meta.diagOf(M) == .non_unit) and i < cols) {
-                        result.set(
-                            i,
-                            i,
-                            zsl.numeric.cast(
-                                zsl.meta.Numeric(M),
-                                if (comptime zsl.meta.isComplex(zsl.meta.Numeric(M)))
-                                    zsl.cf64{ .re = rand.float(f64), .im = rand.float(f64) }
-                                else
-                                    rand.float(f64),
-                            ),
-                        ) catch unreachable;
-                    }
-                }
-            }
-
-            return result;
-        },
-        .general_sparse => {
-            const nnz: usize = (rows * cols) / 100;
-
-            var builder: zsl.matrix.builder.Sparse(zsl.meta.Numeric(M)) = try .init(allocator, rows, cols, nnz);
-            errdefer builder.deinit(allocator);
-
-            var count: usize = 0;
-            while (count < nnz) : (count += 1) {
-                builder.appendAssumeCapacity(
-                    rand.intRangeAtMost(usize, 0, rows - 1),
-                    rand.intRangeAtMost(usize, 0, cols - 1),
-                    zsl.numeric.cast(
-                        zsl.meta.Numeric(M),
-                        if (comptime zsl.meta.isComplex(zsl.meta.Numeric(M)))
-                            zsl.cf64{ .re = rand.float(f64), .im = rand.float(f64) }
-                        else
-                            rand.float(f64),
-                    ),
-                );
-            }
-
-            return try builder.compile(allocator, zsl.meta.layoutOf(M));
-        },
-        .symmetric_sparse, .hermitian_sparse => {
-            const nnz: usize = (rows * cols) / 100;
-
-            var builder: zsl.matrix.builder.Sparse(zsl.meta.Numeric(M)) = try .init(allocator, rows, rows, nnz);
-            errdefer builder.deinit(allocator);
-
-            var count: usize = 0;
-            while (count < nnz) : (count += 1) {
-                const r = rand.intRangeAtMost(usize, 0, rows - 1);
-                const c = rand.intRangeAtMost(usize, 0, cols - 1);
-
-                builder.appendAssumeCapacity(
-                    r,
-                    c,
-                    zsl.numeric.cast(
-                        zsl.meta.Numeric(M),
-                        if (comptime zsl.meta.isComplex(zsl.meta.Numeric(M)))
-                            zsl.cf64{ .re = rand.float(f64), .im = if ((comptime zsl.meta.isHermitianMatrix(M)) and r == c) 0.0 else rand.float(f64) }
-                        else
-                            rand.float(f64),
-                    ),
-                );
-            }
-
-            return if (comptime zsl.meta.isSymmetricSparseMatrix(M))
-                builder.compileSymmetric(allocator, zsl.meta.uploOf(M), zsl.meta.layoutOf(M))
-            else
-                builder.compileHermitian(allocator, zsl.meta.uploOf(M), zsl.meta.layoutOf(M));
-        },
-        .triangular_sparse => {
-            const nnz: usize = (rows * cols) / 100;
-
-            var builder: zsl.matrix.builder.Sparse(zsl.meta.Numeric(M)) = try .init(allocator, rows, cols, nnz);
-            errdefer builder.deinit(allocator);
-
-            var count: usize = 0;
-            while (count < nnz) : (count += 1) {
-                const r = rand.intRangeAtMost(usize, 0, rows - 1);
-                const c = rand.intRangeAtMost(usize, 0, cols - 1);
-
-                builder.appendAssumeCapacity(
-                    r,
-                    c,
-                    zsl.numeric.cast(
-                        zsl.meta.Numeric(M),
-                        if (comptime zsl.meta.isComplex(zsl.meta.Numeric(M)))
-                            zsl.cf64{ .re = rand.float(f64), .im = rand.float(f64) }
-                        else
-                            rand.float(f64),
-                    ),
-                );
-            }
-
-            return builder.compileTriangular(allocator, zsl.meta.uploOf(M), zsl.meta.diagOf(M), zsl.meta.layoutOf(M));
-        },
-        .diagonal => {
-            var result: M = try .init(allocator, rows, cols);
-            errdefer result.deinit(allocator);
-
-            var i: usize = 0;
-            while (i < zsl.int.min(rows, cols)) : (i += 1) {
-                result.set(
-                    i,
-                    i,
-                    zsl.numeric.cast(
-                        zsl.meta.Numeric(M),
-                        if (comptime zsl.meta.isComplex(zsl.meta.Numeric(M)))
-                            zsl.cf64{ .re = rand.float(f64), .im = rand.float(f64) }
-                        else
-                            rand.float(f64),
-                    ),
-                ) catch unreachable;
-            }
-
-            return result;
-        },
-        .permutation => {
-            var result: M = try .init(allocator, rows);
-            errdefer result.deinit(allocator);
-
-            randomPermutation(rand, result.data[0..rows]);
-
-            return result;
-        },
-        else => unreachable,
-    }
-}
-
 fn printMatrix(desc: []const u8, A: anytype) void {
     std.debug.print("\nMatrix {s}:\n\n", .{desc});
 
@@ -1548,63 +1297,6 @@ fn printMatrix(desc: []const u8, A: anytype) void {
         std.debug.print("\n", .{});
     }
     std.debug.print("\n", .{});
-}
-
-fn randomVector(comptime V: type, allocator: std.mem.Allocator, rand: std.Random, len: usize) !V {
-    switch (comptime zsl.meta.vectorType(V)) {
-        .dense => {
-            var result: V = try .init(allocator, len);
-
-            var i: usize = 0;
-            while (i < len) : (i += 1) {
-                result.set(
-                    i,
-                    zsl.numeric.cast(
-                        zsl.meta.Numeric(V),
-                        if (comptime zsl.meta.isComplex(zsl.meta.Numeric(V)))
-                            zsl.cf64{ .re = rand.float(f64), .im = rand.float(f64) }
-                        else
-                            rand.float(f64),
-                    ),
-                ) catch unreachable;
-            }
-
-            return result;
-        },
-        .sparse => {
-            const nnz: usize = zsl.int.max(1, rand.intRangeAtMost(usize, len / 10, len / 2));
-
-            var result: V = try .init(allocator, len, nnz);
-            errdefer result.deinit(allocator);
-
-            // generate random indices
-            var used: std.AutoHashMap(usize, void) = .init(allocator);
-            defer used.deinit();
-            var count: usize = 0;
-            while (count < nnz) : (count += 1) {
-                const i = rand.intRangeAtMost(usize, 0, len - 1);
-                if (!used.contains(i)) {
-                    try used.put(i, {});
-                    try result.set(
-                        allocator,
-                        i,
-                        zsl.numeric.cast(
-                            zsl.meta.Numeric(V),
-                            if (comptime zsl.meta.isComplex(zsl.meta.Numeric(V)))
-                                zsl.cf64{ .re = rand.float(f64), .im = rand.float(f64) }
-                            else
-                                rand.float(f64),
-                        ),
-                    );
-                } else {
-                    count -= 1; // try again
-                }
-            }
-
-            return result;
-        },
-        else => unreachable,
-    }
 }
 
 fn printVector(desc: []const u8, v: anytype) void {

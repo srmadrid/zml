@@ -471,6 +471,29 @@ pub fn Dense(N: type) type {
                 (self.data - numeric.cast(usize, -offset))[0] = val_eff;
         }
 
+        /// Returns a view of the 1d-array as a dense vector.
+        ///
+        /// ## Arguments
+        /// * `self` (`array.Dense(N)`): The array to get the view of.
+        ///
+        /// ## Returns
+        /// `vector.Dense(N)`: The dense vector view.
+        ///
+        /// ## Errors
+        /// * `array.Error.NotConvertible`: If the array does not have 1
+        ///   dimension.
+        pub fn vectorView(self: array.Dense(N)) !vector.Dense(N) {
+            if (self.ndim != 1)
+                return array.Error.NotConvertible;
+
+            return .{
+                .data = self.data,
+                .len = self.shape[0],
+                .inc = self.strides[0],
+                .flags = .{ .owns_data = false, .noconj = self.flags.noconj },
+            };
+        }
+
         /// Returns a view of the 2d-array as a general dense matrix. If
         /// `layout` is column major the first stride must be one, otherwise the
         /// last stride must be one. The other stride must be positive.
@@ -611,7 +634,7 @@ pub fn Dense(N: type) type {
                 if (usr_axes.len != self.ndim)
                     return array.Error.DimensionMismatch;
 
-                if (!array.isPermutation(usr_axes))
+                if (!arrutils.isPermutation(usr_axes))
                     return array.Error.InvalidAxes;
             }
 
@@ -803,6 +826,33 @@ pub fn Dense(N: type) type {
             }
 
             return idx;
+        }
+
+        pub fn format(self: *const array.Dense(N), writer: *std.Io.Writer) !void {
+            try self.formatter("{e}").format(writer);
+        }
+
+        pub fn formatter(self: *const array.Dense(N), comptime num_fmt: []const u8) Formatter(num_fmt) {
+            return .{ .array = self };
+        }
+
+        pub fn Formatter(comptime num_fmt: []const u8) type {
+            return struct {
+                array: *const array.Dense(N),
+
+                pub fn format(self: @This(), writer: *std.Io.Writer) !void {
+                    const shape = self.array.shape[0..self.array.ndim];
+
+                    try writer.print("zsl.array.Dense({s}) (", .{@typeName(N)});
+                    for (0..self.array.ndim) |i| {
+                        if (i > 0) try writer.writeAll(" × ");
+                        try writer.print("{d}", .{self.array.shape[i]});
+                    }
+                    try writer.writeAll("):\n\n");
+
+                    return arrutils.format(self, num_fmt, shape, writer);
+                }
+            };
         }
     };
 }

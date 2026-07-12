@@ -277,5 +277,32 @@ pub fn Sparse(N: type, comptime order: array.Order) type {
 
             return array.Error.BreaksStructure;
         }
+
+        pub fn format(self: *const array.Sparse(N, order), writer: *std.Io.Writer) !void {
+            try self.formatter("{e}").format(writer);
+        }
+
+        pub fn formatter(self: *const array.Sparse(N, order), comptime num_fmt: []const u8) Formatter(num_fmt) {
+            return .{ .array = self };
+        }
+
+        pub fn Formatter(comptime num_fmt: []const u8) type {
+            return struct {
+                array: *const array.Sparse(N, order),
+
+                pub fn format(self: @This(), writer: *std.Io.Writer) !void {
+                    const shape = self.array.shape[0..self.array.ndim];
+
+                    try writer.print("zsl.array.Sparse({s}, .{s}) (", .{ @typeName(N), @tagName(order) });
+                    for (0..self.array.ndim) |i| {
+                        if (i > 0) try writer.writeAll(" × ");
+                        try writer.print("{d}", .{self.array.shape[i]});
+                    }
+                    try writer.writeAll("):\n\n");
+
+                    return arrutils.format(self, num_fmt, shape, writer);
+                }
+            };
+        }
     };
 }

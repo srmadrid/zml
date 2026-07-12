@@ -6,6 +6,8 @@ const numeric = @import("../../numeric.zig");
 
 const matrix = @import("../../matrix.zig");
 
+const matutils = @import("../utils.zig");
+
 /// Sparse triangular matrix type, represented in either CSC or CSR format,
 /// depending on if `order` is column-major or row-major, respectively. Only the
 /// upper or lower triangular part of the matrix is stored, depending on the
@@ -228,6 +230,29 @@ pub fn Sparse(N: type, uplo: matrix.Uplo, diag: matrix.Diag, layout: matrix.Layo
             }
 
             return matrix.Error.BreaksStructure;
+        }
+
+        pub fn format(self: matrix.triangular.Sparse(N, uplo, diag, layout), writer: *std.Io.Writer) !void {
+            try self.formatter("{e}").format(writer);
+        }
+
+        pub fn formatter(self: *const matrix.triangular.Sparse(N, uplo, diag, layout), comptime num_fmt: []const u8) Formatter(num_fmt) {
+            return .{ .matrix = self };
+        }
+
+        pub fn Formatter(comptime num_fmt: []const u8) type {
+            return struct {
+                matrix: *const matrix.triangular.Sparse(N, uplo, diag, layout),
+
+                pub fn format(self: matrix.triangular.Sparse(N, uplo, diag, layout).Formatter(num_fmt), writer: *std.Io.Writer) !void {
+                    const rows = self.matrix.rows;
+                    const cols = self.matrix.cols;
+
+                    try writer.print("zsl.matrix.triangular.Sparse({s}, .{s}, .{s}, .{s}) ({d} × {d}):\n\n", .{ @typeName(N), @tagName(uplo), @tagName(diag), @tagName(layout), rows, cols });
+
+                    return matutils.format(self, num_fmt, rows, cols, writer);
+                }
+            };
         }
     };
 }

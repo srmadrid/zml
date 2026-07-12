@@ -6,7 +6,8 @@ const numeric = @import("../../numeric.zig");
 const int = @import("../../int.zig");
 
 const matrix = @import("../../matrix.zig");
-const Flags = matrix.Flags;
+
+const matutils = @import("../utils.zig");
 
 /// Sparse diagonal matrix type, represented as a contiguous array of
 /// `min(rows, cols)` elements of type `N`.
@@ -324,6 +325,29 @@ pub fn Sparse(N: type) type {
                 .rows = row_end - start,
                 .cols = col_end - start,
                 .flags = .{ .owns_data = false, .noconj = self.flags.noconj },
+            };
+        }
+
+        pub fn format(self: matrix.diagonal.Sparse(N), writer: *std.Io.Writer) !void {
+            try self.formatter("{e}").format(writer);
+        }
+
+        pub fn formatter(self: *const matrix.diagonal.Sparse(N), comptime num_fmt: []const u8) Formatter(num_fmt) {
+            return .{ .matrix = self };
+        }
+
+        pub fn Formatter(comptime num_fmt: []const u8) type {
+            return struct {
+                matrix: *const matrix.diagonal.Sparse(N),
+
+                pub fn format(self: matrix.diagonal.Sparse(N).Formatter(num_fmt), writer: *std.Io.Writer) !void {
+                    const rows = self.matrix.rows;
+                    const cols = self.matrix.cols;
+
+                    try writer.print("zsl.matrix.diagonal.Sparse({s}) ({d} × {d}):\n\n", .{ @typeName(N), rows, cols });
+
+                    return matutils.format(self, num_fmt, rows, cols, writer);
+                }
             };
         }
     };

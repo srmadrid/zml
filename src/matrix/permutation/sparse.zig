@@ -7,6 +7,8 @@ const int = @import("../../int.zig");
 
 const matrix = @import("../../matrix.zig");
 
+const matutils = @import("../utils.zig");
+
 /// Sparse permutation matrix type, represented as a contiguous array of `size`
 /// elements of type `usize` holding a permutation of `0 .. size`. If
 /// `direction` is forward, the element at index `i` indicates the column
@@ -209,6 +211,29 @@ pub fn Sparse(N: type, direction_: matrix.permutation.Direction) type {
                 .rows = self.cols,
                 .cols = self.rows,
                 .flags = self.flags,
+            };
+        }
+
+        pub fn format(self: matrix.permutation.Sparse(N), writer: *std.Io.Writer) !void {
+            try self.formatter("{e}").format(writer);
+        }
+
+        pub fn formatter(self: *const matrix.permutation.Sparse(N), comptime num_fmt: []const u8) Formatter(num_fmt) {
+            return .{ .matrix = self };
+        }
+
+        pub fn Formatter(comptime num_fmt: []const u8) type {
+            return struct {
+                matrix: *const matrix.permutation.Sparse(N),
+
+                pub fn format(self: matrix.permutation.Sparse(N).Formatter(num_fmt), writer: *std.Io.Writer) !void {
+                    const rows = self.matrix.rows;
+                    const cols = self.matrix.cols;
+
+                    try writer.print("zsl.matrix.permutation.Sparse({s}) ({d} × {d}):\n\n", .{ @typeName(N), rows, cols });
+
+                    return matutils.format(self, num_fmt, rows, cols, writer);
+                }
             };
         }
     };

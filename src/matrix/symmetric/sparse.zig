@@ -6,6 +6,8 @@ const numeric = @import("../../numeric.zig");
 
 const matrix = @import("../../matrix.zig");
 
+const matutils = @import("../utils.zig");
+
 /// Sparse symmetric matrix type, represented in either CSC or CSR format,
 /// depending on if `layout` is column-major or row-major, respectively. Only
 /// the upper or lower triangular part of the matrix is stored, depending on the
@@ -227,6 +229,29 @@ pub fn Sparse(N: type, uplo: matrix.Uplo, layout: matrix.Layout) type {
             }
 
             return matrix.Error.BreaksStructure;
+        }
+
+        pub fn format(self: matrix.symmetric.Sparse(N, uplo, layout), writer: *std.Io.Writer) !void {
+            try self.formatter("{e}").format(writer);
+        }
+
+        pub fn formatter(self: *const matrix.symmetric.Sparse(N, uplo, layout), comptime num_fmt: []const u8) Formatter(num_fmt) {
+            return .{ .matrix = self };
+        }
+
+        pub fn Formatter(comptime num_fmt: []const u8) type {
+            return struct {
+                matrix: *const matrix.symmetric.Sparse(N, uplo, layout),
+
+                pub fn format(self: matrix.symmetric.Sparse(N, uplo, layout).Formatter(num_fmt), writer: *std.Io.Writer) !void {
+                    const rows = self.matrix.rows;
+                    const cols = self.matrix.cols;
+
+                    try writer.print("zsl.matrix.symmetric.Sparse({s}, .{s}, .{s}) ({d} × {d}):\n\n", .{ @typeName(N), @tagName(uplo), @tagName(layout), rows, cols });
+
+                    return matutils.format(self, num_fmt, rows, cols, writer);
+                }
+            };
         }
     };
 }

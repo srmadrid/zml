@@ -1,10 +1,13 @@
+const std = @import("std");
+
 const meta = @import("../../meta.zig");
 
 const numeric = @import("../../numeric.zig");
 const int = @import("../../int.zig");
 
 const matrix = @import("../../matrix.zig");
-const Flags = matrix.Flags;
+
+const matutils = @import("../utils.zig");
 
 /// Static diagonal matrix type, represented as a contiguous array of
 /// `min(rows, cols)` elements of type `N`.
@@ -65,7 +68,7 @@ pub fn Static(rows_: comptime_int, cols_: comptime_int, N: type) type {
         /// ## Returns
         /// `matrix.diagonal.Static(rows, cols, N)`: The newly initialized
         /// matrix.
-        pub fn initFn(comptime @"fn": anytype, args: anytype) matrix.diagonal.Static(rows, cols, N) {
+        pub fn initFn(comptime @"fn": anytype, args: anytype) !matrix.diagonal.Static(rows, cols, N) {
             const Fn = @TypeOf(@"fn");
             const Args = @TypeOf(args);
 
@@ -230,6 +233,26 @@ pub fn Static(rows_: comptime_int, cols_: comptime_int, N: type) type {
                 .rows = row_end - start,
                 .cols = col_end - start,
                 .flags = .{ .owns_data = false },
+            };
+        }
+
+        pub fn format(self: matrix.diagonal.Static(rows, cols, N), writer: *std.Io.Writer) !void {
+            try self.formatter("{e}").format(writer);
+        }
+
+        pub fn formatter(self: *const matrix.diagonal.Static(rows, cols, N), comptime num_fmt: []const u8) Formatter(num_fmt) {
+            return .{ .matrix = self };
+        }
+
+        pub fn Formatter(comptime num_fmt: []const u8) type {
+            return struct {
+                matrix: *const matrix.diagonal.Static(rows, cols, N),
+
+                pub fn format(self: matrix.diagonal.Static(rows, cols, N).Formatter(num_fmt), writer: *std.Io.Writer) !void {
+                    try writer.print("zsl.matrix.diagonal.Static({d}, {d}, {s}) ({d} × {d}):\n\n", .{ rows, cols, @typeName(N), rows, cols });
+
+                    return matutils.format(self, num_fmt, rows, cols, writer);
+                }
             };
         }
     };

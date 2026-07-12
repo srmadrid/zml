@@ -5,6 +5,8 @@ const numeric = @import("../numeric.zig");
 
 const vector = @import("../vector.zig");
 
+const vecutils = @import("utils.zig");
+
 /// Sparse vector type, represented as a contiguous array of non-zero elements
 /// of type `N` along with their corresponding indices, in ascending order.
 pub fn Sparse(N: type) type {
@@ -363,6 +365,28 @@ pub fn Sparse(N: type) type {
             self.data[i] = if (self.flags.noconj) value else numeric.conj(value);
             self.idx[i] = index;
             self.nnz += 1;
+        }
+
+        pub fn format(self: vector.Sparse(N), writer: *std.Io.Writer) !void {
+            try self.formatter("{e}").format(writer);
+        }
+
+        pub fn formatter(self: *const vector.Sparse(N), comptime num_fmt: []const u8) Formatter(num_fmt) {
+            return .{ .vector = self };
+        }
+
+        pub fn Formatter(comptime num_fmt: []const u8) type {
+            return struct {
+                vector: *const vector.Sparse(N),
+
+                pub fn format(self: vector.Sparse(N).Formatter(num_fmt), writer: *std.Io.Writer) !void {
+                    const len = self.vector.len;
+
+                    try writer.print("zsl.vector.Sparse({s}) ({d}):\n\n", .{ @typeName(N), len });
+
+                    return vecutils.format(self, num_fmt, len, writer);
+                }
+            };
         }
     };
 }
