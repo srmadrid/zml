@@ -24,3 +24,6 @@ pub const poly = @import("poly.zig");
 pub const stats = @import("stats.zig");
 pub const linalg = @import("linalg.zig");
 pub const autodiff = @import("autodiff.zig");
+
+// Miscellaneous
+pub const thread = @import("thread.zig");

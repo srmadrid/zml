@@ -10,25 +10,45 @@ pub fn main(init: std.process.Init) !void {
     // const arena = init.arena.allocator();
     const gpa = init.gpa;
 
-    // const io = init.io;
+    const io = init.io;
 
     // var xoshiro = std.Random.DefaultPrng.init(@bitCast(std.Io.Clock.real.now(io).toMicroseconds()));
     // const prng = xoshiro.random();
     // const normal = zsl.stats.Normal(f64).init(0.0, 1.0);
 
-    var p: zsl.poly.Sparse(f64) = try .init(gpa, 10);
-    defer p.deinit(gpa);
+    var pool: zsl.thread.Pool = undefined;
+    try zsl.thread.Pool.init(gpa, &pool, .{ .n_jobs = 4 });
+    defer pool.deinit(gpa);
 
-    try p.set(gpa, 123, 2.0);
-    try p.set(gpa, 0, 4.0);
-    try p.set(gpa, 3, 4.0);
+    const data_len = 20;
+    var results: [data_len]usize = undefined;
 
-    std.debug.print("{f}\n", .{p});
+    const Ctx = struct {
+        io: std.Io,
+        res: []usize,
+    };
 
-    var dp = try p.derivative(gpa);
-    defer dp.deinit(gpa);
+    const Kernel = struct {
+        fn run(ctx: Ctx, start: usize, end: usize, worker_id: usize) void {
+            std.Io.sleep(ctx.io, .{ .nanoseconds = 100 * std.time.ns_per_ms }, .real) catch {};
 
-    std.debug.print("{f}\n", .{dp});
+            for (start..end) |i| {
+                ctx.res[i] = worker_id;
+            }
+
+            std.debug.print("Worker {d} finished chunk [{d}...{d}]\n", .{ worker_id, start, end - 1 });
+        }
+    };
+
+    std.debug.print("Starting parallel work\n", .{});
+    const start_time = std.Io.Clock.real.now(io).toMilliseconds();
+
+    pool.parallelFor(data_len, Ctx{ .io = io, .res = &results }, Kernel.run);
+
+    const end_time = std.Io.Clock.real.now(io).toMilliseconds();
+
+    std.debug.print("Total execution time: {d} ms\n", .{end_time - start_time});
+    std.debug.print("Worker IDs array: {any}\n", .{results});
 
     // const m = 4;
     // const n = 4;
