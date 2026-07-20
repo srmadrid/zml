@@ -1,13 +1,12 @@
 const std = @import("std");
+
 const options = @import("options");
 
-const meta = @import("../../../meta.zig");
-
-const numeric = @import("../../../numeric.zig");
-
 const int = @import("../../../int.zig");
-
 const linalg = @import("../../../linalg.zig");
+const meta = @import("../../../meta.zig");
+const numeric = @import("../../../numeric.zig");
+const thread = @import("../../../thread.zig");
 
 /// Finds the (0-based) index of the element with the largest magnitude:
 ///
@@ -24,39 +23,17 @@ const linalg = @import("../../../linalg.zig");
 /// ```
 ///
 /// ## Arguments
-/// * `n` (`usize`): Number of elements in `x`. Must be greater than 0.
+/// * `n` (`usize`): Number of elements in `x`.
 /// * `x` (`anytype`): Many-item pointer, size at least
 ///   `1 + (n - 1) * abs(incx)`.
 /// * `incx` (`isize`): Indexing increment for `x`. Must be different from 0.
-/// * `opts`: Optional parameters:
-///   * `num_threads` (`usize = 0`): Number of threads to spawn:
-///     * `0`: automatic. The thread count is derived from `n` and
-///       `parallel_threshold`:
-///       ```zig
-///       threads = max(1, min(std.Thread.getCpuCount(), options.max_threads, n / parallel_threshold))
-///       ```
-///     * `1`: force serial execution. `parallel_threshold` is ignored.
-///     * `N >= 2`: use exactly `N` threads, clamped by
-///       `std.Thread.getCpuCount()` and `options.max_threads` as a hard
-///       safety ceiling. `parallel_threshold` is ignored.
-///   * `parallel_threshold` (`usize = 2_097_152 / @sizeOf(meta.Child(X))`):
-///     Minimum number of elements required to trigger multithreaded
-///     execution.
 ///
 /// ## Returns
 /// `usize`: The 0-based index of the first element with the largest magnitude.
 ///
 /// ## Errors
-/// * `linalg.blas.Error.InvalidArgument`: If `n` or `incx` is equal to 0.
-pub fn iamax(
-    n: usize,
-    x: anytype,
-    incx: isize,
-    opts: struct {
-        num_threads: usize = 0,
-        parallel_threshold: usize = 2_097_152 / @sizeOf(meta.Child(@TypeOf(x))),
-    },
-) !usize {
+/// * `linalg.blas.Error.InvalidArgument`: If `incx` is equal to 0.
+pub fn iamax(n: usize, x: anytype, incx: isize) !usize {
     const X: type = @TypeOf(x);
 
     comptime if (!meta.isManyItemPointer(X) or !meta.isNumeric(meta.Child(X)))
@@ -68,81 +45,121 @@ pub fn iamax(
     if (n == 0)
         return 0;
 
-    if (opts.num_threads == 1)
-        return k_iamax(n, x, incx).index;
+    return k_iamax(n, x, incx).index;
+}
 
-    var num_threads: usize = if (opts.num_threads == 0) blk: {
-        if (opts.parallel_threshold == 0)
-            break :blk options.max_threads;
+/// Finds the (0-based) index of the element with the largest magnitude:
+///
+/// ```zig
+/// argmax_i abs1(x[i]),   for i in 0..n
+/// ```
+///
+/// splitting the work across the worker threads of `pool`. If multiple elements
+/// share the maximum value, the smallest index is returned.
+///
+/// ## Signature
+/// ```zig
+/// linalg.blas.iamaxParallel(n: usize, x: [*]const X, incx: isize, pool: *thread.Pool) !usize
+/// ```
+///
+/// ## Arguments
+/// * `n` (`usize`): Number of elements in `x`.
+/// * `x` (`anytype`): Many-item pointer, size at least
+///   `1 + (n - 1) * abs(incx)`.
+/// * `incx` (`isize`): Indexing increment for `x`. Must be different from 0.
+/// * `pool` (`*thread.Pool`): Thread pool used to parallelize the computation.
+///
+/// ## Returns
+/// `usize`: The 0-based index of the first element with the largest magnitude.
+///
+/// ## Errors
+/// * `linalg.blas.Error.InvalidArgument`: If `incx` is equal to 0.
+pub fn iamaxParallel(n: usize, x: anytype, incx: isize, pool: *thread.Pool) !usize {
+    const X: type = @TypeOf(x);
 
-        break :blk int.max(1, n / opts.parallel_threshold);
-    } else opts.num_threads;
+    comptime if (!meta.isManyItemPointer(X) or !meta.isNumeric(meta.Child(X)))
+        @compileError("zsl.linalg.blas.iamaxParallel: x must be a many-item pointer to numerics, got \n\tx: " ++ @typeName(X) ++ "\n");
 
-    num_threads = int.min(num_threads, options.max_threads);
+    if (incx == 0)
+        return linalg.blas.Error.InvalidArgument;
 
-    if (num_threads <= 1)
-        return k_iamax(n, x, incx).index;
+    if (n == 0)
+        return 0;
 
-    num_threads = int.min(num_threads, std.Thread.getCpuCount() catch 1);
+    const Ctx = struct {
+        n: usize,
+        x: X,
+        incx: isize,
+        maxes: *[thread.max_workers]?IamaxResult(numeric.Abs1(meta.Child(X))),
 
-    if (num_threads <= 1)
-        return k_iamax(n, x, incx).index;
+        fn kernel(ctx: @This(), start: usize, end: usize, worker_id: usize) void {
+            var max = k_iamax(
+                end - start,
+                ctx.x + numeric.cast(usize, if (ctx.incx > 0)
+                    numeric.cast(isize, start) * ctx.incx
+                else
+                    (-numeric.cast(isize, ctx.n) + numeric.cast(isize, end)) * ctx.incx),
+                ctx.incx,
+            );
 
-    const Worker = struct {
-        fn execute(out: *IamaxResult(numeric.Abs1(meta.Child(X))), worker_n: usize, worker_x: X, worker_incx: isize) void {
-            out.* = k_iamax(worker_n, worker_x, worker_incx);
+            max.index += start;
+
+            if (ctx.maxes[worker_id]) |current_max| {
+                if (numeric.gt(max.value, current_max.value) or
+                    (numeric.eq(max.value, current_max.value) and max.index < current_max.index))
+                {
+                    ctx.maxes[worker_id] = .{
+                        .value = max.value,
+                        .index = max.index,
+                    };
+                }
+            } else {
+                ctx.maxes[worker_id] = .{
+                    .value = max.value,
+                    .index = max.index,
+                };
+            }
         }
     };
 
-    var threads: [options.max_threads]std.Thread = undefined;
-    var results: [options.max_threads]IamaxResult(numeric.Abs1(meta.Child(X))) = .{IamaxResult(numeric.Abs1(meta.Child(X))){ .value = numeric.zero(numeric.Abs1(meta.Child(X))), .index = 0 }} ** options.max_threads;
-    var chunk_bases: [options.max_threads]usize = .{0} ** options.max_threads;
+    var maxes: [thread.max_workers]?IamaxResult(numeric.Abs1(meta.Child(X))) = @splat(null);
 
-    const chunk_size = int.div(n, num_threads);
-    var spawn_err: ?anyerror = null;
-    var spawned_count: usize = 0;
-    var i: usize = 0;
-    while (i < num_threads) : (i += 1) {
-        const chunk_start = i * chunk_size;
-        const chunk_end = if (i == num_threads - 1) n else chunk_start + chunk_size;
+    pool.parallelFor(
+        n,
+        Ctx{
+            .n = n,
+            .x = x,
+            .incx = incx,
+            .maxes = &maxes,
+        },
+        Ctx.kernel,
+    );
 
-        chunk_bases[i] = chunk_start;
-
-        if (std.Thread.spawn(.{}, Worker.execute, .{
-            &results[i],
-            chunk_end - chunk_start,
-            x + numeric.cast(usize, if (incx > 0)
-                numeric.cast(isize, chunk_start) * incx
-            else
-                (-numeric.cast(isize, n) + numeric.cast(isize, chunk_end)) * incx),
-            incx,
-        })) |th| {
-            threads[i] = th;
-            spawned_count += 1;
-        } else |err| {
-            spawn_err = err;
-            break;
+    var max: ?IamaxResult(numeric.Abs1(meta.Child(X))) = null;
+    for (0..int.min(pool.idCount(), thread.max_workers)) |i| {
+        if (maxes[i]) |max_i| {
+            if (max != null) {
+                if (numeric.gt(max_i.value, max.?.value) or
+                    (max_i.value == max.?.value and max_i.index < max.?.index))
+                {
+                    max = .{
+                        .value = max_i.value,
+                        .index = max_i.index,
+                    };
+                }
+            } else {
+                max = .{
+                    .value = max_i.value,
+                    .index = max_i.index,
+                };
+            }
         }
     }
 
-    var best: IamaxResult(numeric.Abs1(meta.Child(X))) = .{ .value = numeric.zero(numeric.Abs1(meta.Child(X))), .index = 0 };
-    var best_found = false;
-    var t: usize = 0;
-    while (t < spawned_count) : (t += 1) {
-        threads[t].join();
-        if (!best_found or numeric.gt(results[t].value, best.value)) {
-            best = .{ .value = results[t].value, .index = chunk_bases[t] + results[t].index };
-            best_found = true;
-        }
-    }
-
-    if (spawn_err) |err|
-        return err;
-
-    return best.index;
+    return max.?.index;
 }
 
-pub fn IamaxResult(N: type) type {
+fn IamaxResult(N: type) type {
     return struct {
         value: N,
         index: usize,

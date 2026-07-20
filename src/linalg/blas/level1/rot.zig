@@ -1,13 +1,12 @@
 const std = @import("std");
+
 const options = @import("options");
 
-const meta = @import("../../../meta.zig");
-
-const numeric = @import("../../../numeric.zig");
-
 const int = @import("../../../int.zig");
-
 const linalg = @import("../../../linalg.zig");
+const meta = @import("../../../meta.zig");
+const numeric = @import("../../../numeric.zig");
+const thread = @import("../../../thread.zig");
 
 /// Applies a Givens plane rotation to the vectors `x` and `y`:
 ///
@@ -16,8 +15,8 @@ const linalg = @import("../../../linalg.zig");
 /// y[i] = c * y[i] - s * x[i]
 /// ```
 ///
-/// for `i in 0..n`. `c` is a real numeric, but `s` may be either a real or a
-/// complex numeric.
+/// for `i in 0..n`, where `c` is a real numeric, but `s` may be either a real
+/// or a complex numeric.
 ///
 /// ## Signature
 /// ```zig
@@ -25,7 +24,7 @@ const linalg = @import("../../../linalg.zig");
 /// ```
 ///
 /// ## Arguments
-/// * `n` (`usize`): Number of elements in `x` and `y`. Must be greater than 0.
+/// * `n` (`usize`): Number of elements in `x` and `y`.
 /// * `x` (`anytype`): Mutable many-item pointer, size at least
 ///   `1 + (n - 1) * abs(incx)`.
 /// * `incx` (`isize`): Indexing increment for `x`. Must be different from 0.
@@ -34,27 +33,12 @@ const linalg = @import("../../../linalg.zig");
 /// * `incy` (`isize`): Indexing increment for `y`. Must be different from 0.
 /// * `c` (`anytype`): Cosine of the rotation angle. Real numeric.
 /// * `s` (`anytype`): Sine of the rotation angle. Real or complex numeric.
-/// * `opts`: Optional parameters:
-///   * `num_threads` (`usize = 0`): Number of threads to spawn:
-///     * `0`: automatic. The thread count is derived from `n` and
-///       `parallel_threshold`:
-///       ```zig
-///       threads = max(1, min(std.Thread.getCpuCount(), options.max_threads, n / parallel_threshold))
-///       ```
-///     * `1`: force serial execution. `parallel_threshold` is ignored.
-///     * `N >= 2`: use exactly `N` threads, clamped by
-///       `std.Thread.getCpuCount()` and `options.max_threads` as a hard
-///       safety ceiling. `parallel_threshold` is ignored.
-///   * `parallel_threshold` (`usize = 4_194_304 / @sizeOf(meta.Child(X))`):
-///     Minimum number of elements required to trigger multithreaded
-///     execution.
 ///
 /// ## Returns
 /// `void`
 ///
 /// ## Errors
-/// * `linalg.blas.Error.InvalidArgument`: If `n`, `incx` or `incy` is equal to
-///   zero.
+/// * `linalg.blas.Error.InvalidArgument`: If `incx` or `incy` is equal to 0.
 pub fn rot(
     n: usize,
     x: anytype,
@@ -63,10 +47,6 @@ pub fn rot(
     incy: isize,
     c: anytype,
     s: anytype,
-    opts: struct {
-        num_threads: usize = 0,
-        parallel_threshold: usize = 4_194_304 / @sizeOf(meta.Child(@TypeOf(x))),
-    },
 ) !void {
     comptime var X: type = @TypeOf(x);
     comptime var Y: type = @TypeOf(y);
@@ -81,69 +61,120 @@ pub fn rot(
     X = meta.Child(X);
     Y = meta.Child(Y);
 
-    if (n == 0 or incx == 0 or incy == 0)
+    if (incx == 0 or incy == 0)
         return linalg.blas.Error.InvalidArgument;
 
-    if (opts.num_threads == 1)
-        return k_rot(n, x, incx, y, incy, c, s);
+    if (n == 0)
+        return;
 
-    var num_threads: usize = if (opts.num_threads == 0) blk: {
-        if (opts.parallel_threshold == 0)
-            break :blk options.max_threads;
+    return k_rot(n, x, incx, y, incy, c, s);
+}
 
-        break :blk int.max(1, n / opts.parallel_threshold);
-    } else opts.num_threads;
+/// Applies a Givens plane rotation to the vectors `x` and `y`:
+///
+/// ```zig
+/// x[i] = c * x[i] + s * y[i]
+/// y[i] = c * y[i] - s * x[i]
+/// ```
+///
+/// for `i in 0..n`, where `c` is a real numeric, but `s` may be either a real
+/// or a complex numeric, splitting the work across the worker threads of
+/// `pool`.
+///
+/// ## Signature
+/// ```zig
+/// linalg.blas.rotParallel(n: usize, x: [*]X, incx: isize, y: [*]Y, incy: isize, c: C, s: S, pool: *thread.Pool) !void
+/// ```
+///
+/// ## Arguments
+/// * `n` (`usize`): Number of elements in `x` and `y`.
+/// * `x` (`anytype`): Mutable many-item pointer, size at least
+///   `1 + (n - 1) * abs(incx)`.
+/// * `incx` (`isize`): Indexing increment for `x`. Must be different from 0.
+/// * `y` (`anytype`): Mutable many-item pointer, size at least
+///   `1 + (n - 1) * abs(incy)`.
+/// * `incy` (`isize`): Indexing increment for `y`. Must be different from 0.
+/// * `c` (`anytype`): Cosine of the rotation angle. Real numeric.
+/// * `s` (`anytype`): Sine of the rotation angle. Real or complex numeric.
+/// * `pool` (`*thread.Pool`): Thread pool used to parallelize the computation.
+///
+/// ## Returns
+/// `void`
+///
+/// ## Errors
+/// * `linalg.blas.Error.InvalidArgument`: If `incx` or `incy` is equal to 0.
+pub fn rotParallel(
+    n: usize,
+    x: anytype,
+    incx: isize,
+    y: anytype,
+    incy: isize,
+    c: anytype,
+    s: anytype,
+    pool: *thread.Pool,
+) !void {
+    comptime var X: type = @TypeOf(x);
+    comptime var Y: type = @TypeOf(y);
+    const C: type = @TypeOf(c);
+    const S: type = @TypeOf(s);
 
-    num_threads = int.min(num_threads, options.max_threads);
+    comptime if (!meta.isManyItemPointer(X) or meta.isConstPointer(X) or !meta.isNumeric(meta.Child(X)) or
+        !meta.isManyItemPointer(Y) or meta.isConstPointer(Y) or !meta.isNumeric(meta.Child(Y)) or
+        !meta.isNumeric(C) or !meta.isReal(C) or !meta.isNumeric(S))
+        @compileError("zsl.linalg.blas.rotParallel: x and y must be mutable many-item pointers to numerics, c must be a real numeric, and s must be a numeric, got \n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\tc: " ++ @typeName(C) ++ "\n\ts: " ++ @typeName(S) ++ "\n");
 
-    if (num_threads <= 1)
-        return k_rot(n, x, incx, y, incy, c, s);
+    X = meta.Child(X);
+    Y = meta.Child(Y);
 
-    num_threads = int.min(num_threads, std.Thread.getCpuCount() catch 1);
+    if (incx == 0 or incy == 0)
+        return linalg.blas.Error.InvalidArgument;
 
-    if (num_threads <= 1)
-        return k_rot(n, x, incx, y, incy, c, s);
+    if (n == 0)
+        return;
 
-    var threads: [options.max_threads]std.Thread = undefined;
+    const Ctx = struct {
+        n: usize,
+        x: [*]X,
+        incx: isize,
+        y: [*]Y,
+        incy: isize,
+        c: C,
+        s: S,
 
-    const chunk_size = int.div(n, num_threads);
-    var spawn_err: ?anyerror = null;
-    var spawned_count: usize = 0;
-    var i: usize = 0;
-    while (i < num_threads) : (i += 1) {
-        const chunk_start = i * chunk_size;
-        const chunk_end = if (i == num_threads - 1) n else chunk_start + chunk_size;
+        fn kernel(ctx: @This(), start: usize, end: usize, worker_id: usize) void {
+            _ = worker_id;
 
-        if (std.Thread.spawn(.{}, k_rot, .{
-            chunk_end - chunk_start,
-            x + numeric.cast(usize, if (incx > 0)
-                numeric.cast(isize, chunk_start) * incx
-            else
-                (-numeric.cast(isize, n) + numeric.cast(isize, chunk_end)) * incx),
-            incx,
-            y + numeric.cast(usize, if (incy > 0)
-                numeric.cast(isize, chunk_start) * incy
-            else
-                (-numeric.cast(isize, n) + numeric.cast(isize, chunk_end)) * incy),
-            incy,
-            c,
-            s,
-        })) |th| {
-            threads[i] = th;
-            spawned_count += 1;
-        } else |err| {
-            spawn_err = err;
-            break;
+            k_rot(
+                end - start,
+                ctx.x + numeric.cast(usize, if (ctx.incx > 0)
+                    numeric.cast(isize, start) * ctx.incx
+                else
+                    (-numeric.cast(isize, ctx.n) + numeric.cast(isize, end)) * ctx.incx),
+                ctx.incx,
+                ctx.y + numeric.cast(usize, if (ctx.incy > 0)
+                    numeric.cast(isize, start) * ctx.incy
+                else
+                    (-numeric.cast(isize, ctx.n) + numeric.cast(isize, end)) * ctx.incy),
+                ctx.incy,
+                ctx.c,
+                ctx.s,
+            );
         }
-    }
+    };
 
-    var t: usize = 0;
-    while (t < spawned_count) : (t += 1) {
-        threads[t].join();
-    }
-
-    if (spawn_err) |err|
-        return err;
+    pool.parallelFor(
+        n,
+        Ctx{
+            .n = n,
+            .x = x,
+            .incx = incx,
+            .y = y,
+            .incy = incy,
+            .c = c,
+            .s = s,
+        },
+        Ctx.kernel,
+    );
 }
 
 fn k_rot(n: usize, x: anytype, incx: isize, y: anytype, incy: isize, c: anytype, s: anytype) void {

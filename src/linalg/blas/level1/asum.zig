@@ -1,13 +1,12 @@
 const std = @import("std");
+
 const options = @import("options");
 
-const meta = @import("../../../meta.zig");
-
-const numeric = @import("../../../numeric.zig");
-
 const int = @import("../../../int.zig");
-
 const linalg = @import("../../../linalg.zig");
+const meta = @import("../../../meta.zig");
+const numeric = @import("../../../numeric.zig");
+const thread = @import("../../../thread.zig");
 
 pub fn Asum(X: type) type {
     comptime if (!meta.isManyItemPointer(X) or !meta.isNumeric(meta.Child(X)))
@@ -28,44 +27,22 @@ pub fn Asum(X: type) type {
 ///
 /// ## Signature
 /// ```zig
-/// linalg.blas.asum(n: usize, x: [*]const X, incx: isize, opts: Opts) !linalg.blas.Asum([*]const X)
+/// linalg.blas.asum(n: usize, x: [*]const X, incx: isize) !linalg.blas.Asum([*]const X)
 /// ```
 ///
 /// ## Arguments
-/// * `n` (`usize`): Specifies the number of elements in vector `x`. Must be
-///   greater than 0.
+/// * `n` (`usize`): Specifies the number of elements in vector `x`.
 /// * `x` (`anytype`): Many-item pointer, size at least
 ///   `1 + (n - 1) * abs(incx)`.
 /// * `incx` (`isize`): Indexing increment for `x`. Must be different from 0.
-/// * `opts`: Optional parameters:
-///   * `num_threads` (`usize = 0`): Number of threads to spawn:
-///     * `0`: automatic. The thread count is derived from `n` and
-///       `parallel_threshold`:
-///       ```zig
-///       threads = max(1, min(std.Thread.getCpuCount(), options.max_threads, n / parallel_threshold))
-///       ```
-///     * `1`: force serial execution. `parallel_threshold` is ignored.
-///     * `N >= 2`: use exactly `N` threads, clamped by
-///       `std.Thread.getCpuCount()` and`options.max_threads` as a hard safety
-///       ceiling. `parallel_threshold` is ignored.
-///   * `parallel_threshold` (`usize = 8_388_608 / @sizeOf(meta.Child(X))`):
-///     Minimum number of elements required to trigger multithreaded execution.
 ///
 /// ## Returns
 /// `Asum(@TypeOf(x))`: The sum of magnitudes of real and imaginary parts of all
 /// elements of the vector.
 ///
 /// ## Errors
-/// * `linalg.blas.Error.InvalidArgument`: If `n` or `incx` is equal to 0.
-pub fn asum(
-    n: usize,
-    x: anytype,
-    incx: isize,
-    opts: struct {
-        num_threads: usize = 0,
-        parallel_threshold: usize = 8_388_608 / @sizeOf(meta.Child(@TypeOf(x))),
-    },
-) !linalg.blas.Asum(@TypeOf(x)) {
+/// * `linalg.blas.Error.InvalidArgument`: If `incx` is equal to 0.
+pub fn asum(n: usize, x: anytype, incx: isize) !linalg.blas.Asum(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 
     if (incx == 0)
@@ -74,78 +51,92 @@ pub fn asum(
     if (n == 0)
         return numeric.zero(linalg.blas.Asum(X));
 
-    if (opts.num_threads == 1)
-        return numeric.cast(linalg.blas.Asum(X), k_asum(n, x, incx));
+    return numeric.cast(linalg.blas.Asum(X), k_asum(n, x, incx));
+}
 
-    var num_threads: usize = if (opts.num_threads == 0) blk: {
-        if (opts.parallel_threshold == 0)
-            break :blk options.max_threads;
+/// Computes the sum of magnitudes of the elements of a real vector, or the sum
+/// of magnitudes of the real and imaginary parts of elements of a complex
+/// vector:
+///
+/// ```zig
+/// abs(x[0].re) + abs(x[0].im) + abs(x[1].re) + abs(x[1].im) + ... + abs(x[n - 1].re) + abs(x[n - 1].im),
+/// ```
+///
+/// where `x` is a vector with `n` elements, splitting the work across the
+/// worker threads of `pool`.
+///
+/// ## Signature
+/// ```zig
+/// linalg.blas.asumParallel(n: usize, x: [*]const X, incx: isize, pool: *thread.Pool) !linalg.blas.Asum([*]const X)
+/// ```
+///
+/// ## Arguments
+/// * `n` (`usize`): Specifies the number of elements in vector `x`.
+/// * `x` (`anytype`): Many-item pointer, size at least
+///   `1 + (n - 1) * abs(incx)`.
+/// * `incx` (`isize`): Indexing increment for `x`. Must be different from 0.
+/// * `pool` (`*thread.Pool`): Thread pool used to parallelize the computation.
+///
+/// ## Returns
+/// `Asum(@TypeOf(x))`: The sum of magnitudes of real and imaginary parts of all
+/// elements of the vector.
+///
+/// ## Errors
+/// * `linalg.blas.Error.InvalidArgument`: If `incx` is equal to 0.
+pub fn asumParallel(n: usize, x: anytype, incx: isize, pool: *thread.Pool) !linalg.blas.Asum(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
 
-        break :blk int.max(1, n / opts.parallel_threshold);
-    } else opts.num_threads;
+    if (incx == 0)
+        return linalg.blas.Error.InvalidArgument;
 
-    num_threads = int.min(num_threads, options.max_threads);
+    if (n == 0)
+        return numeric.zero(linalg.blas.Asum(X));
 
-    if (num_threads <= 1)
-        return numeric.cast(linalg.blas.Asum(X), k_asum(n, x, incx));
+    const Ctx = struct {
+        n: usize,
+        x: X,
+        incx: isize,
+        sums: *[thread.max_workers]meta.Accumulator(linalg.blas.Asum(X)),
 
-    num_threads = int.min(num_threads, std.Thread.getCpuCount() catch 1);
-
-    if (num_threads <= 1)
-        return numeric.cast(linalg.blas.Asum(X), k_asum(n, x, incx));
-
-    const Worker = struct {
-        fn execute(out: *meta.Accumulator(linalg.blas.Asum(X)), worker_n: usize, worker_x: X, worker_incx: isize) void {
-            out.* = k_asum(worker_n, worker_x, worker_incx);
+        fn kernel(ctx: @This(), start: usize, end: usize, worker_id: usize) void {
+            numeric.addInto(
+                &ctx.sums[worker_id],
+                ctx.sums[worker_id],
+                k_asum(
+                    end - start,
+                    ctx.x + numeric.cast(usize, if (ctx.incx > 0)
+                        numeric.cast(isize, start) * ctx.incx
+                    else
+                        (-numeric.cast(isize, ctx.n) + numeric.cast(isize, end)) * ctx.incx),
+                    ctx.incx,
+                ),
+            );
         }
     };
 
-    var threads: [options.max_threads]std.Thread = undefined;
-    var sums: [options.max_threads]meta.Accumulator(linalg.blas.Asum(X)) = .{numeric.zero(meta.Accumulator(linalg.blas.Asum(X)))} ** options.max_threads;
+    var sums: [thread.max_workers]meta.Accumulator(linalg.blas.Asum(X)) = @splat(numeric.zero(meta.Accumulator(linalg.blas.Asum(X))));
 
-    const chunk_size = int.div(n, num_threads);
-    var spawn_err: ?anyerror = null;
-    var spawned_count: usize = 0;
-    var i: usize = 0;
-    while (i < num_threads) : (i += 1) {
-        const chunk_start = i * chunk_size;
-        const chunk_end = if (i == num_threads - 1) n else chunk_start + chunk_size;
-
-        if (std.Thread.spawn(.{}, Worker.execute, .{
-            &sums[i],
-            chunk_end - chunk_start,
-            x + numeric.cast(usize, if (incx > 0)
-                numeric.cast(isize, chunk_start) * incx
-            else
-                (-numeric.cast(isize, n) + numeric.cast(isize, chunk_end)) * incx),
-            incx,
-        })) |th| {
-            threads[i] = th;
-            spawned_count += 1;
-        } else |err| {
-            spawn_err = err;
-            break;
-        }
-    }
+    pool.parallelFor(
+        n,
+        Ctx{
+            .n = n,
+            .x = x,
+            .incx = incx,
+            .sums = &sums,
+        },
+        Ctx.kernel,
+    );
 
     var sum = numeric.zero(meta.Accumulator(linalg.blas.Asum(X)));
-    var t: usize = 0;
-    while (t < spawned_count) : (t += 1) {
-        threads[t].join();
-        numeric.addInto(&sum, sum, sums[t]);
+    for (0..int.min(pool.idCount(), thread.max_workers)) |i| {
+        numeric.addInto(&sum, sum, sums[i]);
     }
-
-    if (spawn_err) |err|
-        return err;
 
     return numeric.cast(linalg.blas.Asum(X), sum);
 }
 
 fn k_asum(n: usize, x: anytype, incx: isize) meta.Accumulator(linalg.blas.Asum(@TypeOf(x))) {
     const X: type = @TypeOf(x);
-
-    if (n == 0)
-        return numeric.zero(linalg.blas.Asum(X));
 
     const unroll = 2 * (std.simd.suggestVectorLength(meta.Accumulator(linalg.blas.Asum(X))) orelse 2);
 

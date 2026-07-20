@@ -1,14 +1,22 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
+/// Defines the maximum number of concurrent chunks allowed, capping the size of
+/// the stack-allocated job array used during parallel iterations.
 pub const max_workers: usize = 128;
 
 pub const Task = struct {
+    /// An optional pointer linking to the next task in the pool's intrusive
+    /// LIFO queue.
     next: ?*Task = null,
+    /// The function pointer that executes the actual work payload, receiving
+    /// the task pointer and the executing worker's id.
     runFn: *const fn (*Task, worker_id: usize) void,
 };
 
 const Futex = struct {
+    /// Suspends the current thread until the atomic value changes from the
+    /// expect parameter.
     pub fn wait(ptr: *const std.atomic.Value(u32), expect: u32) void {
         if (builtin.os.tag == .windows)
             _ = std.os.windows.ntdll.RtlWaitOnAddress(
@@ -35,6 +43,8 @@ const Futex = struct {
             @compileError("zsl.Futex.wait: not implemented for " ++ @tagName(builtin.os.tag));
     }
 
+    /// Wakes up to `max_waiters` threads that are currently sleeping on the
+    /// given atomic value pointer.
     pub fn wake(ptr: *const std.atomic.Value(u32), max_waiters: u32) void {
         if (max_waiters == 0)
             return;
@@ -63,13 +73,19 @@ const Futex = struct {
 };
 
 pub const Semaphore = struct {
+    /// An atomic counter tracking the number of available permits for the
+    /// semaphore.
     state: std.atomic.Value(u32) = std.atomic.Value(u32).init(0),
 
+    /// Increments the semaphore's internal state and wakes up a single waiting
+    /// thread via a futex.
     pub fn post(self: *Semaphore) void {
         _ = self.state.fetchAdd(1, .release);
         Futex.wake(&self.state, 1);
     }
 
+    /// Loops to acquire a permit by decrementing the state, putting the thread
+    /// to sleep via a futex if the count is currently zero.
     pub fn wait(self: *Semaphore) void {
         var current = self.state.load(.monotonic);
         while (true) {
@@ -88,14 +104,22 @@ pub const Semaphore = struct {
 };
 
 pub const WaitGroup = struct {
+    /// An atomic integer tracking the number of pending operations that must
+    /// complete before the wait group is satisfied.
     counter: std.atomic.Value(usize) = std.atomic.Value(usize).init(0),
+    /// An atomic flag used as a synchronization point to block and wake waiting
+    /// threads.
     event_state: std.atomic.Value(u32) = std.atomic.Value(u32).init(0),
 
+    /// Adds `n` pending operations to the wait group's counter and resets the
+    /// event state.
     pub fn start(self: *WaitGroup, n: usize) void {
         self.event_state.store(0, .monotonic);
         _ = self.counter.fetchAdd(n, .monotonic);
     }
 
+    /// Decrements the operation counter, waking all threads blocked on the wait
+    /// group's event state if the counter reaches zero.
     pub fn finish(self: *WaitGroup) void {
         if (self.counter.fetchSub(1, .release) == 1) {
             self.event_state.store(1, .release);
@@ -103,10 +127,14 @@ pub const WaitGroup = struct {
         }
     }
 
+    /// Returns `true` if all registered operations have finished and the
+    /// counter is zero.
     pub fn isDone(self: *WaitGroup) bool {
         return self.counter.load(.acquire) == 0;
     }
 
+    /// Blocks the calling thread until the wait group's event state indicates
+    /// all operations have completed.
     pub fn wait(self: *WaitGroup) void {
         while (self.event_state.load(.acquire) == 0) {
             Futex.wait(&self.event_state, 0);
@@ -115,23 +143,37 @@ pub const WaitGroup = struct {
 };
 
 pub const Pool = struct {
+    /// An atomic pointer representing the top of the intrusive LIFO stack for
+    /// scheduled tasks.
     head: std.atomic.Value(?*Task) align(std.atomic.cache_line) = .init(null),
+    /// An atomic counter tracking how many worker threads are currently
+    /// sleeping and waiting for work.
     idle: std.atomic.Value(u32) align(std.atomic.cache_line) = .init(0),
+    /// An atomic boolean flag that dictates whether worker threads should
+    /// continue executing or shut down.
     running: std.atomic.Value(bool) = .init(true),
+    /// A synchronization primitive used to wake idle worker threads when new
+    /// tasks are scheduled.
     semaphore: Semaphore = .{},
+    /// A dynamically allocated slice holding the active thread handles for the
+    /// pool.
     threads: []std.Thread,
 
-    pub const Options = struct {
+    pub const Opts = struct {
+        /// An optional configuration field specifying the number of threads to
+        /// use, defaulting to the system's cpu count if left null.
         n_jobs: ?usize = null,
     };
 
-    pub fn init(allocator: std.mem.Allocator, pool: *Pool, options: Options) !void {
+    /// Initializes the pool state and spawns the specified number of worker
+    /// threads minus one, reserving one slot for the calling thread.
+    pub fn init(pool: *Pool, allocator: std.mem.Allocator, opts: Opts) !void {
         pool.* = .{ .threads = &.{} };
 
         if (builtin.single_threaded)
             return;
 
-        const n_jobs = options.n_jobs orelse (std.Thread.getCpuCount() catch 1);
+        const n_jobs = opts.n_jobs orelse (std.Thread.getCpuCount() catch 1);
         const n_workers = if (n_jobs > 1) n_jobs - 1 else 0;
 
         pool.threads = try allocator.alloc(std.Thread, n_workers);
@@ -144,12 +186,16 @@ pub const Pool = struct {
         }
     }
 
+    /// Signals the pool to shut down, joins all worker threads, and frees the
+    /// allocated thread slice.
     pub fn deinit(pool: *Pool, allocator: std.mem.Allocator) void {
         pool.shutdown(pool.threads.len);
         allocator.free(pool.threads);
         pool.* = undefined;
     }
 
+    /// Flags the pool as inactive and posts to the semaphore enough times to
+    /// wake and terminate all spawned threads.
     fn shutdown(pool: *Pool, spawned: usize) void {
         if (builtin.single_threaded)
             return;
@@ -162,10 +208,14 @@ pub const Pool = struct {
             t.join();
     }
 
+    /// Returns the total number of participant threads, which includes the
+    /// calling thread.
     pub fn idCount(pool: *Pool) usize {
         return pool.threads.len + 1;
     }
 
+    /// Pushes a new task onto the atomic LIFO queue and wakes an idle thread if
+    /// one is available.
     pub fn schedule(pool: *Pool, task: *Task) void {
         var head = pool.head.load(.monotonic);
         while (true) {
@@ -177,6 +227,8 @@ pub const Pool = struct {
             pool.semaphore.post();
     }
 
+    /// Atomically attempts to remove and return the most recently scheduled
+    /// task from the LIFO queue.
     fn pop(pool: *Pool) ?*Task {
         var head = pool.head.load(.acquire);
         while (head) |task| {
@@ -186,6 +238,8 @@ pub const Pool = struct {
         return null;
     }
 
+    /// Continuously pops and executes tasks from the pool's queue until the
+    /// specified `WaitGroup` completes, sleeping if no tasks are available.
     pub fn wait(pool: *Pool, wg: *WaitGroup) void {
         while (!wg.isDone()) {
             if (pool.pop()) |task| {
@@ -197,6 +251,8 @@ pub const Pool = struct {
         }
     }
 
+    /// The main execution loop for spawned threads, which briefly spin-waits
+    /// for incoming tasks before sleeping on the semaphore to save cpu cycles.
     fn workerLoop(pool: *Pool, id: usize) void {
         const spin_limit = 40;
         var spins: u32 = 0;
@@ -227,6 +283,9 @@ pub const Pool = struct {
         }
     }
 
+    /// Divides a range of items into evenly sized chunks and schedules them
+    /// across the pool, actively blocking and helping execute tasks until all
+    /// chunks finish.
     pub fn parallelFor(
         pool: *Pool,
         len: usize,

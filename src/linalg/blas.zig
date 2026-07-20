@@ -62,19 +62,30 @@ pub const Side = enum(u1) {
 // Level 1
 pub const Asum = @import("blas/level1/asum.zig").Asum;
 pub const asum = @import("blas/level1/asum.zig").asum;
+pub const asumParallel = @import("blas/level1/asum.zig").asumParallel;
 pub const axpy = @import("blas/level1/axpy.zig").axpy;
+pub const axpyParallel = @import("blas/level1/axpy.zig").axpyParallel;
 pub const copy = @import("blas/level1/copy.zig").copy;
+pub const copyParallel = @import("blas/level1/copy.zig").copyParallel;
 pub const Dot = @import("blas/level1/dot.zig").Dot;
 pub const dot = @import("blas/level1/dot.zig").dot;
+pub const dotParallel = @import("blas/level1/dot.zig").dotParallel;
 pub const Dotc = @import("blas/level1/dotc.zig").Dotc;
 pub const dotc = @import("blas/level1/dotc.zig").dotc;
+pub const dotcParallel = @import("blas/level1/dotc.zig").dotcParallel;
 pub const Nrm2 = @import("blas/level1/nrm2.zig").Nrm2;
 pub const nrm2 = @import("blas/level1/nrm2.zig").nrm2;
-pub const rot = @import("blas/level1/rot.zig").rot; // Untested and unbenchmarked
+pub const nrm2Parallel = @import("blas/level1/nrm2.zig").nrm2Parallel;
+pub const rot = @import("blas/level1/rot.zig").rot;
+pub const rotParallel = @import("blas/level1/rot.zig").rotParallel;
 pub const scal = @import("blas/level1/scal.zig").scal;
+pub const scalParallel = @import("blas/level1/scal.zig").scalParallel;
 pub const swap = @import("blas/level1/swap.zig").swap;
+pub const swapParallel = @import("blas/level1/swap.zig").swapParallel;
 pub const iamax = @import("blas/level1/iamax.zig").iamax;
+pub const iamaxParallel = @import("blas/level1/iamax.zig").iamaxParallel;
 pub const iamin = @import("blas/level1/iamin.zig").iamin;
+pub const iaminParallel = @import("blas/level1/iamin.zig").iaminParallel;
 
 // Level 2
 pub const gemv = @import("blas/level2/gemv.zig").gemv;
