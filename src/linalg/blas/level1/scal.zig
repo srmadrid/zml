@@ -1,7 +1,5 @@
 const std = @import("std");
 
-const options = @import("options");
-
 const int = @import("../../../int.zig");
 const linalg = @import("../../../linalg.zig");
 const meta = @import("../../../meta.zig");

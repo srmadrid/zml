@@ -1,15 +1,14 @@
 const std = @import("std");
+
 const options = @import("options");
 
-const meta = @import("../../../meta.zig");
-const matrix = @import("../../../matrix.zig");
-
-const numeric = @import("../../../numeric.zig");
-
-const int = @import("../../../int.zig");
 const float = @import("../../../float.zig");
-
+const int = @import("../../../int.zig");
 const linalg = @import("../../../linalg.zig");
+const matrix = @import("../../../matrix.zig");
+const meta = @import("../../../meta.zig");
+const numeric = @import("../../../numeric.zig");
+const thread = @import("../../../thread.zig");
 
 /// Computes a matrix-vector product using a triangular matrix defined as:
 ///
@@ -64,22 +63,6 @@ const linalg = @import("../../../linalg.zig");
 ///   `1 + (n - 1) * abs(incx)`. On return, contains the result of the
 ///   operation.
 /// * `incx` (`isize`): Indexing increment for `x`. Must be different from 0.
-/// * `opts`: Optional parameters:
-///   * `num_threads` (`usize = 0`): Number of threads to spawn:
-///     * `0`: automatic. The thread count is derived from `m * n` and
-///       `parallel_threshold`:
-///       ```zig
-///       threads = max(1, min(std.Thread.getCpuCount(), options.max_threads, ((n * n + n) / 2) / parallel_threshold))
-///       ```
-///     * 1: force serial execution. parallel_threshold is ignored.
-///     * N >= 2: use exactly N threads, clamped by
-///       std.Thread.getCpuCount() and options.max_threads as a hard safety
-///       ceiling. parallel_threshold is ignored.
-///   * parallel_threshold (usize = 33_554_432 / @sizeOf(meta.Child(X))):
-///     Minimum number of matrix elements (`m * n`) required to trigger
-///     multithreaded execution.
-///   * work (`?[*]X = null`): Mutable many-item pointer, size at least `n`.
-///     Required for multithreading.
 ///
 /// ## Returns
 /// `void`
@@ -97,11 +80,6 @@ pub fn trmv(
     lda: usize,
     x: anytype,
     incx: isize,
-    opts: struct {
-        num_threads: usize = 0,
-        parallel_threshold: usize = 33_554_432 / @sizeOf(meta.Child(@TypeOf(x))),
-        work: ?[*]meta.Child(@TypeOf(x)) = null,
-    },
 ) !void {
     comptime var A: type = @TypeOf(a);
     comptime var X: type = @TypeOf(x);
@@ -124,106 +102,164 @@ pub fn trmv(
     if (n == 0)
         return;
 
-    if (opts.num_threads == 1 or opts.work == null)
-        return if (noconj)
-            k_trmv(eff_uplo, eff_transa, diag, n, a, lda, x, incx, true)
-        else
-            k_trmv(eff_uplo, eff_transa, diag, n, a, lda, x, incx, false);
+    if (noconj)
+        k_trmv(eff_uplo, eff_transa, diag, n, a, lda, x, incx, true)
+    else
+        k_trmv(eff_uplo, eff_transa, diag, n, a, lda, x, incx, false);
+}
 
-    var num_threads: usize = if (opts.num_threads == 0) blk: {
-        if (opts.parallel_threshold == 0)
-            break :blk options.max_threads;
+/// Computes a matrix-vector product using a triangular matrix defined as:
+///
+/// ```zig
+/// x = A * x,
+/// ```
+///
+/// or
+///
+/// ```zig
+/// x = Aᵀ * x,
+/// ```
+///
+/// or
+///
+/// ```zig
+/// x = conj(A) * x,
+/// ```
+///
+/// or
+///
+/// ```zig
+/// x = Aᴴ * x,
+/// ```
+///
+/// where `x` is an `n`-element vector, and `A` is an `n`-by-`n` unit, or
+/// non-unit, upper or lower triangular matrix, splitting the work across the
+/// worker threads of `pool`.
+///
+/// ## Signature
+/// ```zig
+/// linalg.blas.trmvParallel(layout: matrix.Layout, uplo: matrix.Uplo, transa: linalg.blas.Transpose, diag: matrix.Diag, n: usize, a: [*]const A, lda: usize, x: [*]X, incx: isize, work: [*]X, pool: *thread.Pool) !void
+/// ```
+///
+/// ## Arguments
+/// * `layout` (`matrix.Layout`): Specifies whether two-dimensional array
+///   storage is col-major or row-major.
+/// * `uplo` (`matrix.Uplo`): Specifies whether the matrix `A` is an upper or
+///   lower triangular matrix:
+/// * `transa` (`linalg.blas.Transpose`): Specifies the operation to be
+///   performed on `A`:
+///   * `no_transpose`: `x = A * x`
+///   * `transpose`: `x = Aᵀ * x`
+///   * `conj_no_transpose`: `x = conj(A) * x`
+///   * `conj_transpose`: `x = Aᴴ * x`
+/// * `diag` (`matrix.Diag`): Specifies whether the matrix `A` is unit
+///   triangular.
+/// * `n` (`usize`): Specifies the size of the matrix `A`.
+/// * `a` (`anytype`): Many-item pointer, size at least `lda * n`.
+/// * `lda` (`usize`): Specifies the leading dimension of `a` as declared in the
+///   calling (sub)program. Must be greater than or equal to `max(1, n)`.
+/// * `x` (`anytype`): Mutable many-item pointer, size at least
+///   `1 + (n - 1) * abs(incx)`. On return, contains the result of the
+///   operation.
+/// * `incx` (`isize`): Indexing increment for `x`. Must be different from 0.
+/// * `work` (`[*]X`): Mutable many-item pointer, size at least `n`.
+/// * `pool` (`*thread.Pool`): Thread pool used to parallelize the computation.
+///
+/// ## Returns
+/// `void`
+///
+/// ## Errors
+/// * `linalg.blas.Error.InvalidArgument`: If `lda` is less than `max(1, n)`, or
+///   if `incx` is 0.
+pub fn trmvParallel(
+    layout: matrix.Layout,
+    uplo: matrix.Uplo,
+    transa: linalg.blas.Transpose,
+    diag: matrix.Diag,
+    n: usize,
+    a: anytype,
+    lda: usize,
+    x: anytype,
+    incx: isize,
+    work: [*]meta.Child(@TypeOf(x)),
+    pool: *thread.Pool,
+) !void {
+    comptime var A: type = @TypeOf(a);
+    comptime var X: type = @TypeOf(x);
 
-        break :blk int.max(1, ((n * n + n) / 2) / opts.parallel_threshold);
-    } else opts.num_threads;
+    comptime if (!meta.isManyItemPointer(A) or !meta.isNumeric(meta.Child(A)) or
+        !meta.isManyItemPointer(X) or meta.isConstPointer(X) or !meta.isNumeric(meta.Child(X)))
+        @compileError("zsl.linalg.blas.trmvParallel: a must be a many-item pointer to numerics, and x must be a mutable many-item pointer to numerics, got \n\ta: " ++ @typeName(A) ++ "\n\tx: " ++ @typeName(X) ++ "\n");
 
-    num_threads = int.min(num_threads, options.max_threads);
-    num_threads = int.min(num_threads, n);
+    A = meta.Child(A);
+    X = meta.Child(X);
 
-    if (num_threads <= 1)
-        return if (noconj)
-            k_trmv(eff_uplo, eff_transa, diag, n, a, lda, x, incx, true)
-        else
-            k_trmv(eff_uplo, eff_transa, diag, n, a, lda, x, incx, false);
+    if (lda < int.max(1, n) or incx == 0)
+        return linalg.blas.Error.InvalidArgument;
 
-    num_threads = int.min(num_threads, std.Thread.getCpuCount() catch 1);
-    num_threads = int.min(num_threads, n);
+    const eff_uplo = if (layout == .col_major) uplo else uplo.invert();
+    const eff_transa = if (layout == .col_major) transa else transa.invert();
+    const noconj = transa == .no_trans or transa == .trans;
 
-    if (num_threads <= 1)
-        return if (noconj)
-            k_trmv(eff_uplo, eff_transa, diag, n, a, lda, x, incx, true)
-        else
-            k_trmv(eff_uplo, eff_transa, diag, n, a, lda, x, incx, false);
+    // Quick return if possible.
+    if (n == 0)
+        return;
 
-    @import("../level1/copy.zig").k_copy(n, x, incx, opts.work.?, 1);
+    linalg.blas.copy(n, x, incx, work, 1) catch unreachable;
 
-    const Worker = struct {
-        fn execute(
-            worker_uplo: matrix.Uplo,
-            worker_transa: linalg.blas.Transpose,
-            worker_diag: matrix.Diag,
-            worker_n: usize,
-            worker_a: [*]const A,
-            worker_lda: usize,
-            worker_x: [*]const X,
-            worker_y: [*]X,
-            worker_incy: isize,
-            chunk_start: usize,
-            chunk_end: usize,
-            worker_noconj: bool,
-        ) void {
-            return if (worker_noconj)
-                k_trmv_nd(worker_uplo, worker_transa, worker_diag, worker_n, worker_a, worker_lda, worker_x, worker_y, worker_incy, chunk_start, chunk_end, true)
+    const num_workers = int.min(pool.idCount(), n);
+
+    const Ctx = struct {
+        uplo: matrix.Uplo,
+        transa: linalg.blas.Transpose,
+        diag: matrix.Diag,
+        n: usize,
+        a: [*]const A,
+        lda: usize,
+        work: [*]const X,
+        y: [*]X,
+        incy: isize,
+        noconj: bool,
+        num_workers: usize,
+
+        fn kernel(ctx: @This(), start: usize, end: usize, worker_id: usize) void {
+            _ = worker_id;
+
+            const start_w = numeric.cast(f64, start) / numeric.cast(f64, ctx.num_workers);
+            const end_w = numeric.cast(f64, end) / numeric.cast(f64, ctx.num_workers);
+            const row_start = numeric.cast(usize, if (ctx.uplo == .upper)
+                numeric.cast(f64, ctx.n) * (1.0 - float.sqrt(1.0 - start_w))
             else
-                k_trmv_nd(worker_uplo, worker_transa, worker_diag, worker_n, worker_a, worker_lda, worker_x, worker_y, worker_incy, chunk_start, chunk_end, false);
+                numeric.cast(f64, ctx.n) * float.sqrt(start_w));
+            const row_end = int.min(ctx.n, numeric.cast(usize, if (ctx.uplo == .upper)
+                numeric.cast(f64, ctx.n) * (1.0 - float.sqrt(1.0 - end_w))
+            else
+                numeric.cast(f64, ctx.n) * float.sqrt(end_w)));
+
+            if (ctx.noconj)
+                k_trmv_nd(ctx.uplo, ctx.transa, ctx.diag, ctx.n, ctx.a, ctx.lda, ctx.work, ctx.y, ctx.incy, row_start, row_end, true)
+            else
+                k_trmv_nd(ctx.uplo, ctx.transa, ctx.diag, ctx.n, ctx.a, ctx.lda, ctx.work, ctx.y, ctx.incy, row_start, row_end, false);
         }
     };
 
-    var threads: [options.max_threads]std.Thread = undefined;
-    var spawn_err: ?anyerror = null;
-    var spawned_count: usize = 0;
-    var i: usize = 0;
-    while (i < num_threads) : (i += 1) {
-        const start_w = numeric.cast(f64, i) / numeric.cast(f64, num_threads);
-        const end_w = numeric.cast(f64, i + 1) / numeric.cast(f64, num_threads);
-
-        const chunk_start = numeric.cast(usize, if (eff_uplo == .upper)
-            numeric.cast(f64, n) * (1.0 - float.sqrt(1.0 - start_w))
-        else
-            numeric.cast(f64, n) * float.sqrt(start_w));
-        const chunk_end = int.min(n, numeric.cast(usize, if (eff_uplo == .upper)
-            numeric.cast(f64, n) * (1.0 - float.sqrt(1.0 - end_w))
-        else
-            numeric.cast(f64, n) * float.sqrt(end_w)));
-
-        if (std.Thread.spawn(.{}, Worker.execute, .{
-            eff_uplo,
-            eff_transa,
-            diag,
-            n,
-            a,
-            lda,
-            opts.work.?,
-            x,
-            incx,
-            chunk_start,
-            chunk_end,
-            noconj,
-        })) |th| {
-            threads[i] = th;
-            spawned_count += 1;
-        } else |err| {
-            spawn_err = err;
-            break;
-        }
-    }
-
-    var t: usize = 0;
-    while (t < spawned_count) : (t += 1)
-        threads[t].join();
-
-    if (spawn_err) |err|
-        return err;
+    pool.parallelFor(
+        num_workers,
+        Ctx{
+            .uplo = eff_uplo,
+            .transa = eff_transa,
+            .diag = diag,
+            .n = n,
+            .a = a,
+            .lda = lda,
+            .work = work,
+            .y = x,
+            .incy = incx,
+            .noconj = noconj,
+            .num_workers = num_workers,
+        },
+        Ctx.kernel,
+    );
 }
 
 pub fn k_trmv(
@@ -240,11 +276,7 @@ pub fn k_trmv(
     const A: type = meta.Child(@TypeOf(a));
     const X: type = meta.Child(@TypeOf(x));
 
-    // Quick return if possible.
-    if (n == 0)
-        return;
-
-    // Set up the start points in x.
+    // Set up the start point in x.
     const kx: isize = if (incx < 0) (-numeric.cast(isize, n) + 1) * incx else 0;
 
     if (transa == .no_trans or transa == .conj_no_trans) {
@@ -268,7 +300,7 @@ pub fn k_trmv(
                         const px = if (incx == 1)
                             x + tile_i
                         else blk: {
-                            @import("../level1/copy.zig").k_copy(
+                            linalg.blas.copy(
                                 r_len,
                                 x + numeric.cast(usize, if (incx > 0)
                                     numeric.cast(isize, tile_i) * incx
@@ -277,7 +309,7 @@ pub fn k_trmv(
                                 incx,
                                 @as([*]X, &local_x),
                                 1,
-                            );
+                            ) catch unreachable;
 
                             break :blk @as([*]X, &local_x);
                         };
@@ -317,7 +349,7 @@ pub fn k_trmv(
                         }
 
                         if (incx != 1) {
-                            @import("../level1/copy.zig").k_copy(
+                            linalg.blas.copy(
                                 r_len,
                                 @as([*]const X, &local_x),
                                 1,
@@ -326,7 +358,7 @@ pub fn k_trmv(
                                 else
                                     (-numeric.cast(isize, n) + numeric.cast(isize, tile_i + r_len)) * incx),
                                 incx,
-                            );
+                            ) catch unreachable;
                         }
                     }
                 }
@@ -416,7 +448,7 @@ pub fn k_trmv(
                         const px = if (incx == 1)
                             x + tile_i
                         else blk: {
-                            @import("../level1/copy.zig").k_copy(
+                            linalg.blas.copy(
                                 r_len,
                                 x + numeric.cast(usize, if (incx > 0)
                                     numeric.cast(isize, tile_i) * incx
@@ -425,7 +457,7 @@ pub fn k_trmv(
                                 incx,
                                 @as([*]X, &local_x),
                                 1,
-                            );
+                            ) catch unreachable;
 
                             break :blk @as([*]X, &local_x);
                         };
@@ -465,7 +497,7 @@ pub fn k_trmv(
                         }
 
                         if (incx != 1) {
-                            @import("../level1/copy.zig").k_copy(
+                            linalg.blas.copy(
                                 r_len,
                                 @as([*]const X, &local_x),
                                 1,
@@ -474,7 +506,7 @@ pub fn k_trmv(
                                 else
                                     (-numeric.cast(isize, n) + numeric.cast(isize, tile_i + r_len)) * incx),
                                 incx,
-                            );
+                            ) catch unreachable;
                         }
                     }
                 }
@@ -587,7 +619,7 @@ pub fn k_trmv(
                     const px = if (incx == 1)
                         x + i_tile
                     else blk: {
-                        @import("../level1/copy.zig").k_copy(
+                        linalg.blas.copy(
                             i_len,
                             x + numeric.cast(usize, if (incx > 0)
                                 numeric.cast(isize, i_tile) * incx
@@ -596,7 +628,7 @@ pub fn k_trmv(
                             incx,
                             @as([*]X, &local_x),
                             1,
-                        );
+                        ) catch unreachable;
 
                         break :blk @as([*]const X, &local_x);
                     };
@@ -782,7 +814,7 @@ pub fn k_trmv(
                     const px = if (incx == 1)
                         x + i_tile
                     else blk: {
-                        @import("../level1/copy.zig").k_copy(
+                        linalg.blas.copy(
                             i_len,
                             x + numeric.cast(usize, if (incx > 0)
                                 numeric.cast(isize, i_tile) * incx
@@ -791,7 +823,7 @@ pub fn k_trmv(
                             incx,
                             @as([*]X, &local_x),
                             1,
-                        );
+                        ) catch unreachable;
 
                         break :blk @as([*]const X, &local_x);
                     };

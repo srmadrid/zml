@@ -7,52 +7,44 @@ const tzsl = @import("../../../zsl.zig");
 
 const combinations = .{
     // Empty arrays
-    .{ .col_major, .upper, @as(usize, 0), @as(isize, 1), @as(usize, 1), null, null },
-    .{ .row_major, .lower, @as(usize, 0), @as(isize, -1), @as(usize, 10), null, null },
+    .{ .col_major, .upper, @as(usize, 0), @as(isize, 1), @as(usize, 1) },
+    .{ .row_major, .lower, @as(usize, 0), @as(isize, -1), @as(usize, 10) },
 
     // Single element
-    .{ .col_major, .upper, @as(usize, 1), @as(isize, 1), @as(usize, 1), null, null },
-    .{ .row_major, .lower, @as(usize, 1), @as(isize, -1), @as(usize, 1), null, null },
+    .{ .col_major, .upper, @as(usize, 1), @as(isize, 1), @as(usize, 1) },
+    .{ .row_major, .lower, @as(usize, 1), @as(isize, -1), @as(usize, 1) },
 
     // Square aligned
-    .{ .col_major, .upper, @as(usize, 32), @as(isize, 1), @as(usize, 32), null, null },
-    .{ .row_major, .lower, @as(usize, 64), @as(isize, 1), @as(usize, 64), null, null },
+    .{ .col_major, .upper, @as(usize, 32), @as(isize, 1), @as(usize, 32) },
+    .{ .row_major, .lower, @as(usize, 64), @as(isize, 1), @as(usize, 64) },
 
     // Requires lda >= n
-    .{ .col_major, .upper, @as(usize, 32), @as(isize, 1), @as(usize, 40), null, null },
-    .{ .row_major, .lower, @as(usize, 37), @as(isize, 1), @as(usize, 45), null, null },
+    .{ .col_major, .upper, @as(usize, 32), @as(isize, 1), @as(usize, 40) },
+    .{ .row_major, .lower, @as(usize, 37), @as(isize, 1), @as(usize, 45) },
 
     // Strided
-    .{ .col_major, .lower, @as(usize, 32), @as(isize, 2), @as(usize, 32), null, null },
-    .{ .row_major, .upper, @as(usize, 32), @as(isize, 3), @as(usize, 32), null, null },
-    .{ .col_major, .upper, @as(usize, 37), @as(isize, -1), @as(usize, 40), null, null },
-    .{ .row_major, .lower, @as(usize, 37), @as(isize, -2), @as(usize, 40), null, null },
-    .{ .col_major, .lower, @as(usize, 37), @as(isize, -2), @as(usize, 37), null, null },
-
-    // Lowering parallel_threshold to test threading logic on small data chunks
-    .{ .col_major, .upper, @as(usize, 64), @as(isize, 1), @as(usize, 64), null, @as(usize, 10) },
-    .{ .row_major, .lower, @as(usize, 65), @as(isize, 1), @as(usize, 65), null, @as(usize, 8) },
-
-    // Forced multithreading
-    .{ .col_major, .lower, @as(usize, 65), @as(isize, 2), @as(usize, 65), @as(usize, 2), null },
-    .{ .row_major, .upper, @as(usize, 65), @as(isize, -1), @as(usize, 70), @as(usize, 4), null },
-    .{ .col_major, .upper, @as(usize, 65), @as(isize, -3), @as(usize, 65), @as(usize, 2), null },
+    .{ .col_major, .lower, @as(usize, 32), @as(isize, 2), @as(usize, 32) },
+    .{ .row_major, .upper, @as(usize, 32), @as(isize, 3), @as(usize, 32) },
+    .{ .col_major, .upper, @as(usize, 37), @as(isize, -1), @as(usize, 40) },
+    .{ .row_major, .lower, @as(usize, 37), @as(isize, -2), @as(usize, 40) },
+    .{ .col_major, .lower, @as(usize, 37), @as(isize, -2), @as(usize, 37) },
+    .{ .col_major, .upper, @as(usize, 64), @as(isize, -1), @as(usize, 64) },
+    .{ .row_major, .lower, @as(usize, 65), @as(isize, -7), @as(usize, 65) },
+    .{ .col_major, .lower, @as(usize, 65), @as(isize, 2), @as(usize, 65) },
+    .{ .row_major, .upper, @as(usize, 65), @as(isize, -1), @as(usize, 70) },
+    .{ .col_major, .upper, @as(usize, 65), @as(isize, -3), @as(usize, 65) },
 
     // Large arrays
-    .{ .col_major, .upper, @as(usize, 2000), @as(isize, 1), @as(usize, 2000), null, null },
-    .{ .row_major, .lower, @as(usize, 1500), @as(isize, 2), @as(usize, 1500), null, null },
-
-    // Forced single-threaded fallback
-    .{ .row_major, .lower, @as(usize, 1500), @as(isize, 1), @as(usize, 1500), @as(usize, 1), null },
-    .{ .col_major, .upper, @as(usize, 1000), @as(isize, 3), @as(usize, 1005), @as(usize, 1), null },
-
-    // Explicit high thread count
-    .{ .col_major, .lower, @as(usize, 1500), @as(isize, 1), @as(usize, 1500), @as(usize, 8), null },
-    .{ .row_major, .upper, @as(usize, 1000), @as(isize, -1), @as(usize, 1000), @as(usize, 4), null },
+    .{ .col_major, .upper, @as(usize, 2000), @as(isize, 1), @as(usize, 2000) },
+    .{ .row_major, .lower, @as(usize, 1500), @as(isize, 2), @as(usize, 1500) },
+    .{ .row_major, .lower, @as(usize, 1500), @as(isize, 1), @as(usize, 1500) },
+    .{ .col_major, .upper, @as(usize, 1000), @as(isize, 3), @as(usize, 1005) },
+    .{ .col_major, .lower, @as(usize, 1500), @as(isize, 1), @as(usize, 1500) },
+    .{ .row_major, .upper, @as(usize, 1000), @as(isize, -1), @as(usize, 1000) },
 
     // Prime-like numbers to ensure threads get unequal chunks
-    .{ .col_major, .upper, @as(usize, 1507), @as(isize, 1), @as(usize, 1510), @as(usize, 4), null },
-    .{ .row_major, .lower, @as(usize, 1003), @as(isize, 2), @as(usize, 1010), @as(usize, 0), null },
+    .{ .col_major, .upper, @as(usize, 1507), @as(isize, 1), @as(usize, 1510) },
+    .{ .row_major, .lower, @as(usize, 1003), @as(isize, 2), @as(usize, 1010) },
 };
 
 test her {
@@ -62,6 +54,10 @@ test her {
 
     var prng = std.Random.DefaultPrng.init(42);
     const rand = prng.random();
+
+    var pool: zsl.thread.Pool = undefined;
+    try pool.init(allocator, .{});
+    defer pool.deinit(allocator);
 
     inline for (combinations) |combo| {
         try executeHerTest(
@@ -73,8 +69,7 @@ test her {
             combo[2],
             combo[3],
             combo[4],
-            combo[5],
-            combo[6],
+            &pool,
         );
     }
 }
@@ -88,9 +83,10 @@ fn executeHerTest(
     n: usize,
     incx: isize,
     lda: usize,
-    num_threads: ?usize,
-    parallel_threshold: ?usize,
+    pool: *zsl.thread.Pool,
 ) !void {
+    _ = pool;
+
     const abs_incx = @abs(incx);
 
     const len_mem_x = if (n == 0) 0 else 1 + (n - 1) * abs_incx;
@@ -141,20 +137,6 @@ fn executeHerTest(
         incx,
         a_actual.ptr,
         lda,
-        if (num_threads) |nt|
-            if (parallel_threshold) |pt|
-                .{
-                    .num_threads = nt,
-                    .parallel_threshold = pt,
-                }
-            else
-                .{ .num_threads = nt }
-        else if (parallel_threshold) |pt|
-            .{
-                .parallel_threshold = pt,
-            }
-        else
-            .{},
     ) catch |e| {
         std.debug.print("\n\tHER Test Failed\n", .{});
         std.debug.print("Type: {s} | layout: {s} | uplo: {s} | n: {} | incx: {} | lda: {}\n", .{ @typeName(N), @tagName(layout), @tagName(uplo), n, incx, lda });

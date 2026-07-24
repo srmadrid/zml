@@ -41,7 +41,6 @@ pub const sign = ops.sign;
 pub const Add = ops.Add;
 pub const add = ops.add;
 pub const addInto = ops.addInto;
-pub const atomicAddInPlace = ops.atomicAddInPlace;
 pub const Sub = ops.Sub;
 pub const sub = ops.sub;
 pub const subInto = ops.subInto;

@@ -31,7 +31,6 @@ pub const sign = @import("ops/sign.zig").sign;
 pub const Add = @import("ops/add.zig").Add;
 pub const add = @import("ops/add.zig").add;
 pub const addInto = @import("ops/add.zig").addInto;
-pub const atomicAddInPlace = @import("ops/atomicAddInPlace.zig").atomicAddInPlace;
 pub const Sub = @import("ops/sub.zig").Sub;
 pub const sub = @import("ops/sub.zig").sub;
 pub const subInto = @import("ops/sub.zig").subInto;

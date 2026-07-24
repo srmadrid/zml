@@ -3,8 +3,8 @@ test {
     const test_all = false;
 
     // Individual test flags
-    const test_level_1 = true;
-    const test_level_2 = false;
+    const test_level_1 = false;
+    const test_level_2 = true;
     const test_level_3 = false;
 
     if (test_all or test_level_1) {

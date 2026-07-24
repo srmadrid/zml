@@ -1,15 +1,13 @@
 const std = @import("std");
+
 const options = @import("options");
 
-const meta = @import("../../../meta.zig");
-const matrix = @import("../../../matrix.zig");
-
-const numeric = @import("../../../numeric.zig");
-
-const int = @import("../../../int.zig");
 const float = @import("../../../float.zig");
-
+const int = @import("../../../int.zig");
 const linalg = @import("../../../linalg.zig");
+const matrix = @import("../../../matrix.zig");
+const meta = @import("../../../meta.zig");
+const numeric = @import("../../../numeric.zig");
 
 /// Performs a rank-2 update of a Hermitian matrix defined as:
 ///
@@ -42,20 +40,6 @@ const linalg = @import("../../../linalg.zig");
 ///   return, contains the result of the operation.
 /// * `lda` (`usize`): Specifies the leading dimension of `a` as declared in the
 ///   calling (sub)program. Must be greater than or equal to `max(1, n)`.
-/// * `opts`: Optional parameters:
-///   * `num_threads` (`usize = 0`): Number of threads to spawn:
-///     * `0`: automatic. The thread count is derived from `m * n` and
-///       `parallel_threshold`:
-///       ```zig
-///       threads = max(1, min(std.Thread.getCpuCount(), options.max_threads, (n * n) / parallel_threshold))
-///       ```
-///     * 1: force serial execution. parallel_threshold is ignored.
-///     * N >= 2: use exactly N threads, clamped by
-///       std.Thread.getCpuCount() and options.max_threads as a hard safety
-///       ceiling. parallel_threshold is ignored.
-///   * parallel_threshold (usize = 2_097_152 / @sizeOf(meta.Child(A))):
-///     Minimum number of matrix elements (`n * n`) required to trigger
-///     multithreaded execution.
 ///
 /// ## Returns
 /// `void`
@@ -74,10 +58,6 @@ pub fn her2(
     incy: isize,
     a: anytype,
     lda: usize,
-    opts: struct {
-        num_threads: usize = 0,
-        parallel_threshold: usize = 2_097_152 / @sizeOf(meta.Child(@TypeOf(a))),
-    },
 ) !void {
     const Al: type = @TypeOf(alpha);
     comptime var X: type = @TypeOf(x);
@@ -104,350 +84,10 @@ pub fn her2(
     if (n == 0 or numeric.eq(alpha, 0))
         return;
 
-    if (opts.num_threads == 1)
-        return if (noconj)
-            k_her2(eff_uplo, n, alpha, x, incx, y, incy, a, lda, true)
-        else
-            k_her2(eff_uplo, n, numeric.conj(alpha), x, incx, y, incy, a, lda, false);
-
-    var num_threads: usize = if (opts.num_threads == 0) blk: {
-        if (opts.parallel_threshold == 0)
-            break :blk options.max_threads;
-
-        break :blk int.max(1, (n * n) / opts.parallel_threshold);
-    } else opts.num_threads;
-
-    num_threads = int.min(num_threads, options.max_threads);
-    num_threads = int.min(num_threads, n);
-
-    if (num_threads <= 1)
-        return if (noconj)
-            k_her2(eff_uplo, n, alpha, x, incx, y, incy, a, lda, true)
-        else
-            k_her2(eff_uplo, n, numeric.conj(alpha), x, incx, y, incy, a, lda, false);
-
-    num_threads = int.min(num_threads, std.Thread.getCpuCount() catch 1);
-    num_threads = int.min(num_threads, n);
-
-    if (num_threads <= 1)
-        return if (noconj)
-            k_her2(eff_uplo, n, alpha, x, incx, y, incy, a, lda, true)
-        else
-            k_her2(eff_uplo, n, numeric.conj(alpha), x, incx, y, incy, a, lda, false);
-
-    const Worker = struct {
-        fn execute(
-            worker_uplo: matrix.Uplo,
-            worker_n: usize,
-            worker_alpha: Al,
-            worker_a: [*]A,
-            worker_lda: usize,
-            worker_x: [*]const X,
-            worker_incx: isize,
-            worker_y: [*]const Y,
-            worker_incy: isize,
-            comptime worker_noconj: bool,
-            counter: *std.atomic.Value(usize),
-            comptime worker_tile_size: comptime_int,
-            worker_num_tiles: usize,
-        ) void {
-            while (true) {
-                const idx = counter.fetchAdd(1, .monotonic);
-
-                if (idx >= worker_num_tiles) // When all tiles have been assigned, break.
-                    break;
-
-                // Map 1D atomic index to 2D upper triangular coordinates (tile_i, tile_j) using triangular numbers.
-                var tile_j = numeric.cast(usize, (float.sqrt(1.0 + 8.0 * numeric.cast(f64, idx)) - 1.0) / 2.0);
-
-                while (tile_j * (tile_j + 1) / 2 > idx)
-                    tile_j -= 1;
-
-                while ((tile_j + 1) * (tile_j + 2) / 2 <= idx)
-                    tile_j += 1;
-
-                const tile_i = idx - tile_j * (tile_j + 1) / 2;
-
-                const phys_r = if (worker_uplo == .upper) tile_i else tile_j;
-                const phys_c = if (worker_uplo == .upper) tile_j else tile_i;
-
-                const r_start = phys_r * worker_tile_size;
-                const c_start = phys_c * worker_tile_size;
-                const r_len = int.min(worker_tile_size, worker_n - r_start);
-                const c_len = int.min(worker_tile_size, worker_n - c_start);
-
-                if (tile_i == tile_j) {
-                    // Diagonal tile
-                    var local_x: [worker_tile_size]X = undefined;
-                    var local_y: [worker_tile_size]Y = undefined;
-
-                    const px = if (worker_incx == 1)
-                        worker_x + r_start
-                    else blk: {
-                        @import("../level1/copy.zig").k_copy(
-                            r_len,
-                            worker_x + numeric.cast(usize, if (worker_incx > 0)
-                                numeric.cast(isize, r_start) * worker_incx
-                            else
-                                (-numeric.cast(isize, worker_n) + numeric.cast(isize, r_start + r_len)) * worker_incx),
-                            worker_incx,
-                            @as([*]X, &local_x),
-                            1,
-                        );
-
-                        break :blk @as([*]const X, &local_x);
-                    };
-
-                    const py = if (worker_incy == 1)
-                        worker_y + c_start
-                    else blk: {
-                        @import("../level1/copy.zig").k_copy(
-                            c_len,
-                            worker_y + numeric.cast(usize, if (worker_incy > 0)
-                                numeric.cast(isize, c_start) * worker_incy
-                            else
-                                (-numeric.cast(isize, worker_n) + numeric.cast(isize, c_start + r_len)) * worker_incy),
-                            worker_incy,
-                            @as([*]Y, &local_y),
-                            1,
-                        );
-
-                        break :blk @as([*]const Y, &local_y);
-                    };
-
-                    k_her2(
-                        worker_uplo,
-                        r_len,
-                        worker_alpha,
-                        px,
-                        1,
-                        py,
-                        1,
-                        worker_a + r_start + c_start * worker_lda,
-                        worker_lda,
-                        worker_noconj,
-                    );
-                } else {
-                    const unroll = 2 * int.min(
-                        std.simd.suggestVectorLength(numeric.Fma(numeric.Mul(Al, if (comptime worker_noconj) numeric.Conj(Y) else Y), if (comptime worker_noconj) X else numeric.Conj(X), A)) orelse 2,
-                        std.simd.suggestVectorLength(numeric.Fma(numeric.Conj(numeric.Mul(Al, if (comptime worker_noconj) X else numeric.Conj(X))), if (comptime worker_noconj) Y else numeric.Conj(Y), A)) orelse 2,
-                    );
-
-                    // Off-diagonal tile
-                    var local_x_r: [worker_tile_size]X = undefined;
-                    var local_x_c: [worker_tile_size]X = undefined;
-                    var local_y_r: [worker_tile_size]Y = undefined;
-                    var local_y_c: [worker_tile_size]Y = undefined;
-
-                    const px_r = if (worker_incx == 1)
-                        worker_x + r_start
-                    else blk: {
-                        @import("../level1/copy.zig").k_copy(
-                            r_len,
-                            worker_x + numeric.cast(usize, if (worker_incx > 0)
-                                numeric.cast(isize, r_start) * worker_incx
-                            else
-                                (-numeric.cast(isize, worker_n) + numeric.cast(isize, r_start + r_len)) * worker_incx),
-                            worker_incx,
-                            @as([*]X, &local_x_r),
-                            1,
-                        );
-
-                        break :blk @as([*]const X, &local_x_r);
-                    };
-
-                    const px_c = if (worker_incx == 1)
-                        worker_x + c_start
-                    else blk: {
-                        @import("../level1/copy.zig").k_copy(
-                            c_len,
-                            worker_x + numeric.cast(usize, if (worker_incx > 0)
-                                numeric.cast(isize, c_start) * worker_incx
-                            else
-                                (-numeric.cast(isize, worker_n) + numeric.cast(isize, c_start + c_len)) * worker_incx),
-                            worker_incx,
-                            @as([*]X, &local_x_c),
-                            1,
-                        );
-
-                        break :blk @as([*]const X, &local_x_c);
-                    };
-
-                    const py_r = if (worker_incy == 1)
-                        worker_y + r_start
-                    else blk: {
-                        @import("../level1/copy.zig").k_copy(
-                            r_len,
-                            worker_y + numeric.cast(usize, if (worker_incy > 0)
-                                numeric.cast(isize, r_start) * worker_incy
-                            else
-                                (-numeric.cast(isize, worker_n) + numeric.cast(isize, r_start + r_len)) * worker_incy),
-                            worker_incy,
-                            @as([*]Y, &local_y_r),
-                            1,
-                        );
-
-                        break :blk @as([*]const Y, &local_y_r);
-                    };
-
-                    const py_c = if (worker_incy == 1)
-                        worker_y + c_start
-                    else blk: {
-                        @import("../level1/copy.zig").k_copy(
-                            c_len,
-                            worker_y + numeric.cast(usize, if (worker_incy > 0)
-                                numeric.cast(isize, c_start) * worker_incy
-                            else
-                                (-numeric.cast(isize, worker_n) + numeric.cast(isize, c_start + c_len)) * worker_incy),
-                            worker_incy,
-                            @as([*]Y, &local_y_c),
-                            1,
-                        );
-
-                        break :blk @as([*]const Y, &local_y_c);
-                    };
-
-                    var j: usize = 0;
-                    while (j < c_len) : (j += 1) {
-                        // temp1 = worker_alpha * conj(py_c[j])
-                        const temp1 = numeric.mul(
-                            worker_alpha,
-                            if (worker_noconj)
-                                numeric.conj(py_c[j])
-                            else
-                                py_c[j],
-                        );
-
-                        // temp2 = conj(worker_alpha * px_c[j])
-                        const temp2 = numeric.conj(numeric.mul(
-                            worker_alpha,
-                            if (worker_noconj)
-                                px_c[j]
-                            else
-                                numeric.conj(px_c[j]),
-                        ));
-
-                        var i: usize = 0;
-                        while (i < (r_len / unroll) * unroll) : (i += unroll) {
-                            inline for (0..unroll) |u| {
-                                // worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda] += temp1 * px_r[i + u]
-                                numeric.fmaInto(
-                                    &worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda],
-                                    temp1,
-                                    if (comptime worker_noconj)
-                                        px_r[i + u]
-                                    else
-                                        numeric.conj(px_r[i + u]),
-                                    worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda],
-                                );
-
-                                // worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda] += temp2 * py_r[i + u]
-                                numeric.fmaInto(
-                                    &worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda],
-                                    temp2,
-                                    if (comptime worker_noconj)
-                                        py_r[i + u]
-                                    else
-                                        numeric.conj(py_r[i + u]),
-                                    worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda],
-                                );
-                            }
-                        }
-
-                        while (i < r_len) : (i += 1) {
-                            // worker_a[r_start + c_start * worker_lda + i + j * worker_lda] += temp1 * px_r[i]
-                            numeric.fmaInto(
-                                &worker_a[r_start + c_start * worker_lda + i + j * worker_lda],
-                                temp1,
-                                if (comptime worker_noconj)
-                                    px_r[i]
-                                else
-                                    numeric.conj(px_r[i]),
-                                worker_a[r_start + c_start * worker_lda + i + j * worker_lda],
-                            );
-
-                            // worker_a[r_start + c_start * worker_lda + i + j * worker_lda] += temp2 * py_r[i]
-                            numeric.fmaInto(
-                                &worker_a[r_start + c_start * worker_lda + i + j * worker_lda],
-                                temp2,
-                                if (comptime worker_noconj)
-                                    py_r[i]
-                                else
-                                    numeric.conj(py_r[i]),
-                                worker_a[r_start + c_start * worker_lda + i + j * worker_lda],
-                            );
-                        }
-                    }
-                }
-            }
-        }
-    };
-
-    const unroll = 2 * int.min(
-        std.simd.suggestVectorLength(numeric.Fma(numeric.Mul(Al, Y), X, A)) orelse 2,
-        std.simd.suggestVectorLength(numeric.Fma(numeric.Conj(numeric.Mul(Al, X)), Y, A)) orelse 2,
-    );
-    comptime var tile_size = int.max(1, ((3 * options.l1_size) / 4) / (2 * @sizeOf(X) + 2 * @sizeOf(Y) + @sizeOf(A)));
-    tile_size = comptime int.max(1, tile_size -| (tile_size % unroll));
-
-    const k = (n + tile_size - 1) / tile_size;
-    const num_tiles = k * (k + 1) / 2;
-
-    var atomic_counter = std.atomic.Value(usize).init(0);
-    var threads: [options.max_threads]std.Thread = undefined;
-
-    var spawn_err: ?anyerror = null;
-    var spawned_count: usize = 0;
-    var i: usize = 0;
-    while (i < num_threads) : (i += 1) {
-        if (if (noconj)
-            std.Thread.spawn(.{}, Worker.execute, .{
-                eff_uplo,
-                n,
-                alpha,
-                a,
-                lda,
-                x,
-                incx,
-                y,
-                incy,
-                true,
-                &atomic_counter,
-                tile_size,
-                num_tiles,
-            })
-        else
-            std.Thread.spawn(.{}, Worker.execute, .{
-                eff_uplo,
-                n,
-                numeric.conj(alpha),
-                a,
-                lda,
-                x,
-                incx,
-                y,
-                incy,
-                false,
-                &atomic_counter,
-                tile_size,
-                num_tiles,
-            })) |th|
-        {
-            threads[i] = th;
-            spawned_count += 1;
-        } else |err| {
-            spawn_err = err;
-            break;
-        }
-    }
-
-    var t: usize = 0;
-    while (t < spawned_count) : (t += 1) {
-        threads[t].join();
-    }
-
-    if (spawn_err) |err|
-        return err;
+    if (noconj)
+        k_her2(eff_uplo, n, alpha, x, incx, y, incy, a, lda, true)
+    else
+        k_her2(eff_uplo, n, numeric.conj(alpha), x, incx, y, incy, a, lda, false);
 }
 
 fn k_her2(uplo: matrix.Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, y: anytype, incy: isize, a: anytype, lda: usize, comptime noconj: bool) void {
@@ -456,10 +96,7 @@ fn k_her2(uplo: matrix.Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, 
     const X: type = meta.Child(@TypeOf(x));
     const Y: type = meta.Child(@TypeOf(y));
 
-    // Quick return if possible.
-    if (n == 0 or numeric.eq(alpha, 0))
-        return;
-
+    // Set up the start points in x and y.
     const kx: isize = if (incx < 0) (-numeric.cast(isize, n) + 1) * incx else 0;
     const ky: isize = if (incy < 0) (-numeric.cast(isize, n) + 1) * incy else 0;
 
@@ -480,7 +117,7 @@ fn k_her2(uplo: matrix.Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, 
             const px = if (incx == 1)
                 x + tile_i
             else blk: {
-                @import("../level1/copy.zig").k_copy(
+                linalg.blas.copy(
                     b_len,
                     x + numeric.cast(usize, if (incx > 0)
                         numeric.cast(isize, tile_i) * incx
@@ -489,7 +126,7 @@ fn k_her2(uplo: matrix.Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, 
                     incx,
                     @as([*]X, &local_x),
                     1,
-                );
+                ) catch unreachable;
 
                 break :blk @as([*]const X, &local_x);
             };
@@ -497,7 +134,7 @@ fn k_her2(uplo: matrix.Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, 
             const py = if (incy == 1)
                 y + tile_i
             else blk: {
-                @import("../level1/copy.zig").k_copy(
+                linalg.blas.copy(
                     b_len,
                     y + numeric.cast(usize, if (incy > 0)
                         numeric.cast(isize, tile_i) * incy
@@ -506,7 +143,7 @@ fn k_her2(uplo: matrix.Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, 
                     incy,
                     @as([*]Y, &local_y),
                     1,
-                );
+                ) catch unreachable;
 
                 break :blk @as([*]const Y, &local_y);
             };
@@ -698,7 +335,7 @@ fn k_her2(uplo: matrix.Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, 
             const px = if (incx == 1)
                 x + tile_i
             else blk: {
-                @import("../level1/copy.zig").k_copy(
+                linalg.blas.copy(
                     b_len,
                     x + numeric.cast(usize, if (incx > 0)
                         numeric.cast(isize, tile_i) * incx
@@ -707,7 +344,7 @@ fn k_her2(uplo: matrix.Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, 
                     incx,
                     @as([*]X, &local_x),
                     1,
-                );
+                ) catch unreachable;
 
                 break :blk @as([*]const X, &local_x);
             };
@@ -715,7 +352,7 @@ fn k_her2(uplo: matrix.Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, 
             const py = if (incy == 1)
                 y + tile_i
             else blk: {
-                @import("../level1/copy.zig").k_copy(
+                linalg.blas.copy(
                     b_len,
                     y + numeric.cast(usize, if (incy > 0)
                         numeric.cast(isize, tile_i) * incy
@@ -724,7 +361,7 @@ fn k_her2(uplo: matrix.Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, 
                     incy,
                     @as([*]Y, &local_y),
                     1,
-                );
+                ) catch unreachable;
 
                 break :blk @as([*]const Y, &local_y);
             };

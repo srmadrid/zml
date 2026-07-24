@@ -89,8 +89,11 @@ pub const iaminParallel = @import("blas/level1/iamin.zig").iaminParallel;
 
 // Level 2
 pub const gemv = @import("blas/level2/gemv.zig").gemv;
+pub const gemvParallel = @import("blas/level2/gemv.zig").gemvParallel;
 pub const ger = @import("blas/level2/ger.zig").ger;
+pub const gerParallel = @import("blas/level2/ger.zig").gerParallel;
 pub const gerc = @import("blas/level2/gerc.zig").gerc;
+pub const gercParallel = @import("blas/level2/gerc.zig").gercParallel;
 pub const hemv = @import("blas/level2/hemv.zig").hemv;
 pub const her = @import("blas/level2/her.zig").her;
 pub const her2 = @import("blas/level2/her2.zig").her2;
@@ -98,6 +101,7 @@ pub const symv = @import("blas/level2/symv.zig").symv;
 pub const syr = @import("blas/level2/syr.zig").syr;
 pub const syr2 = @import("blas/level2/syr2.zig").syr2;
 pub const trmv = @import("blas/level2/trmv.zig").trmv;
+pub const trmvParallel = @import("blas/level2/trmv.zig").trmvParallel;
 // pub const trsv = @import("blas/level2/trsv.zig").trsv;
 
 // Level 3
