@@ -32,7 +32,7 @@ test {
         _ = @import("blas/level2/syr.zig");
         _ = @import("blas/level2/syr2.zig");
         _ = @import("blas/level2/trmv.zig");
-        // _ = @import("blas/level2/trsv.zig");
+        _ = @import("blas/level2/trsv.zig");
     }
 
     if (test_all or test_level_3) {

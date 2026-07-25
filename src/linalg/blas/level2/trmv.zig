@@ -46,7 +46,7 @@ const thread = @import("../../../thread.zig");
 /// * `layout` (`matrix.Layout`): Specifies whether two-dimensional array
 ///   storage is col-major or row-major.
 /// * `uplo` (`matrix.Uplo`): Specifies whether the matrix `A` is an upper or
-///   lower triangular matrix:
+///   lower triangular matrix.
 /// * `transa` (`linalg.blas.Transpose`): Specifies the operation to be
 ///   performed on `A`:
 ///   * `no_transpose`: `x = A * x`
@@ -280,7 +280,7 @@ pub fn k_trmv(
     const kx: isize = if (incx < 0) (-numeric.cast(isize, n) + 1) * incx else 0;
 
     if (transa == .no_trans or transa == .conj_no_trans) {
-        // Form  y = alpha * A * x + y  or  y = alpha * conj(A) * x + y.
+        // Form  x = A * x  or  x = conj(A) * x.
         const unroll = 2 * (std.simd.suggestVectorLength(numeric.Fma(X, A, X)) orelse 2);
         comptime var tile_size = int.max(1, ((3 * options.l1_size) / 4) / (@sizeOf(X) + @sizeOf(A)));
         tile_size = comptime int.max(1, tile_size -| (tile_size % unroll));

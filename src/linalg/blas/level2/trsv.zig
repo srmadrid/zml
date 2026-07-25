@@ -1,22 +1,17 @@
 const std = @import("std");
 
-const types = @import("../../types.zig");
-const scast = types.scast;
-const ops = @import("../../ops.zig");
-const constants = @import("../../constants.zig");
-const int = @import("../../int.zig");
+const options = @import("options");
 
-const linalg = @import("../../linalg.zig");
-const blas = @import("../blas.zig");
-const Uplo = types.Uplo;
-const Diag = types.Diag;
-const Order = types.Order;
-const Transpose = linalg.Transpose;
+const float = @import("../../../float.zig");
+const int = @import("../../../int.zig");
+const linalg = @import("../../../linalg.zig");
+const matrix = @import("../../../matrix.zig");
+const meta = @import("../../../meta.zig");
+const numeric = @import("../../../numeric.zig");
+const thread = @import("../../../thread.zig");
 
-/// Solves a system of linear equations whose coefficients are in a triangular
-/// matrix.
-///
-/// The `trsv` routine solves one of the systems of equations:
+/// Solves a system of linear equations, whose coefficients are in a triangular
+/// matrix, defined as:
 ///
 /// ```zig
 ///     A * x = b,
@@ -40,704 +35,654 @@ const Transpose = linalg.Transpose;
 ///     A^H * x = b,
 /// ```
 ///
-/// `b` and `x` are `n`-element vectors, `A` is an `n`-by-`n` unit, or non-unit,
-/// upper or lower triangular matrix. The routine does not test for singularity
-/// or near-singularity, such tests must be performed before calling this
-/// routine.
+/// where `b` and `x` are `n`-element vectors, `A` is an `n`-by-`n` unit, or
+/// non-unit, upper or lower triangular matrix.
 ///
-/// Signature
-/// ---------
+/// ## Signature
 /// ```zig
-/// fn trsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: i32, a: [*]const A, lda: i32, x: [*]X, incx: i32, ctx: anytype) !void
+/// linalg.blas.trsv(layout: matrix.Layout, uplo: matrix.Uplo, transa: linalg.blas.Transpose, diag: matrix.Diag, n: usize, a: [*]const A, lda: usize, x: [*]X, incx: isize) !void
 /// ```
 ///
-/// Parameters
-/// ----------
-/// `order` (`Order`): Specifies whether two-dimensional array storage is
-/// row-major or column-major.
+/// ## Arguments
+/// * `layout` (`matrix.Layout`): Specifies whether two-dimensional array
+///   storage is col-major or row-major.
+/// * `uplo` (`matrix.Uplo`): Specifies whether the matrix `A` is an upper or
+///   lower triangular matrix.
+/// * `transa` (`linalg.blas.Transpose`): Specifies the system of equations to
+///   be solved:
+///   * `no_transpose`: `A * x = b`
+///   * `transpose`: `Aᵀ * x = b`
+///   * `conj_no_transpose`: `conj(A) * x = b`
+///   * `conj_transpose`: `Aᴴ * x = b`
+/// * `diag` (`matrix.Diag`): Specifies whether the matrix `A` is unit
+///   triangular.
+/// * `n` (`usize`): Specifies the size of the matrix `A`.
+/// * `a` (`anytype`): Many-item pointer, size at least `lda * n`.
+/// * `lda` (`usize`): Specifies the leading dimension of `a` as declared in the
+///   calling (sub)program. Must be greater than or equal to `max(1, n)`.
+/// * `x` (`anytype`): Mutable many-item pointer, size at least
+///   `1 + (n - 1) * abs(incx)`. On entry, must contain the right hand side
+///   vector `b`, on return, contains the solution vector `x`.
+/// * `incx` (`isize`): Indexing increment for `x`. Must be different from 0.
 ///
-/// `uplo` (`Uplo`): Specifies whether the matrix `A` is an upper or lower
-/// triangular matrix:
-/// - If `uplo = upper`, then the matrix is upper triangular.
-/// - If `uplo = lower`, then the matrix is lower triangular.
+/// ## Returns
+/// `void`
 ///
-/// `transa` (`Transpose`): Specifies the system of equations to be solved:
-/// - If `transa = no_trans`, then the system is `A * x = b`.
-/// - If `transa = trans`, then the system is `A^T * x = b`.
-/// - If `transa = conj_no_trans`, then the system is `conj(A) * x = b`.
-/// - If `transa = conj_trans`, then the system is `A^H * x = b`.
-///
-/// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
-/// - If `diag = unit`, then the matrix is unit triangular.
-/// - If `diag = non_unit`, then the matrix is non-unit triangular.
-///
-/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
-/// or equal to 0.
-///
-/// `a` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
-/// `real`, `complex` or `expression`): Array, size at least `lda * n`.
-///
-/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
-/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
-///
-/// `x` (mutable many-item pointer to `int`, `float`, `cfloat`, `integer`,
-/// `rational`, `real`, `complex` or `expression`): Array, size at least
-/// `1 + (n - 1) * abs(incx)`. On entry, the incremented array `x` must
-/// contain the n-element right-hand side vector `b`. On return, it contains
-/// the solution vector `x`.
-///
-/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
-/// different from 0.
-///
-/// Returns
-/// -------
-/// `void`: The result is stored in `x`.
-///
-/// Errors
-/// ------
-/// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
-/// than `max(1, n)`, or if `incx` is 0.
-///
-/// Notes
-/// -----
-/// If the `link_cblas` option is not `null`, the function will try to call the
-/// corresponding CBLAS function, if available. In that case, no errors will be
-/// raised even if the arguments are invalid.
+/// ## Errors
+/// * `linalg.blas.Error.InvalidArgument`: If `lda` is less than `max(1, n)`, or
+///   if `incx` is 0.
 pub fn trsv(
-    order: Layout,
-    uplo: Uplo,
-    transa: Transpose,
-    diag: Diag,
-    n: i32,
+    layout: matrix.Layout,
+    uplo: matrix.Uplo,
+    transa: linalg.blas.Transpose,
+    diag: matrix.Diag,
+    n: usize,
     a: anytype,
-    lda: i32,
+    lda: usize,
     x: anytype,
-    incx: i32,
-    ctx: anytype,
+    incx: isize,
 ) !void {
     comptime var A: type = @TypeOf(a);
     comptime var X: type = @TypeOf(x);
 
-    comptime if (!types.isManyPointer(A))
-        @compileError("zml.linalg.blas.trsv requires a to be a many-item pointer, got " ++ @typeName(A));
+    comptime if (!meta.isManyItemPointer(A) or !meta.isNumeric(meta.Child(A)) or
+        !meta.isManyItemPointer(X) or meta.isConstPointer(X) or !meta.isNumeric(meta.Child(X)))
+        @compileError("zsl.linalg.blas.trsv: a must be a many-item pointer to numerics, and x must be a mutable many-item pointer to numerics, got \n\ta: " ++ @typeName(A) ++ "\n\tx: " ++ @typeName(X) ++ "\n");
 
-    A = types.Child(A);
+    A = meta.Child(A);
+    X = meta.Child(X);
 
-    comptime if (!types.isNumeric(A))
-        @compileError("zml.linalg.blas.trsv requires a's child type to numeric, got " ++ @typeName(A));
+    if (lda < int.max(1, n) or incx == 0)
+        return linalg.blas.Error.InvalidArgument;
 
-    comptime if (!types.isManyPointer(X) or types.isConstPointer(X))
-        @compileError("zml.linalg.blas.trsv requires x to be a mutable many-item pointer, got " ++ @typeName(X));
-
-    X = types.Child(X);
-
-    comptime if (!types.isNumeric(X))
-        @compileError("zml.linalg.blas.trsv requires x's child type to be numeric, got " ++ @typeName(X));
-
-    comptime if (A == bool and X == bool)
-        @compileError("zml.linalg.blas.trsv does not support a and x both being bool");
-
-    comptime if (types.isArbitraryPrecision(A) or
-        types.isArbitraryPrecision(X))
-    {
-        // When implemented, expand if
-        @compileError("zml.linalg.blas.trsv not implemented for arbitrary precision types yet");
-    } else {
-        types.validateContext(@TypeOf(ctx), .{});
-    };
-
-    if (comptime A == X and options.link_cblas != null) {
-        switch (comptime types.numericType(A)) {
-            .float => {
-                if (comptime A == f32) {
-                    return ci.cblas_strsv(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, n), a, scast(c_int, lda), x, scast(c_int, incx));
-                } else if (comptime A == f64) {
-                    return ci.cblas_dtrsv(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, n), a, scast(c_int, lda), x, scast(c_int, incx));
-                }
-            },
-            .cfloat => {
-                if (comptime Scalar(A) == f32) {
-                    return ci.cblas_ctrsv(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, n), a, scast(c_int, lda), x, scast(c_int, incx));
-                } else if (comptime Scalar(A) == f64) {
-                    return ci.cblas_ztrsv(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, n), a, scast(c_int, lda), x, scast(c_int, incx));
-                }
-            },
-            else => {},
-        }
-    }
-
-    return _trsv(order, uplo, transa, diag, n, a, lda, x, incx, ctx);
-}
-
-fn _trsv(
-    order: Order,
-    uplo: Uplo,
-    transa: Transpose,
-    diag: Diag,
-    n: i32,
-    a: anytype,
-    lda: i32,
-    x: anytype,
-    incx: i32,
-    ctx: anytype,
-) !void {
-    if (order == .col_major) {
-        return k_trsv(
-            uplo,
-            transa,
-            diag,
-            n,
-            a,
-            lda,
-            x,
-            incx,
-            ctx,
-        );
-    } else {
-        return k_trsv(
-            uplo.invert(),
-            transa.invert(),
-            diag,
-            n,
-            a,
-            lda,
-            x,
-            incx,
-            ctx,
-        );
-    }
-}
-
-fn k_trsv(
-    uplo: Uplo,
-    transa: Transpose,
-    diag: Diag,
-    n: i32,
-    a: anytype,
-    lda: i32,
-    x: anytype,
-    incx: i32,
-    ctx: anytype,
-) !void {
-    const A: type = types.Child(@TypeOf(a));
-    const X: type = types.Child(@TypeOf(x));
-    const C1: type = types.Coerce(A, X);
-    const CC: type = types.Coerce(A, X);
-
-    if (n < 0 or lda < int.max(1, n) or incx == 0)
-        return blas.Error.InvalidArgument;
+    const eff_uplo = if (layout == .col_major) uplo else uplo.invert();
+    const eff_transa = if (layout == .col_major) transa else transa.invert();
+    const noconj = transa == .no_trans or transa == .trans;
 
     // Quick return if possible.
     if (n == 0)
         return;
 
-    const noconj: bool = transa == .no_trans or transa == .trans;
-    const nounit: bool = diag == .non_unit;
+    if (noconj)
+        k_trsv(eff_uplo, eff_transa, diag, n, a, lda, x, incx, true)
+    else
+        k_trsv(eff_uplo, eff_transa, diag, n, a, lda, x, incx, false);
+}
 
-    var kx: i32 = if (incx < 0) (-n + 1) * incx else 0;
+pub fn k_trsv(
+    uplo: matrix.Uplo,
+    transa: linalg.blas.Transpose,
+    diag: matrix.Diag,
+    n: usize,
+    a: anytype,
+    lda: usize,
+    x: anytype,
+    incx: isize,
+    comptime noconj: bool,
+) void {
+    const A: type = meta.Child(@TypeOf(a));
+    const X: type = meta.Child(@TypeOf(x));
 
-    if (comptime !types.isArbitraryPrecision(CC)) {
-        if (transa == .no_trans or transa == .conj_no_trans) {
-            if (uplo == .upper) {
-                if (incx == 1) {
-                    var j: i32 = n - 1;
-                    while (j >= 0) : (j -= 1) {
-                        if (ops.ne(x[scast(u32, j)], 0, ctx) catch unreachable) {
-                            if (noconj) {
-                                if (nounit) {
-                                    ops.div_( // x[j] /= a[j + j * lda]
-                                        &x[scast(u32, j)],
-                                        x[scast(u32, j)],
-                                        a[scast(u32, j + j * lda)],
-                                        ctx,
-                                    ) catch unreachable;
-                                }
+    // Set up the start point in x.
+    const kx: isize = if (incx < 0) (-numeric.cast(isize, n) + 1) * incx else 0;
 
-                                const temp: X = x[scast(u32, j)];
+    if (transa == .no_trans or transa == .conj_no_trans) {
+        // Form  x = A⁻¹ * x  or  x = conj(A)⁻¹ * x.
+        const unroll = 2 * (std.simd.suggestVectorLength(numeric.Fma(X, A, X)) orelse 2);
+        comptime var tile_size = int.max(1, ((3 * options.l1_size) / 4) / (@sizeOf(X) + @sizeOf(A)));
+        tile_size = comptime int.max(1, tile_size -| (tile_size % unroll));
 
-                                var i: i32 = j - 1;
-                                while (i >= 0) : (i -= 1) {
-                                    ops.sub_( // x[i] -= temp * a[i + j * lda]
-                                        &x[scast(u32, i)],
-                                        x[scast(u32, i)],
-                                        ops.mul(
-                                            temp,
-                                            a[scast(u32, i + j * lda)],
-                                            ctx,
-                                        ) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-                                }
-                            } else {
-                                if (nounit) {
-                                    ops.div_( // x[j] /= conj(a[j + j * lda])
-                                        &x[scast(u32, j)],
-                                        x[scast(u32, j)],
-                                        ops.conj(a[scast(u32, j + j * lda)], ctx) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-                                }
+        if (uplo == .lower) {
+            var tile_j: usize = 0;
+            while (tile_j < n) : (tile_j += tile_size) {
+                const c_end = int.min(tile_j + tile_size, n);
 
-                                const temp: X = x[scast(u32, j)];
+                var j: usize = tile_j;
+                while (j < c_end) : (j += 1) {
+                    const jx = kx + numeric.cast(isize, j) * incx;
 
-                                var i: i32 = j - 1;
-                                while (i >= 0) : (i -= 1) {
-                                    ops.sub_( // x[i] -= temp * conj(a[i + j * lda])
-                                        &x[scast(u32, i)],
-                                        x[scast(u32, i)],
-                                        ops.mul(
-                                            temp,
-                                            ops.conj(a[scast(u32, i + j * lda)], ctx) catch unreachable,
-                                            ctx,
-                                        ) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-                                }
-                            }
-                        }
+                    if (diag == .non_unit) {
+                        numeric.divInto(
+                            &x[numeric.cast(usize, jx)],
+                            x[numeric.cast(usize, jx)],
+                            if (comptime noconj)
+                                a[j + j * lda]
+                            else
+                                numeric.conj(a[j + j * lda]),
+                        );
                     }
-                } else {
-                    var jx: i32 = kx + (n - 1) * incx;
-                    var j: i32 = n - 1;
-                    while (j >= 0) : (j -= 1) {
-                        if (ops.ne(x[scast(u32, jx)], 0, ctx) catch unreachable) {
-                            if (noconj) {
-                                if (nounit) {
-                                    ops.div_( // x[jx] /= a[j + j * lda]
-                                        &x[scast(u32, jx)],
-                                        x[scast(u32, jx)],
-                                        a[scast(u32, j + j * lda)],
-                                        ctx,
-                                    ) catch unreachable;
-                                }
 
-                                const temp: X = x[scast(u32, jx)];
+                    const temp = numeric.neg(x[numeric.cast(usize, jx)]);
 
-                                var ix: i32 = jx;
-                                var i: i32 = j - 1;
-                                while (i >= 0) : (i -= 1) {
-                                    ix -= incx;
-
-                                    ops.sub_( // x[ix] -= temp * a[i + j * lda]
-                                        &x[scast(u32, ix)],
-                                        x[scast(u32, ix)],
-                                        ops.mul(
-                                            temp,
-                                            a[scast(u32, i + j * lda)],
-                                            ctx,
-                                        ) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-                                }
-                            } else {
-                                if (nounit) {
-                                    ops.div_( // x[jx] /= conj(a[j + j * lda])
-                                        &x[scast(u32, jx)],
-                                        x[scast(u32, jx)],
-                                        ops.conj(a[scast(u32, j + j * lda)], ctx) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-                                }
-
-                                const temp: X = x[scast(u32, jx)];
-
-                                var ix: i32 = jx;
-                                var i: i32 = j - 1;
-                                while (i >= 0) : (i -= 1) {
-                                    ix -= incx;
-
-                                    ops.sub_( // x[ix] -= temp * conj(a[i + j * lda])
-                                        &x[scast(u32, ix)],
-                                        x[scast(u32, ix)],
-                                        ops.mul(
-                                            temp,
-                                            ops.conj(a[scast(u32, i + j * lda)], ctx) catch unreachable,
-                                            ctx,
-                                        ) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-                                }
+                    if (incx == 1) {
+                        var i: usize = j + 1;
+                        while (i < (c_end / unroll) * unroll) : (i += unroll) {
+                            inline for (0..unroll) |u| {
+                                numeric.fmaInto(
+                                    &x[i + u],
+                                    temp,
+                                    if (comptime noconj)
+                                        a[i + u + j * lda]
+                                    else
+                                        numeric.conj(a[i + u + j * lda]),
+                                    x[i + u],
+                                );
                             }
                         }
 
-                        jx -= incx;
+                        while (i < c_end) : (i += 1) {
+                            numeric.fmaInto(
+                                &x[i],
+                                temp,
+                                if (comptime noconj)
+                                    a[i + j * lda]
+                                else
+                                    numeric.conj(a[i + j * lda]),
+                                x[i],
+                            );
+                        }
+                    } else {
+                        var ix = kx + numeric.cast(isize, j + 1) * incx;
+                        var i: usize = j + 1;
+                        while (i < c_end) : (i += 1) {
+                            numeric.fmaInto(
+                                &x[numeric.cast(usize, ix)],
+                                temp,
+                                if (comptime noconj)
+                                    a[i + j * lda]
+                                else
+                                    numeric.conj(a[i + j * lda]),
+                                x[numeric.cast(usize, ix)],
+                            );
+
+                            ix += incx;
+                        }
                     }
                 }
-            } else {
-                if (incx == 1) {
-                    var j: i32 = 0;
-                    while (j < n) : (j += 1) {
-                        if (ops.ne(x[scast(u32, j)], 0, ctx) catch unreachable) {
-                            if (noconj) {
-                                if (nounit) {
-                                    ops.div_( // x[j] /= a[j + j * lda]
-                                        &x[scast(u32, j)],
-                                        x[scast(u32, j)],
-                                        a[scast(u32, j + j * lda)],
-                                        ctx,
-                                    ) catch unreachable;
-                                }
 
-                                const temp: X = x[scast(u32, j)];
+                if (c_end < n) {
+                    var tile_i: usize = c_end;
+                    while (tile_i < n) : (tile_i += tile_size) {
+                        const r_end = int.min(tile_i + tile_size, n);
+                        const r_len = r_end - tile_i;
+                        var local_x: [tile_size]X = undefined;
 
-                                var i: i32 = j + 1;
-                                while (i < n) : (i += 1) {
-                                    ops.sub_( // x[i] -= temp * a[i + j * lda]
-                                        &x[scast(u32, i)],
-                                        x[scast(u32, i)],
-                                        ops.mul(
-                                            temp,
-                                            a[scast(u32, i + j * lda)],
-                                            ctx,
-                                        ) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-                                }
-                            } else {
-                                if (nounit) {
-                                    ops.div_( // x[j] /= conj(a[j + j * lda])
-                                        &x[scast(u32, j)],
-                                        x[scast(u32, j)],
-                                        ops.conj(a[scast(u32, j + j * lda)], ctx) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-                                }
+                        const px = if (incx == 1)
+                            x + tile_i
+                        else blk: {
+                            linalg.blas.copy(
+                                r_len,
+                                x + numeric.cast(usize, if (incx > 0)
+                                    numeric.cast(isize, tile_i) * incx
+                                else
+                                    (-numeric.cast(isize, n) + numeric.cast(isize, tile_i + r_len)) * incx),
+                                incx,
+                                @as([*]X, &local_x),
+                                1,
+                            ) catch unreachable;
 
-                                const temp: X = x[scast(u32, j)];
+                            break :blk @as([*]X, &local_x);
+                        };
 
-                                var i: i32 = j + 1;
-                                while (i < n) : (i += 1) {
-                                    ops.sub_( // x[i] -= temp * conj(a[i + j * lda])
-                                        &x[scast(u32, i)],
-                                        x[scast(u32, i)],
-                                        ops.mul(
-                                            temp,
-                                            ops.conj(a[scast(u32, i + j * lda)], ctx) catch unreachable,
-                                            ctx,
-                                        ) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
+                        j = tile_j;
+                        while (j < c_end) : (j += 1) {
+                            const temp = numeric.neg(x[numeric.cast(usize, kx + numeric.cast(isize, j) * incx)]);
+
+                            var i: usize = 0;
+                            while (i < (r_len / unroll) * unroll) : (i += unroll) {
+                                inline for (0..unroll) |u| {
+                                    numeric.fmaInto(
+                                        &px[i + u],
+                                        temp,
+                                        if (comptime noconj)
+                                            a[tile_i + i + u + j * lda]
+                                        else
+                                            numeric.conj(a[tile_i + i + u + j * lda]),
+                                        px[i + u],
+                                    );
                                 }
                             }
-                        }
-                    }
-                } else {
-                    var jx: i32 = kx;
-                    var j: i32 = 0;
-                    while (j < n) : (j += 1) {
-                        if (ops.ne(x[scast(u32, jx)], 0, ctx) catch unreachable) {
-                            if (noconj) {
-                                if (nounit) {
-                                    ops.div_( // x[jx] /= a[j + j * lda]
-                                        &x[scast(u32, jx)],
-                                        x[scast(u32, jx)],
-                                        a[scast(u32, j + j * lda)],
-                                        ctx,
-                                    ) catch unreachable;
-                                }
 
-                                const temp: X = x[scast(u32, jx)];
-
-                                var ix: i32 = jx;
-                                var i: i32 = j + 1;
-                                while (i < n) : (i += 1) {
-                                    ix += incx;
-
-                                    ops.sub_( // x[ix] -= temp * a[i + j * lda]
-                                        &x[scast(u32, ix)],
-                                        x[scast(u32, ix)],
-                                        ops.mul(
-                                            temp,
-                                            a[scast(u32, i + j * lda)],
-                                            ctx,
-                                        ) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-                                }
-                            } else {
-                                if (nounit) {
-                                    ops.div_( // x[jx] /= conj(a[j + j * lda])
-                                        &x[scast(u32, jx)],
-                                        x[scast(u32, jx)],
-                                        ops.conj(a[scast(u32, j + j * lda)], ctx) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-                                }
-
-                                const temp: X = x[scast(u32, jx)];
-
-                                var ix: i32 = jx;
-                                var i: i32 = j + 1;
-                                while (i < n) : (i += 1) {
-                                    ix += incx;
-
-                                    ops.sub_( // x[ix] -= temp * conj(a[i + j * lda])
-                                        &x[scast(u32, ix)],
-                                        x[scast(u32, ix)],
-                                        ops.mul(
-                                            temp,
-                                            ops.conj(a[scast(u32, i + j * lda)], ctx) catch unreachable,
-                                            ctx,
-                                        ) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-                                }
+                            while (i < r_len) : (i += 1) {
+                                numeric.fmaInto(
+                                    &px[i],
+                                    temp,
+                                    if (comptime noconj)
+                                        a[tile_i + i + j * lda]
+                                    else
+                                        numeric.conj(a[tile_i + i + j * lda]),
+                                    px[i],
+                                );
                             }
                         }
 
-                        jx += incx;
+                        if (incx != 1) {
+                            linalg.blas.copy(
+                                r_len,
+                                @as([*]const X, &local_x),
+                                1,
+                                x + numeric.cast(usize, if (incx > 0)
+                                    numeric.cast(isize, tile_i) * incx
+                                else
+                                    (-numeric.cast(isize, n) + numeric.cast(isize, tile_i + r_len)) * incx),
+                                incx,
+                            ) catch unreachable;
+                        }
                     }
                 }
             }
         } else {
-            if (uplo == .upper) {
-                if (incx == 1) {
-                    var j: i32 = 0;
-                    while (j < n) : (j += 1) {
-                        var temp: C1 = scast(C1, x[scast(u32, j)]);
+            var ct: usize = (n + tile_size - 1) / tile_size;
+            while (ct > 0) {
+                ct -= 1;
+                const tile_j = ct * tile_size;
+                const c_end = int.min(tile_j + tile_size, n);
 
-                        if (noconj) {
-                            var i: i32 = 0;
-                            while (i < j) : (i += 1) {
-                                ops.sub_( // temp -= a[i + j * lda] * x[i]
-                                    &temp,
-                                    temp,
-                                    ops.mul(
-                                        a[scast(u32, i + j * lda)],
-                                        x[scast(u32, i)],
-                                        ctx,
-                                    ) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
-                            }
+                var j: usize = c_end;
+                while (j > tile_j) {
+                    j -= 1;
+                    const jx = kx + numeric.cast(isize, j) * incx;
 
-                            if (nounit) {
-                                ops.div_( // temp /= a[j + j * lda]
-                                    &temp,
-                                    temp,
-                                    a[scast(u32, j + j * lda)],
-                                    ctx,
-                                ) catch unreachable;
-                            }
-                        } else {
-                            var i: i32 = 0;
-                            while (i < j) : (i += 1) {
-                                ops.sub_( // temp -= conj(a[i + j * lda]) * x[i]
-                                    &temp,
-                                    temp,
-                                    ops.mul(
-                                        ops.conj(a[scast(u32, i + j * lda)], ctx) catch unreachable,
-                                        x[scast(u32, i)],
-                                        ctx,
-                                    ) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
-                            }
-
-                            if (nounit) {
-                                ops.div_( // temp /= conj(a[j + j * lda])
-                                    &temp,
-                                    temp,
-                                    ops.conj(a[scast(u32, j + j * lda)], ctx) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
-                            }
-                        }
-
-                        x[scast(u32, j)] = scast(X, temp);
+                    if (diag == .non_unit) {
+                        numeric.divInto(
+                            &x[numeric.cast(usize, jx)],
+                            x[numeric.cast(usize, jx)],
+                            if (comptime noconj)
+                                a[j + j * lda]
+                            else
+                                numeric.conj(a[j + j * lda]),
+                        );
                     }
-                } else {
-                    var jx: i32 = kx;
-                    var j: i32 = 0;
-                    while (j < n) : (j += 1) {
-                        var temp: C1 = scast(C1, x[scast(u32, jx)]);
 
-                        if (noconj) {
-                            var ix: i32 = kx;
-                            var i: i32 = 0;
-                            while (i < j) : (i += 1) {
-                                ops.sub_( // temp -= a[i + j * lda] * x[ix]
-                                    &temp,
+                    const temp = numeric.neg(x[numeric.cast(usize, jx)]);
+
+                    if (incx == 1) {
+                        var i: usize = tile_j;
+                        while (i < (j / unroll) * unroll) : (i += unroll) {
+                            inline for (0..unroll) |u| {
+                                numeric.fmaInto(
+                                    &x[i + u],
                                     temp,
-                                    ops.mul(
-                                        a[scast(u32, i + j * lda)],
-                                        x[scast(u32, ix)],
-                                        ctx,
-                                    ) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
-
-                                ix += incx;
-                            }
-
-                            if (nounit) {
-                                ops.div_( // temp /= a[j + j * lda]
-                                    &temp,
-                                    temp,
-                                    a[scast(u32, j + j * lda)],
-                                    ctx,
-                                ) catch unreachable;
-                            }
-                        } else {
-                            var ix: i32 = kx;
-                            var i: i32 = 0;
-                            while (i < j) : (i += 1) {
-                                ops.sub_( // temp -= conj(a[i + j * lda]) * x[ix]
-                                    &temp,
-                                    temp,
-                                    ops.mul(
-                                        ops.conj(a[scast(u32, i + j * lda)], ctx) catch unreachable,
-                                        x[scast(u32, ix)],
-                                        ctx,
-                                    ) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
-
-                                ix += incx;
-                            }
-
-                            if (nounit) {
-                                ops.div_( // temp /= conj(a[j + j * lda])
-                                    &temp,
-                                    temp,
-                                    ops.conj(a[scast(u32, j + j * lda)], ctx) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
+                                    if (comptime noconj)
+                                        a[i + u + j * lda]
+                                    else
+                                        numeric.conj(a[i + u + j * lda]),
+                                    x[i + u],
+                                );
                             }
                         }
 
-                        x[scast(u32, jx)] = scast(X, temp);
+                        while (i < j) : (i += 1) {
+                            numeric.fmaInto(
+                                &x[i],
+                                temp,
+                                if (comptime noconj)
+                                    a[i + j * lda]
+                                else
+                                    numeric.conj(a[i + j * lda]),
+                                x[i],
+                            );
+                        }
+                    } else {
+                        var ix = kx + numeric.cast(isize, tile_j) * incx;
+                        var i: usize = tile_j;
+                        while (i < j) : (i += 1) {
+                            numeric.fmaInto(
+                                &x[numeric.cast(usize, ix)],
+                                temp,
+                                if (comptime noconj)
+                                    a[i + j * lda]
+                                else
+                                    numeric.conj(a[i + j * lda]),
+                                x[numeric.cast(usize, ix)],
+                            );
 
-                        jx += incx;
+                            ix += incx;
+                        }
                     }
                 }
-            } else {
-                if (incx == 1) {
-                    var j: i32 = n - 1;
-                    while (j >= 0) : (j -= 1) {
-                        var temp: C1 = scast(C1, x[scast(u32, j)]);
 
-                        if (noconj) {
-                            var i: i32 = n - 1;
-                            while (i > j) : (i -= 1) {
-                                ops.sub_( // temp -= a[i + j * lda] * x[i]
-                                    &temp,
-                                    temp,
-                                    ops.mul(
-                                        a[scast(u32, i + j * lda)],
-                                        x[scast(u32, i)],
-                                        ctx,
-                                    ) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
+                if (tile_j > 0) {
+                    var tile_i: usize = 0;
+                    while (tile_i < tile_j) : (tile_i += tile_size) {
+                        const r_end = int.min(tile_i + tile_size, tile_j);
+                        const r_len = r_end - tile_i;
+                        var local_x: [tile_size]X = undefined;
+
+                        const px = if (incx == 1)
+                            x + tile_i
+                        else blk: {
+                            linalg.blas.copy(
+                                r_len,
+                                x + numeric.cast(usize, if (incx > 0)
+                                    numeric.cast(isize, tile_i) * incx
+                                else
+                                    (-numeric.cast(isize, n) + numeric.cast(isize, tile_i + r_len)) * incx),
+                                incx,
+                                @as([*]X, &local_x),
+                                1,
+                            ) catch unreachable;
+
+                            break :blk @as([*]X, &local_x);
+                        };
+
+                        j = tile_j;
+                        while (j < c_end) : (j += 1) {
+                            const temp = numeric.neg(x[numeric.cast(usize, kx + numeric.cast(isize, j) * incx)]);
+
+                            var i: usize = 0;
+                            while (i < (r_len / unroll) * unroll) : (i += unroll) {
+                                inline for (0..unroll) |u| {
+                                    numeric.fmaInto(
+                                        &px[i + u],
+                                        temp,
+                                        if (comptime noconj)
+                                            a[tile_i + i + u + j * lda]
+                                        else
+                                            numeric.conj(a[tile_i + i + u + j * lda]),
+                                        px[i + u],
+                                    );
+                                }
                             }
 
-                            if (nounit) {
-                                ops.div_( // temp /= a[j + j * lda]
-                                    &temp,
+                            while (i < r_len) : (i += 1) {
+                                numeric.fmaInto(
+                                    &px[i],
                                     temp,
-                                    a[scast(u32, j + j * lda)],
-                                    ctx,
-                                ) catch unreachable;
-                            }
-                        } else {
-                            var i: i32 = n - 1;
-                            while (i > j) : (i -= 1) {
-                                ops.sub_( // temp -= a[i + j * lda] * x[i]
-                                    &temp,
-                                    temp,
-                                    ops.mul(
-                                        a[scast(u32, i + j * lda)],
-                                        x[scast(u32, i)],
-                                        ctx,
-                                    ) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
-                            }
-
-                            if (nounit) {
-                                ops.div_( // temp /= a[j + j * lda]
-                                    &temp,
-                                    temp,
-                                    a[scast(u32, j + j * lda)],
-                                    ctx,
-                                ) catch unreachable;
-                            }
-                        }
-
-                        x[scast(u32, j)] = scast(X, temp);
-                    }
-                } else {
-                    kx += (n - 1) * incx;
-                    var jx: i32 = kx;
-                    var j: i32 = n - 1;
-                    while (j >= 0) : (j -= 1) {
-                        var temp: C1 = scast(C1, x[scast(u32, jx)]);
-
-                        if (noconj) {
-                            var ix: i32 = kx;
-                            var i: i32 = n - 1;
-                            while (i > j) : (i -= 1) {
-                                ops.sub_( // temp -= a[i + j * lda] * x[ix]
-                                    &temp,
-                                    temp,
-                                    ops.mul(
-                                        a[scast(u32, i + j * lda)],
-                                        x[scast(u32, ix)],
-                                        ctx,
-                                    ) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
-
-                                ix -= incx;
-                            }
-
-                            if (nounit) {
-                                ops.div_( // temp /= a[j + j * lda]
-                                    &temp,
-                                    temp,
-                                    a[scast(u32, j + j * lda)],
-                                    ctx,
-                                ) catch unreachable;
-                            }
-                        } else {
-                            var ix: i32 = kx;
-                            var i: i32 = n - 1;
-                            while (i > j) : (i -= 1) {
-                                ops.sub_( // temp -= conj(a[i + j * lda]) * x[ix]
-                                    &temp,
-                                    temp,
-                                    ops.mul(
-                                        ops.conj(a[scast(u32, i + j * lda)], ctx) catch unreachable,
-                                        x[scast(u32, ix)],
-                                        ctx,
-                                    ) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
-
-                                ix -= incx;
-                            }
-
-                            if (nounit) {
-                                ops.div_( // temp /= conj(a[j + j * lda])
-                                    &temp,
-                                    temp,
-                                    ops.conj(a[scast(u32, j + j * lda)], ctx) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
+                                    if (comptime noconj)
+                                        a[tile_i + i + j * lda]
+                                    else
+                                        numeric.conj(a[tile_i + i + j * lda]),
+                                    px[i],
+                                );
                             }
                         }
 
-                        x[scast(u32, jx)] = scast(X, temp);
-                        jx -= incx;
+                        if (incx != 1) {
+                            linalg.blas.copy(
+                                r_len,
+                                @as([*]const X, &local_x),
+                                1,
+                                x + numeric.cast(usize, if (incx > 0)
+                                    numeric.cast(isize, tile_i) * incx
+                                else
+                                    (-numeric.cast(isize, n) + numeric.cast(isize, tile_i + r_len)) * incx),
+                                incx,
+                            ) catch unreachable;
+                        }
                     }
                 }
             }
         }
     } else {
-        // Arbitrary precision types not supported yet
-        @compileError("zml.linalg.blas.trsv not implemented for arbitrary precision types yet");
-    }
+        // Form  x = A⁻ᵀ * x  or  x = A⁻ᴴ * x.
+        const unroll = 2 * (std.simd.suggestVectorLength(meta.Accumulator(numeric.Mul(A, X))) orelse 2);
+        comptime var tile_size = int.max(1, ((3 * options.l1_size) / 4) / (@sizeOf(meta.Accumulator(numeric.Mul(A, X))) + @sizeOf(X) + @sizeOf(A)));
+        tile_size = comptime int.max(1, tile_size -| (tile_size % unroll));
 
-    return;
+        if (uplo == .upper) {
+            var tile_i: usize = 0;
+            while (tile_i < n) : (tile_i += tile_size) {
+                const i_end = int.min(tile_i + tile_size, n);
+                const i_len = i_end - tile_i;
+
+                if (tile_i > 0) {
+                    var local_sums: [tile_size]meta.Accumulator(numeric.Mul(A, X)) = undefined;
+                    @memset(local_sums[0..i_len], numeric.zero(meta.Accumulator(numeric.Mul(A, X))));
+
+                    var tile_j: usize = 0;
+                    while (tile_j < tile_i) : (tile_j += tile_size) {
+                        const j_end = int.min(tile_j + tile_size, tile_i);
+                        const j_len = j_end - tile_j;
+                        var local_x: [tile_size]X = undefined;
+
+                        const px = if (incx == 1)
+                            x + tile_j
+                        else blk: {
+                            linalg.blas.copy(
+                                j_len,
+                                x + numeric.cast(usize, if (incx > 0)
+                                    numeric.cast(isize, tile_j) * incx
+                                else
+                                    (-numeric.cast(isize, n) + numeric.cast(isize, tile_j + j_len)) * incx),
+                                incx,
+                                @as([*]X, &local_x),
+                                1,
+                            ) catch unreachable;
+
+                            break :blk @as([*]const X, &local_x);
+                        };
+
+                        var i: usize = tile_i;
+                        while (i < i_end) : (i += 1) {
+                            var sums: [unroll]meta.Accumulator(numeric.Mul(A, X)) = .{numeric.zero(meta.Accumulator(numeric.Mul(A, X)))} ** unroll;
+
+                            var j: usize = 0;
+                            while (j < (j_len / unroll) * unroll) : (j += unroll) {
+                                inline for (0..unroll) |u| {
+                                    numeric.fmaInto(
+                                        &sums[u],
+                                        if (comptime noconj)
+                                            a[tile_j + j + u + i * lda]
+                                        else
+                                            numeric.conj(a[tile_j + j + u + i * lda]),
+                                        px[j + u],
+                                        sums[u],
+                                    );
+                                }
+                            }
+
+                            var temp = numeric.zero(meta.Accumulator(numeric.Mul(A, X)));
+                            inline for (0..unroll) |u| {
+                                numeric.addInto(&temp, temp, sums[u]);
+                            }
+
+                            while (j < j_len) : (j += 1) {
+                                numeric.fmaInto(
+                                    &temp,
+                                    if (comptime noconj)
+                                        a[tile_j + j + i * lda]
+                                    else
+                                        numeric.conj(a[tile_j + j + i * lda]),
+                                    px[j],
+                                    temp,
+                                );
+                            }
+
+                            numeric.addInto(&local_sums[i - tile_i], local_sums[i - tile_i], temp);
+                        }
+                    }
+
+                    var i: usize = tile_i;
+                    while (i < i_end) : (i += 1) {
+                        const ix = kx + numeric.cast(isize, i) * incx;
+                        var val = x[numeric.cast(usize, ix)];
+
+                        numeric.subInto(
+                            &val,
+                            val,
+                            numeric.cast(X, local_sums[i - tile_i]),
+                        );
+
+                        numeric.set(&x[numeric.cast(usize, ix)], val);
+                    }
+                }
+
+                var i: usize = tile_i;
+                while (i < i_end) : (i += 1) {
+                    const ix = kx + numeric.cast(isize, i) * incx;
+                    var sum = numeric.zero(meta.Accumulator(numeric.Mul(A, X)));
+
+                    var j: usize = tile_i;
+                    while (j < i) : (j += 1) {
+                        const jx = kx + numeric.cast(isize, j) * incx;
+                        numeric.fmaInto(
+                            &sum,
+                            if (comptime noconj)
+                                a[j + i * lda]
+                            else
+                                numeric.conj(a[j + i * lda]),
+                            x[numeric.cast(usize, jx)],
+                            sum,
+                        );
+                    }
+
+                    var temp = x[numeric.cast(usize, ix)];
+                    numeric.subInto(
+                        &temp,
+                        temp,
+                        numeric.cast(X, sum),
+                    );
+
+                    if (diag == .non_unit) {
+                        numeric.divInto(
+                            &temp,
+                            temp,
+                            if (comptime noconj)
+                                a[i + i * lda]
+                            else
+                                numeric.conj(a[i + i * lda]),
+                        );
+                    }
+
+                    numeric.set(&x[numeric.cast(usize, ix)], temp);
+                }
+            }
+        } else {
+            var rt: usize = (n + tile_size - 1) / tile_size;
+            while (rt > 0) {
+                rt -= 1;
+                const tile_i = rt * tile_size;
+                const i_end = int.min(tile_i + tile_size, n);
+                const i_len = i_end - tile_i;
+
+                if (i_end < n) {
+                    var local_sums: [tile_size]meta.Accumulator(numeric.Mul(A, X)) = undefined;
+                    @memset(local_sums[0..i_len], numeric.zero(meta.Accumulator(numeric.Mul(A, X))));
+
+                    var tile_j: usize = i_end;
+                    while (tile_j < n) : (tile_j += tile_size) {
+                        const j_end = int.min(tile_j + tile_size, n);
+                        const j_len = j_end - tile_j;
+                        var local_x: [tile_size]X = undefined;
+
+                        const px = if (incx == 1)
+                            x + tile_j
+                        else blk: {
+                            linalg.blas.copy(
+                                j_len,
+                                x + numeric.cast(usize, if (incx > 0)
+                                    numeric.cast(isize, tile_j) * incx
+                                else
+                                    (-numeric.cast(isize, n) + numeric.cast(isize, tile_j + j_len)) * incx),
+                                incx,
+                                @as([*]X, &local_x),
+                                1,
+                            ) catch unreachable;
+
+                            break :blk @as([*]const X, &local_x);
+                        };
+
+                        var i: usize = tile_i;
+                        while (i < i_end) : (i += 1) {
+                            var sums: [unroll]meta.Accumulator(numeric.Mul(A, X)) = .{numeric.zero(meta.Accumulator(numeric.Mul(A, X)))} ** unroll;
+
+                            var j: usize = 0;
+                            while (j < (j_len / unroll) * unroll) : (j += unroll) {
+                                inline for (0..unroll) |u| {
+                                    numeric.fmaInto(
+                                        &sums[u],
+                                        if (comptime noconj)
+                                            a[tile_j + j + u + i * lda]
+                                        else
+                                            numeric.conj(a[tile_j + j + u + i * lda]),
+                                        px[j + u],
+                                        sums[u],
+                                    );
+                                }
+                            }
+
+                            var temp = numeric.zero(meta.Accumulator(numeric.Mul(A, X)));
+                            inline for (0..unroll) |u| {
+                                numeric.addInto(
+                                    &temp,
+                                    temp,
+                                    sums[u],
+                                );
+                            }
+
+                            while (j < j_len) : (j += 1) {
+                                numeric.fmaInto(
+                                    &temp,
+                                    if (comptime noconj)
+                                        a[tile_j + j + i * lda]
+                                    else
+                                        numeric.conj(a[tile_j + j + i * lda]),
+                                    px[j],
+                                    temp,
+                                );
+                            }
+
+                            numeric.addInto(
+                                &local_sums[i - tile_i],
+                                local_sums[i - tile_i],
+                                temp,
+                            );
+                        }
+                    }
+
+                    var i: usize = tile_i;
+                    while (i < i_end) : (i += 1) {
+                        const ix = kx + numeric.cast(isize, i) * incx;
+                        var val = x[numeric.cast(usize, ix)];
+
+                        numeric.subInto(
+                            &val,
+                            val,
+                            numeric.cast(X, local_sums[i - tile_i]),
+                        );
+
+                        numeric.set(&x[numeric.cast(usize, ix)], val);
+                    }
+                }
+
+                var i: usize = i_end;
+                while (i > tile_i) {
+                    i -= 1;
+                    const ix = kx + numeric.cast(isize, i) * incx;
+                    var sum = numeric.zero(meta.Accumulator(numeric.Mul(A, X)));
+
+                    var j: usize = i + 1;
+                    while (j < i_end) : (j += 1) {
+                        const jx = kx + numeric.cast(isize, j) * incx;
+                        numeric.fmaInto(
+                            &sum,
+                            if (comptime noconj)
+                                a[j + i * lda]
+                            else
+                                numeric.conj(a[j + i * lda]),
+                            x[numeric.cast(usize, jx)],
+                            sum,
+                        );
+                    }
+
+                    var temp = x[numeric.cast(usize, ix)];
+                    numeric.subInto(&temp, temp, numeric.cast(X, sum));
+
+                    if (diag == .non_unit) {
+                        numeric.divInto(
+                            &temp,
+                            temp,
+                            if (comptime noconj)
+                                a[i + i * lda]
+                            else
+                                numeric.conj(a[i + i * lda]),
+                        );
+                    }
+
+                    numeric.set(&x[numeric.cast(usize, ix)], temp);
+                }
+            }
+        }
+    }
 }
