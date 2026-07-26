@@ -9,12 +9,14 @@ pub fn dotUnchecked(x: anytype, y: anytype) linalg.Dot(@TypeOf(x), @TypeOf(y)) {
 
     var sum = numeric.zero(meta.Accumulator(R));
 
-    inline for (0..X.len) |i| {
-        // sum += conj(x[i]) * y[i]
+    const len = if (comptime meta.isStaticVector(X)) X.len else x.len;
+
+    for (0..len) |i| {
+        // sum += x[i] * conj(y[i])
         numeric.fmaInto(
             &sum,
-            numeric.conj(x.data[i]),
-            y.data[i],
+            x.getAssumeInBounds(i),
+            numeric.conj(y.getAssumeInBounds(i)),
             sum,
         );
     }

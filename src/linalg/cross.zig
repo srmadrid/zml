@@ -40,6 +40,19 @@ pub fn Cross(comptime X: type, comptime Y: type) type {
         );
 }
 
+/// Computes the cross product of two static vectors, x × y.
+///
+/// ## Signature
+/// ```zig
+/// linalg.cross(x: X, y: Y) linalg.Cross(X, Y)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left vector.
+/// * `y` (`anytype`): The right vector.
+///
+/// ## Returns
+/// `linalg.Cross(@TypeOf(x), @TypeOf(y))`: The cross product x × y.
 pub fn cross(x: anytype, y: anytype) linalg.Cross(@TypeOf(x), @TypeOf(y)) {
     const X = @TypeOf(x);
     const Y = @TypeOf(y);

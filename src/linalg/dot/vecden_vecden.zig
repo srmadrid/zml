@@ -7,17 +7,14 @@ pub fn dotUnchecked(x: anytype, y: anytype) linalg.Dot(@TypeOf(x), @TypeOf(y)) {
     const Y = @TypeOf(y);
     const R = linalg.Dot(X, Y);
 
-    var sum = numeric.zero(meta.Accumulator(R));
-
-    inline for (0..X.len) |i| {
-        // sum += conj(x[i]) * y[i]
-        numeric.fmaInto(
-            &sum,
-            numeric.conj(x.data[i]),
-            y.data[i],
-            sum,
-        );
-    }
-
-    return numeric.cast(R, sum);
+    return numeric.cast(
+        R,
+        linalg.blas.dotc(
+            x.len,
+            x.data,
+            x.inc,
+            y.data,
+            y.inc,
+        ) catch unreachable,
+    );
 }

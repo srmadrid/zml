@@ -1,7 +1,3 @@
-const meta = @import("meta.zig");
-
-const int = @import("int.zig");
-
 pub const cblas = @import("linalg/cblas.zig");
 pub const blas = @import("linalg/blas.zig");
 pub const lapacke = @import("linalg/lapacke.zig");
@@ -51,7 +47,9 @@ pub const matmulIntoUnchecked = @import("linalg/matmul.zig").matmulIntoUnchecked
 // Allow vector and matrix rhs
 
 // Matrix operations
-// trace
+pub const Trace = @import("linalg/trace.zig").Trace;
+pub const trace = @import("linalg/trace.zig").trace;
+pub const traceUnchecked = @import("linalg/trace.zig").traceUnchecked;
 
 // det
 

@@ -2,19 +2,19 @@ const linalg = @import("../../linalg.zig");
 const meta = @import("../../meta.zig");
 const numeric = @import("../../numeric.zig");
 
-pub fn dotUnchecked(x: anytype, y: anytype) linalg.Dot(@TypeOf(x), @TypeOf(y)) {
+pub fn traceUnchecked(x: anytype) linalg.Trace(@TypeOf(x)) {
     const X = @TypeOf(x);
-    const Y = @TypeOf(y);
-    const R = linalg.Dot(X, Y);
+    const R = linalg.Trace(X);
 
     var sum = numeric.zero(meta.Accumulator(R));
 
-    inline for (0..X.len) |i| {
-        // sum += conj(x[i]) * y[i]
-        numeric.fmaInto(
+    const len = if (comptime meta.isStaticMatrix(X)) X.rows else x.rows;
+
+    for (0..len) |i| {
+        // sum += x[i, i]
+        numeric.addInto(
             &sum,
-            numeric.conj(x.data[i]),
-            y.data[i],
+            x.get(i, i) catch unreachable,
             sum,
         );
     }
