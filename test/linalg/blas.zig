@@ -1,11 +1,11 @@
 test {
     // Override test flags
-    const test_all = false;
+    const test_all = true;
 
     // Individual test flags
     const test_level_1 = false;
-    const test_level_2 = true;
-    const test_level_3 = false;
+    const test_level_2 = false;
+    const test_level_3 = true;
 
     if (test_all or test_level_1) {
         _ = @import("blas/level1/asum.zig");
@@ -36,15 +36,15 @@ test {
     }
 
     if (test_all or test_level_3) {
-        // _ = @import("blas/level3/gemm.zig");
+        _ = @import("blas/level3/gemm.zig");
         // _ = @import("blas/level3/gemmtr.zig");
-        // _ = @import("blas/level3/hemm.zig");
-        // _ = @import("blas/level3/herk.zig");
-        // _ = @import("blas/level3/her2k.zig");
-        // _ = @import("blas/level3/symm.zig");
-        // _ = @import("blas/level3/syrk.zig");
-        // _ = @import("blas/level3/syr2k.zig");
-        // _ = @import("blas/level3/trmm.zig");
-        // _ = @import("blas/level3/trsm.zig");
+        _ = @import("blas/level3/hemm.zig");
+        _ = @import("blas/level3/herk.zig");
+        _ = @import("blas/level3/her2k.zig");
+        _ = @import("blas/level3/symm.zig");
+        _ = @import("blas/level3/syrk.zig");
+        _ = @import("blas/level3/syr2k.zig");
+        _ = @import("blas/level3/trmm.zig");
+        _ = @import("blas/level3/trsm.zig");
     }
 }

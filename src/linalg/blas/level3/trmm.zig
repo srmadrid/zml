@@ -1,23 +1,16 @@
 const std = @import("std");
 
-const types = @import("../../types.zig");
-const scast = types.scast;
-const ops = @import("../../ops.zig");
-const constants = @import("../../constants.zig");
-const int = @import("../../int.zig");
+const options = @import("options");
 
-const linalg = @import("../../linalg.zig");
-const blas = @import("../blas.zig");
-const Order = types.Order;
-const Transpose = linalg.Transpose;
-const Side = linalg.Side;
-const Uplo = types.Uplo;
-const Diag = types.Diag;
+const int = @import("../../../int.zig");
+const linalg = @import("../../../linalg.zig");
+const matrix = @import("../../../matrix.zig");
+const meta = @import("../../../meta.zig");
+const numeric = @import("../../../numeric.zig");
+const thread = @import("../../../thread.zig");
 
-/// Computes a matrix-matrix product where one input matrix is triangular.
-///
-/// The `trmm` routines compute a scalar-matrix-matrix product with one
-/// triangular matrix . The operation is defined as:
+/// Computes a matrix-matrix product where one input matrix is triangular
+/// defined as:
 ///
 /// ```zig
 ///     B = alpha * op(A) * B,
@@ -29,858 +22,520 @@ const Diag = types.Diag;
 ///     B = alpha * B * op(A),
 /// ```
 ///
-/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `X^H`, `alpha` is a scalar,
-/// `A` is a unit, or non-unit, upper or lower triangular matrix, and `B` is an
-/// `m`-by-`n` matrix.
+/// where `alpha` is a numeric, `op(A)` is `A`, `Aᵀ`, `conj(A)` oe `Aᴴ`, op(A)`
+/// is an `m`-by-`m` or `n`-by-`n` matrix, and `B` is an `m`-by-`n` matrix.
 ///
-/// Signature
-/// ---------
+/// ## Signature
 /// ```zig
-/// fn trmm(order: Order, side: Side, uplo: Uplo, transa: Transpose, diag: Diag, m: i32, n: i32, alpha: Al, a: [*]const A, lda: i32, b: [*]B, ldb: i32, ctx: anytype) !void
+/// linalg.blas.trmm(layout: matrix.Layout, side: linalg.blas.Side, uplo: matrix.Uplo, transa: linalg.blas.Transpose, diag: matrix.Diag, m: usize, n: usize, alpha: Al, a: [*]const A, lda: usize, b: [*]B, ldb: usize) !void
 /// ```
 ///
-/// Parameters
-/// ----------
-/// `order` (`Order`): Specifies whether two-dimensional array storage is
-/// row-major or column-major.
+/// ## Parameters
+/// * `layout` (`matrix.Layout`): Specifies whether two-dimensional array
+///   storage is col-major or row-major.
+/// * `side` (`linalg.blas.Side`): Specifies whether the triangular matrix `A`
+///   appears on the left or right in the operation:
+///   * `left`: `B = alpha * op(A) * B`.
+///   * `right`: `B = alpha * B * op(A)`.
+/// * `uplo` (`matrix.Uplo`): Specifies whether the matrix `A` is upper or lower
+///   triangular.
+/// * `transa` (`linalg.blas.Transpose`): Specifies the operation to be
+///   performed on `A`:
+///   * `no_transpose`: `B = alpha * A * B` or `B = alpha * B * A`
+///   * `transpose`: `B = alpha * Aᵀ * B` or `B = alpha * B * Aᵀ`
+///   * `conj_no_transpose`: `B = alpha * conj(A) * B` or `B = alpha * B * conj(A)`
+///   * `conj_transpose`: `B = alpha * Aᴴ * B` or `B = alpha * B * Aᴴ`
+/// * `diag` (`matrix.Diag`): Specifies whether the matrix `A` is unit
+///   triangular.
+/// * `m` (`usize`): Specifies the number of rows of the matrix `B`.
+/// * `n` (`usize`): Specifies the number of columns of the matrix `B`.
+/// * `alpha` (`anytype`): Specifies the numeric `alpha`.
+/// * `a` (`anytype`): Many-item pointer, size at least `lda * ka`, where `ka`
+///   is `m` if `side` is `left`, or `n` if `side` is `right`.
+/// * `lda` (`usize`): Specifies the leading dimension of `a` as declared in the
+///   calling (sub)program. Must be greater than or equal to `max(1, m)` when
+///   `side` is `left`, or `max(1, n)` when `side` is `right`.
+/// * `b` (`anytype`): Many-item pointer, size at least `ldb * kb`, where `kb`
+///   is `n` when `layout` is `col_major`, or `m` when `layout` is `row_major`.
+/// * `ldb` (`usize`): Specifies the leading dimension of `b` as declared in the
+///   calling (sub)program. Must be greater than or equal to `max(1, m)` when
+///   `layout` is `col_major`, or `max(1, n)` when `layout` is `row_major`.
 ///
-/// `side` (`Side`): Specifies whether the triangular matrix `A` is on the left
-/// or right side of the product:
-/// - If `side = left`, then `B = alpha * op(A) * B`.
-/// - If `side = right`, then `B = alpha * B * op(A)`.
+/// ## Returns
+/// `void`
 ///
-/// `uplo` (`Uplo`): Specifies whether the matrix `A` is upper or lower
-/// triangular:
-/// - If `uplo = upper`, then `A` is an upper triangular matrix.
-/// - If `uplo = lower`, then `A` is a lower triangular matrix.
-///
-/// `transa` (`Transpose`): Specifies the form of `op(A)`:
-/// - If `transa = no_trans`, then `op(A) = A`.
-/// - If `transa = trans`, then `op(A) = A^T`.
-/// - If `transa = conj_no_trans`, then `op(A) = conj(A)`.
-/// - If `transa = conj_trans`, then `op(A) = A^H`.
-///
-/// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
-/// - If `diag = unit`, then `A` is a unit triangular matrix.
-/// - If `diag = non_unit`, then `A` is not a unit triangular matrix.
-///
-/// `m` (`i32`): Specifies the number of rows of the matrix `B`. Must be
-/// greater than or equal to 0.
-///
-/// `n` (`i32`): Specifies the number of columns of the matrix `B`. Must be
-/// greater than or equal to 0.
-///
-/// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
-/// `complex` or `expression`): Specifies the scalar `alpha`.
-///
-/// `a` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
-/// `real`, `complex` or `expression`): Array, size at least `lda * k`, where
-/// `k` is `m` if `side = left` and `n` if `side = right`.
-///
-/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
-/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
-/// `side = left` or `max(1, n)` if `side = right`.
-///
-/// `b` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
-/// `real`, `complex` or `expression`): Array, size at least `ldb * n` if
-/// `order = col_major` or `ldb * m` if `order = row_major`.
-///
-/// `ldb` (`i32`): Specifies the leading dimension of `b` as declared in the
-/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
-/// `order = col_major` or `max(1, n)` if `order = row_major`.
-///
-/// Returns
-/// -------
-/// `void`: The result is stored in `b`.
-///
-/// Errors
-/// ------
-/// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
-/// than `max(1, m)` or `max(1, n)`, or if `ldb` is less than `max(1, m)` or
-/// `max(1, n)`.
-///
-/// Notes
-/// -----
-/// If the `link_cblas` option is not `null`, the function will try to call the
-/// corresponding CBLAS function, if available. In that case, no errors will be
-/// raised even if the arguments are invalid.
+/// ## Errors
+/// * `linalg.blas.Error.InvalidArgument`: If `lda` is less than `max(1, m)` or
+///   `max(1, n)`, or if `ldb` is less than `max(1, m)` or `max(1, n)`.
 pub fn trmm(
-    order: Layout,
-    side: Side,
-    uplo: Uplo,
-    transa: Transpose,
-    diag: Diag,
-    m: i32,
-    n: i32,
+    layout: matrix.Layout,
+    side: linalg.blas.Side,
+    uplo: matrix.Uplo,
+    transa: linalg.blas.Transpose,
+    diag: matrix.Diag,
+    m: usize,
+    n: usize,
     alpha: anytype,
     a: anytype,
-    lda: i32,
+    lda: usize,
     b: anytype,
-    ldb: i32,
-    ctx: anytype,
+    ldb: usize,
 ) !void {
     const Al: type = @TypeOf(alpha);
     comptime var A: type = @TypeOf(a);
     comptime var B: type = @TypeOf(b);
 
-    comptime if (!types.isNumeric(Al))
-        @compileError("zml.linalg.blas.trmm requires alpha to be numeric, got " ++ @typeName(Al));
+    comptime if (!meta.isNumeric(Al) or
+        !meta.isManyItemPointer(A) or !meta.isNumeric(meta.Child(A)) or
+        !meta.isManyItemPointer(B) or meta.isConstPointer(B) or !meta.isNumeric(meta.Child(B)))
+        @compileError("zsl.linalg.blas.trmm: alpha must be a numeric, a must be a many-item pointer to numerics, and b must be a mutable many-item pointer to numerics, got \n\talpha: " ++ @typeName(Al) ++ "\n\ta: " ++ @typeName(A) ++ "\n\tb: " ++ @typeName(B) ++ "\n");
 
-    comptime if (!types.isManyPointer(A))
-        @compileError("zml.linalg.blas.trmm requires a to be a many-item pointer, got " ++ @typeName(A));
+    A = meta.Child(A);
+    B = meta.Child(B);
 
-    A = types.Child(A);
+    const noconja = transa == .no_trans or transa == .trans;
+    const nrowa: usize = if (side == .left) m else n;
 
-    comptime if (!types.isNumeric(A))
-        @compileError("zml.linalg.blas.trmm requires a's child type to numeric, got " ++ @typeName(A));
+    if (layout == .col_major) {
+        if (lda < int.max(1, nrowa) or ldb < int.max(1, m))
+            return linalg.blas.Error.InvalidArgument;
 
-    comptime if (!types.isManyPointer(B) or types.isConstPointer(B))
-        @compileError("zml.linalg.blas.trmm requires b to be a mutable many-item pointer, got " ++ @typeName(B));
+        // Quick return if possible.
+        if (m == 0 or n == 0)
+            return;
 
-    B = types.Child(B);
-
-    comptime if (!types.isNumeric(B))
-        @compileError("zml.linalg.blas.trmm requires b's child type to numeric, got " ++ @typeName(B));
-
-    comptime if (types.isArbitraryPrecision(Al) or
-        types.isArbitraryPrecision(A) or
-        types.isArbitraryPrecision(B))
-    {
-        // When implemented, expand if
-        @compileError("zml.linalg.blas.trmm not implemented for arbitrary precision types yet");
-    } else {
-        types.validateContext(@TypeOf(ctx), .{});
-    };
-
-    if (comptime A == B and types.canCoerce(Al, A) and options.link_cblas != null) {
-        switch (comptime types.numericType(A)) {
-            .float => {
-                if (comptime A == f32) {
-                    return ci.cblas_strmm(order.toCUInt(), side.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, m), scast(c_int, n), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb));
-                } else if (comptime A == f64) {
-                    return ci.cblas_dtrmm(order.toCUInt(), side.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, m), scast(c_int, n), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb));
-                }
-            },
-            .cfloat => {
-                if (comptime Scalar(A) == f32) {
-                    const alpha_casted: A = scast(A, alpha);
-                    return ci.cblas_ctrmm(order.toCUInt(), side.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, m), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb));
-                } else if (comptime Scalar(A) == f64) {
-                    const alpha_casted: A = scast(A, alpha);
-                    return ci.cblas_ztrmm(order.toCUInt(), side.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, m), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb));
-                }
-            },
-            else => {},
-        }
-    }
-
-    return _trmm(order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb, ctx);
-}
-
-fn _trmm(
-    order: Order,
-    side: Side,
-    uplo: Uplo,
-    transa: Transpose,
-    diag: Diag,
-    m: i32,
-    n: i32,
-    alpha: anytype,
-    a: anytype,
-    lda: i32,
-    b: anytype,
-    ldb: i32,
-    ctx: anytype,
-) !void {
-    if (order == .col_major) {
-        return k_trmm(
-            side,
-            uplo,
-            transa,
-            diag,
-            m,
-            n,
-            alpha,
-            a,
-            lda,
-            b,
-            ldb,
-            ctx,
-        );
-    } else {
-        return k_trmm(
-            side.invert(),
-            uplo.invert(),
-            transa,
-            diag,
-            n,
-            m,
-            alpha,
-            a,
-            lda,
-            b,
-            ldb,
-            ctx,
-        );
-    }
-}
-
-fn k_trmm(
-    side: Side,
-    uplo: Uplo,
-    transa: Transpose,
-    diag: Diag,
-    m: i32,
-    n: i32,
-    alpha: anytype,
-    a: anytype,
-    lda: i32,
-    b: anytype,
-    ldb: i32,
-    ctx: anytype,
-) !void {
-    const Al: type = @TypeOf(alpha);
-    const A: type = types.Child(@TypeOf(a));
-    const B: type = types.Child(@TypeOf(b));
-    const T1: type = types.Coerce(Al, B);
-    const T2: type = types.Coerce(A, B);
-    const T3: type = types.Coerce(Al, A);
-    const CC: type = types.Coerce(Al, types.Coerce(A, B));
-
-    const not: bool = transa == .no_trans or transa == .conj_no_trans;
-    const noconj: bool = transa == .no_trans or transa == .trans;
-
-    const nrowa: i32 = if (side == .left) m else n;
-
-    if (m < 0 or n < 0 or lda < int.max(1, nrowa) or ldb < int.max(1, m))
-        return blas.Error.InvalidArgument;
-
-    // Quick return if possible.
-    if (m == 0 or n == 0)
-        return;
-
-    if (comptime !types.isArbitraryPrecision(CC)) {
-        if (ops.eq(alpha, 0, ctx) catch unreachable) {
-            var j: i32 = 0;
-            while (j < n) : (j += 1) {
-                var i: i32 = 0;
-                while (i < m) : (i += 1) {
-                    ops.set( // b[i + j * ldb] = 0
-                        &b[scast(u32, i + j * ldb)],
-                        0,
-                        ctx,
-                    ) catch unreachable;
-                }
+        if (numeric.eq(alpha, 0)) {
+            for (0..n) |j| {
+                linalg.blas.scal(m, alpha, b + j * ldb, 1) catch unreachable;
             }
 
             return;
         }
 
-        if (side == .left) {
-            if (not) {
-                if (uplo == .upper) {
-                    var j: i32 = 0;
-                    while (j < n) : (j += 1) {
-                        var k: i32 = 0;
-                        while (k < m) : (k += 1) {
-                            if (ops.ne(b[scast(u32, k + j * ldb)], 0, ctx) catch unreachable) {
-                                const temp1: T1 = ops.mul( // temp1 = alpha * b[k + j * ldb]
-                                    alpha,
-                                    b[scast(u32, k + j * ldb)],
-                                    ctx,
-                                ) catch unreachable;
+        return if (noconja)
+            k_trmm(side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb, true)
+        else
+            k_trmm(side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb, false);
+    } else {
+        if (lda < int.max(1, nrowa) or ldb < int.max(1, n))
+            return linalg.blas.Error.InvalidArgument;
 
-                                if (noconj) {
-                                    var i: i32 = 0;
-                                    while (i < k) : (i += 1) {
-                                        ops.add_( // b[i + j * ldb] += temp1 * a[i + k * lda]
-                                            &b[scast(u32, i + j * ldb)],
-                                            b[scast(u32, i + j * ldb)],
-                                            ops.mul(
-                                                temp1,
-                                                a[scast(u32, i + k * lda)],
-                                                ctx,
-                                            ) catch unreachable,
-                                            ctx,
-                                        ) catch unreachable;
-                                    }
+        // Quick return if possible.
+        if (m == 0 or n == 0)
+            return;
 
-                                    if (diag == .non_unit) {
-                                        ops.mul_( // b[k + j * ldb] = temp1 * a[k + k * lda]
-                                            &b[scast(u32, k + j * ldb)],
-                                            temp1,
-                                            a[scast(u32, k + k * lda)],
-                                            ctx,
-                                        ) catch unreachable;
-                                    } else {
-                                        ops.set( // b[k + j * ldb] = temp1
-                                            &b[scast(u32, k + j * ldb)],
-                                            temp1,
-                                            ctx,
-                                        ) catch unreachable;
-                                    }
-                                } else {
-                                    var i: i32 = 0;
-                                    while (i < k) : (i += 1) {
-                                        ops.add_( // b[i + j * ldb] += temp1 * conj(a[i + k * lda])
-                                            &b[scast(u32, i + j * ldb)],
-                                            b[scast(u32, i + j * ldb)],
-                                            ops.mul(
-                                                temp1,
-                                                ops.conj(a[scast(u32, i + k * lda)], ctx) catch unreachable,
-                                                ctx,
-                                            ) catch unreachable,
-                                            ctx,
-                                        ) catch unreachable;
-                                    }
-                                    if (diag == .non_unit) {
-                                        ops.mul_( // b[k + j * ldb] = temp1 * conj(a[k + k * lda])
-                                            &b[scast(u32, k + j * ldb)],
-                                            temp1,
-                                            ops.conj(a[scast(u32, k + k * lda)], ctx) catch unreachable,
-                                            ctx,
-                                        ) catch unreachable;
-                                    } else {
-                                        ops.set( // b[k + j * ldb] = temp1
-                                            &b[scast(u32, k + j * ldb)],
-                                            temp1,
-                                            ctx,
-                                        ) catch unreachable;
-                                    }
-                                }
+        if (numeric.eq(alpha, 0)) {
+            for (0..m) |i| {
+                linalg.blas.scal(n, alpha, b + i * ldb, 1) catch unreachable;
+            }
+            return;
+        }
+
+        return if (noconja)
+            k_trmm(side.invert(), uplo.invert(), transa, diag, n, m, alpha, a, lda, b, ldb, true)
+        else
+            k_trmm(side.invert(), uplo.invert(), transa, diag, n, m, alpha, a, lda, b, ldb, false);
+    }
+}
+
+fn k_trmm(
+    side: linalg.blas.Side,
+    uplo: matrix.Uplo,
+    transa: linalg.blas.Transpose,
+    diag: matrix.Diag,
+    m: usize,
+    n: usize,
+    alpha: anytype,
+    a: anytype,
+    lda: usize,
+    b: anytype,
+    ldb: usize,
+    comptime noconja: bool,
+) !void {
+    const Al: type = @TypeOf(alpha);
+    const A: type = meta.Child(@TypeOf(a));
+    const B: type = meta.Child(@TypeOf(b));
+
+    if (side == .left) {
+        if (transa == .no_trans or transa == .conj_no_trans) {
+            if (uplo == .upper) {
+                for (0..n) |j| {
+                    for (0..m) |k| {
+                        if (numeric.ne(b[k + j * ldb], 0)) {
+                            const temp = numeric.mul(
+                                alpha,
+                                b[k + j * ldb],
+                            );
+
+                            for (0..k) |i| {
+                                // b[i + j * ldb] += temp * a[i + k * lda]
+                                numeric.fmaInto(
+                                    &b[i + j * ldb],
+                                    temp,
+                                    if (comptime noconja)
+                                        a[i + k * lda]
+                                    else
+                                        numeric.conj(a[i + k * lda]),
+                                    b[i + j * ldb],
+                                );
                             }
-                        }
-                    }
-                } else {
-                    var j: i32 = 0;
-                    while (j < n) : (j += 1) {
-                        var k: i32 = m - 1;
-                        while (k >= 0) : (k -= 1) {
-                            if (ops.ne(b[scast(u32, k + j * ldb)], 0, ctx) catch unreachable) {
-                                const temp1: T1 = ops.mul( // temp1 = alpha * b[k + j * ldb]
-                                    alpha,
-                                    b[scast(u32, k + j * ldb)],
-                                    ctx,
-                                ) catch unreachable;
 
-                                ops.set( // b[k + j * ldb] = temp1
-                                    &b[scast(u32, k + j * ldb)],
-                                    temp1,
-                                    ctx,
-                                ) catch unreachable;
-
-                                if (noconj) {
-                                    if (diag == .non_unit) {
-                                        ops.mul_( // b[k + j * ldb] *= a[k + k * lda]
-                                            &b[scast(u32, k + j * ldb)],
-                                            b[scast(u32, k + j * ldb)],
-                                            a[scast(u32, k + k * lda)],
-                                            ctx,
-                                        ) catch unreachable;
-                                    }
-
-                                    var i: i32 = k + 1;
-                                    while (i < m) : (i += 1) {
-                                        ops.add_( // b[i + j * ldb] += temp1 * a[i + k * lda]
-                                            &b[scast(u32, i + j * ldb)],
-                                            b[scast(u32, i + j * ldb)],
-                                            ops.mul(
-                                                temp1,
-                                                a[scast(u32, i + k * lda)],
-                                                ctx,
-                                            ) catch unreachable,
-                                            ctx,
-                                        ) catch unreachable;
-                                    }
-                                } else {
-                                    if (diag == .non_unit) {
-                                        ops.mul_( // b[k + j * ldb] *= conj(a[k + k * lda])
-                                            &b[scast(u32, k + j * ldb)],
-                                            b[scast(u32, k + j * ldb)],
-                                            ops.conj(a[scast(u32, k + k * lda)], ctx) catch unreachable,
-                                            ctx,
-                                        ) catch unreachable;
-                                    }
-
-                                    var i: i32 = k + 1;
-                                    while (i < m) : (i += 1) {
-                                        ops.add_( // b[i + j * ldb] += temp1 * conj(a[i + k * lda])
-                                            &b[scast(u32, i + j * ldb)],
-                                            b[scast(u32, i + j * ldb)],
-                                            ops.mul(
-                                                temp1,
-                                                ops.conj(a[scast(u32, i + k * lda)], ctx) catch unreachable,
-                                                ctx,
-                                            ) catch unreachable,
-                                            ctx,
-                                        ) catch unreachable;
-                                    }
-                                }
+                            if (diag == .non_unit) {
+                                // b[k + j * ldb] = temp * a[k + k * lda]
+                                numeric.mulInto(
+                                    &b[k + j * ldb],
+                                    temp,
+                                    if (comptime noconja)
+                                        a[k + k * lda]
+                                    else
+                                        numeric.conj(a[k + k * lda]),
+                                );
+                            } else {
+                                numeric.set(&b[k + j * ldb], temp);
                             }
                         }
                     }
                 }
             } else {
-                if (uplo == .upper) {
-                    var j: i32 = 0;
-                    while (j < n) : (j += 1) {
-                        var i: i32 = m - 1;
-                        while (i >= 0) : (i -= 1) {
-                            var temp: T2 = scast(T2, b[scast(u32, i + j * ldb)]);
+                for (0..n) |j| {
+                    var k: usize = m;
+                    while (k > 0) {
+                        k -= 1;
 
-                            if (noconj) {
-                                if (diag == .non_unit) {
-                                    ops.mul_( // temp *= a[i + i * lda]
-                                        &temp,
-                                        temp,
-                                        a[scast(u32, i + i * lda)],
-                                        ctx,
-                                    ) catch unreachable;
-                                }
+                        if (numeric.ne(b[k + j * ldb], 0)) {
+                            const temp = numeric.mul(
+                                alpha,
+                                b[k + j * ldb],
+                            );
 
-                                var k: i32 = 0;
-                                while (k < i) : (k += 1) {
-                                    ops.add_( // temp += a[k + i * lda] * b[k + j * ldb]
-                                        &temp,
-                                        temp,
-                                        ops.mul(
-                                            a[scast(u32, k + i * lda)],
-                                            b[scast(u32, k + j * ldb)],
-                                            ctx,
-                                        ) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-                                }
-                            } else {
-                                if (diag == .non_unit) {
-                                    ops.mul_( // temp *= conj(a[i + i * lda])
-                                        &temp,
-                                        temp,
-                                        ops.conj(a[scast(u32, i + i * lda)], ctx) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-                                }
+                            numeric.set(&b[k + j * ldb], temp);
 
-                                var k: i32 = 0;
-                                while (k < i) : (k += 1) {
-                                    ops.add_( // temp += conj(a[k + i * lda]) * b[k + j * ldb]
-                                        &temp,
-                                        temp,
-                                        ops.mul(
-                                            ops.conj(a[scast(u32, k + i * lda)], ctx) catch unreachable,
-                                            b[scast(u32, k + j * ldb)],
-                                            ctx,
-                                        ) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-                                }
+                            if (diag == .non_unit) {
+                                // b[k + j * ldb] *= a[k + k * lda]
+                                numeric.mulInto(
+                                    &b[k + j * ldb],
+                                    b[k + j * ldb],
+                                    if (comptime noconja)
+                                        a[k + k * lda]
+                                    else
+                                        numeric.conj(a[k + k * lda]),
+                                );
                             }
 
-                            ops.mul_( // b[i + j * ldb] = alpha * temp
-                                &b[scast(u32, i + j * ldb)],
-                                alpha,
-                                temp,
-                                ctx,
-                            ) catch unreachable;
-                        }
-                    }
-                } else {
-                    var j: i32 = 0;
-                    while (j < n) : (j += 1) {
-                        var i: i32 = 0;
-                        while (i < m) : (i += 1) {
-                            var temp: T2 = scast(T2, b[scast(u32, i + j * ldb)]);
-
-                            if (noconj) {
-                                if (diag == .non_unit) {
-                                    ops.mul_( // temp *= a[i + i * lda]
-                                        &temp,
-                                        temp,
-                                        a[scast(u32, i + i * lda)],
-                                        ctx,
-                                    ) catch unreachable;
-                                }
-
-                                var k: i32 = i + 1;
-                                while (k < m) : (k += 1) {
-                                    ops.add_( // temp += a[k + i * lda] * b[k + j * ldb]
-                                        &temp,
-                                        temp,
-                                        ops.mul(
-                                            a[scast(u32, k + i * lda)],
-                                            b[scast(u32, k + j * ldb)],
-                                            ctx,
-                                        ) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-                                }
-                            } else {
-                                if (diag == .non_unit) {
-                                    ops.mul_( // temp *= conj(a[i + i * lda])
-                                        &temp,
-                                        temp,
-                                        ops.conj(a[scast(u32, i + i * lda)], ctx) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-                                }
-
-                                var k: i32 = i + 1;
-                                while (k < m) : (k += 1) {
-                                    ops.add_( // temp += conj(a[k + i * lda]) * b[k + j * ldb]
-                                        &temp,
-                                        temp,
-                                        ops.mul(
-                                            ops.conj(a[scast(u32, k + i * lda)], ctx) catch unreachable,
-                                            b[scast(u32, k + j * ldb)],
-                                            ctx,
-                                        ) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-                                }
+                            for (k + 1..m) |i| {
+                                // b[i + j * ldb] += temp * a[i + k * lda]
+                                numeric.fmaInto(
+                                    &b[i + j * ldb],
+                                    temp,
+                                    if (comptime noconja)
+                                        a[i + k * lda]
+                                    else
+                                        numeric.conj(a[i + k * lda]),
+                                    b[i + j * ldb],
+                                );
                             }
-
-                            ops.mul_( // b[i + j * ldb] = alpha * temp
-                                &b[scast(u32, i + j * ldb)],
-                                alpha,
-                                temp,
-                                ctx,
-                            ) catch unreachable;
                         }
                     }
                 }
             }
         } else {
-            if (not) {
-                if (uplo == .upper) {
-                    var j: i32 = n - 1;
-                    while (j >= 0) : (j -= 1) {
-                        var temp: T3 = scast(T3, alpha);
+            if (uplo == .upper) {
+                for (0..n) |j| {
+                    var i: usize = m;
+                    while (i > 0) {
+                        i -= 1;
 
-                        if (noconj) {
-                            if (diag == .non_unit) {
-                                ops.mul_( // temp *= a[j + j * lda]
-                                    &temp,
-                                    temp,
-                                    a[scast(u32, j + j * lda)],
-                                    ctx,
-                                ) catch unreachable;
-                            }
-                        } else {
-                            if (diag == .non_unit) {
-                                ops.mul_( // temp *= conj(a[j + j * lda])
-                                    &temp,
-                                    temp,
-                                    ops.conj(a[scast(u32, j + j * lda)], ctx) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
-                            }
-                        }
+                        var temp = numeric.cast(meta.Accumulator(numeric.Mul(A, B)), b[i + j * ldb]);
 
-                        var i: i32 = 0;
-                        while (i < m) : (i += 1) {
-                            ops.mul_( // b[i + j * ldb] *= temp
-                                &b[scast(u32, i + j * ldb)],
-                                b[scast(u32, i + j * ldb)],
+                        if (diag == .non_unit) {
+                            // temp *= a[i + i * lda]
+                            numeric.mulInto(
+                                &temp,
+                                if (comptime noconja)
+                                    a[i + i * lda]
+                                else
+                                    numeric.conj(a[i + i * lda]),
                                 temp,
-                                ctx,
-                            ) catch unreachable;
+                            );
                         }
 
-                        if (noconj) {
-                            var k: i32 = 0;
-                            while (k < j) : (k += 1) {
-                                if (ops.ne(a[scast(u32, k + j * lda)], 0, ctx) catch unreachable) {
-                                    ops.mul_( // temp = alpha * a[k + j * lda]
-                                        &temp,
-                                        alpha,
-                                        a[scast(u32, k + j * lda)],
-                                        ctx,
-                                    ) catch unreachable;
-
-                                    i = 0;
-                                    while (i < m) : (i += 1) {
-                                        ops.add_( // b[i + j * ldb] += temp * b[i + k * ldb]
-                                            &b[scast(u32, i + j * ldb)],
-                                            b[scast(u32, i + j * ldb)],
-                                            ops.mul(
-                                                temp,
-                                                b[scast(u32, i + k * ldb)],
-                                                ctx,
-                                            ) catch unreachable,
-                                            ctx,
-                                        ) catch unreachable;
-                                    }
-                                }
-                            }
-                        } else {
-                            var k: i32 = 0;
-                            while (k < j) : (k += 1) {
-                                if (ops.ne(a[scast(u32, k + j * lda)], 0, ctx) catch unreachable) {
-                                    ops.mul_( // temp = alpha * conj(a[k + j * lda])
-                                        &temp,
-                                        alpha,
-                                        ops.conj(a[scast(u32, k + j * lda)], ctx) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-
-                                    i = 0;
-                                    while (i < m) : (i += 1) {
-                                        ops.add_( // b[i + j * ldb] += temp * b[i + k * ldb]
-                                            &b[scast(u32, i + j * ldb)],
-                                            b[scast(u32, i + j * ldb)],
-                                            ops.mul(
-                                                temp,
-                                                b[scast(u32, i + k * ldb)],
-                                                ctx,
-                                            ) catch unreachable,
-                                            ctx,
-                                        ) catch unreachable;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    var j: i32 = 0;
-                    while (j < n) : (j += 1) {
-                        var temp: T3 = scast(T3, alpha);
-
-                        if (noconj) {
-                            if (diag == .non_unit) {
-                                ops.mul_( // temp *= a[j + j * lda]
-                                    &temp,
-                                    temp,
-                                    a[scast(u32, j + j * lda)],
-                                    ctx,
-                                ) catch unreachable;
-                            }
-                        } else {
-                            if (diag == .non_unit) {
-                                ops.mul_( // temp *= conj(a[j + j * lda])
-                                    &temp,
-                                    temp,
-                                    ops.conj(a[scast(u32, j + j * lda)], ctx) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
-                            }
-                        }
-
-                        var i: i32 = 0;
-                        while (i < m) : (i += 1) {
-                            ops.mul_( // b[i + j * ldb] *= temp
-                                &b[scast(u32, i + j * ldb)],
-                                b[scast(u32, i + j * ldb)],
+                        for (0..i) |k| {
+                            // temp += a[k + i * lda] * b[k + j * ldb]
+                            numeric.fmaInto(
+                                &temp,
+                                if (comptime noconja)
+                                    a[k + i * lda]
+                                else
+                                    numeric.conj(a[k + i * lda]),
+                                b[k + j * ldb],
                                 temp,
-                                ctx,
-                            ) catch unreachable;
+                            );
                         }
 
-                        if (noconj) {
-                            var k: i32 = j + 1;
-                            while (k < n) : (k += 1) {
-                                if (ops.ne(a[scast(u32, k + j * lda)], 0, ctx) catch unreachable) {
-                                    ops.mul_( // temp = alpha * a[k + j * lda]
-                                        &temp,
-                                        alpha,
-                                        a[scast(u32, k + j * lda)],
-                                        ctx,
-                                    ) catch unreachable;
-
-                                    i = 0;
-                                    while (i < m) : (i += 1) {
-                                        ops.add_( // b[i + j * ldb] += temp * b[i + k * ldb]
-                                            &b[scast(u32, i + j * ldb)],
-                                            b[scast(u32, i + j * ldb)],
-                                            ops.mul(
-                                                temp,
-                                                b[scast(u32, i + k * ldb)],
-                                                ctx,
-                                            ) catch unreachable,
-                                            ctx,
-                                        ) catch unreachable;
-                                    }
-                                }
-                            }
-                        } else {
-                            var k: i32 = j + 1;
-                            while (k < n) : (k += 1) {
-                                if (ops.ne(a[scast(u32, k + j * lda)], 0, ctx) catch unreachable) {
-                                    ops.mul_( // temp = alpha * conj(a[k + j * lda])
-                                        &temp,
-                                        alpha,
-                                        ops.conj(a[scast(u32, k + j * lda)], ctx) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-
-                                    i = 0;
-                                    while (i < m) : (i += 1) {
-                                        ops.add_( // b[i + j * ldb] += temp * b[i + k * ldb]
-                                            &b[scast(u32, i + j * ldb)],
-                                            b[scast(u32, i + j * ldb)],
-                                            ops.mul(
-                                                temp,
-                                                b[scast(u32, i + k * ldb)],
-                                                ctx,
-                                            ) catch unreachable,
-                                            ctx,
-                                        ) catch unreachable;
-                                    }
-                                }
-                            }
-                        }
+                        // b[i + j * ldb] = alpha * temp
+                        numeric.mulInto(
+                            &b[i + j * ldb],
+                            alpha,
+                            temp,
+                        );
                     }
                 }
             } else {
-                if (uplo == .upper) {
-                    var k: i32 = 0;
-                    while (k < n) : (k += 1) {
-                        var j: i32 = 0;
-                        while (j < k) : (j += 1) {
-                            if (ops.ne(a[scast(u32, j + k * lda)], 0, ctx) catch unreachable) {
-                                var temp: T3 = scast(T3, alpha);
-
-                                if (noconj) {
-                                    ops.mul_( // temp *= a[j + k * lda]
-                                        &temp,
-                                        temp,
-                                        a[scast(u32, j + k * lda)],
-                                        ctx,
-                                    ) catch unreachable;
-                                } else {
-                                    ops.mul_( // temp *= conj(a[j + k * lda])
-                                        &temp,
-                                        temp,
-                                        ops.conj(a[scast(u32, j + k * lda)], ctx) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-                                }
-
-                                var i: i32 = 0;
-                                while (i < m) : (i += 1) {
-                                    ops.add_( // b[i + j * ldb] += temp * b[i + k * ldb]
-                                        &b[scast(u32, i + j * ldb)],
-                                        b[scast(u32, i + j * ldb)],
-                                        ops.mul(
-                                            temp,
-                                            b[scast(u32, i + k * ldb)],
-                                            ctx,
-                                        ) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-                                }
-                            }
-                        }
-
-                        var temp: T3 = scast(T3, alpha);
+                for (0..n) |j| {
+                    for (0..m) |i| {
+                        var temp = numeric.cast(meta.Accumulator(numeric.Mul(A, B)), b[i + j * ldb]);
 
                         if (diag == .non_unit) {
-                            if (noconj) {
-                                ops.mul_( // temp *= a[k + k * lda]
-                                    &temp,
-                                    temp,
-                                    a[scast(u32, k + k * lda)],
-                                    ctx,
-                                ) catch unreachable;
-                            } else {
-                                ops.mul_( // temp *= conj(a[k + k * lda])
-                                    &temp,
-                                    temp,
-                                    ops.conj(a[scast(u32, k + k * lda)], ctx) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
-                            }
+                            // temp *= a[i + i * lda]
+                            numeric.mulInto(
+                                &temp,
+                                temp,
+                                if (comptime noconja)
+                                    a[i + i * lda]
+                                else
+                                    numeric.conj(a[i + i * lda]),
+                            );
                         }
 
-                        if (ops.ne(temp, 1, ctx) catch unreachable) {
-                            var i: i32 = 0;
-                            while (i < m) : (i += 1) {
-                                ops.mul_( // b[i + k * ldb] *= temp
-                                    &b[scast(u32, i + k * ldb)],
-                                    b[scast(u32, i + k * ldb)],
-                                    temp,
-                                    ctx,
-                                ) catch unreachable;
-                            }
-                        }
-                    }
-                } else {
-                    var k: i32 = n - 1;
-                    while (k >= 0) : (k -= 1) {
-                        var j: i32 = k + 1;
-                        while (j < n) : (j += 1) {
-                            if (ops.ne(a[scast(u32, j + k * lda)], 0, ctx) catch unreachable) {
-                                var temp: T3 = scast(T3, alpha);
-
-                                if (noconj) {
-                                    ops.mul_( // temp *= a[j + k * lda]
-                                        &temp,
-                                        temp,
-                                        a[scast(u32, j + k * lda)],
-                                        ctx,
-                                    ) catch unreachable;
-                                } else {
-                                    ops.mul_( // temp *= conj(a[j + k * lda])
-                                        &temp,
-                                        temp,
-                                        ops.conj(a[scast(u32, j + k * lda)], ctx) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-                                }
-
-                                var i: i32 = 0;
-                                while (i < m) : (i += 1) {
-                                    ops.add_( // b[i + j * ldb] += temp * b[i + k * ldb]
-                                        &b[scast(u32, i + j * ldb)],
-                                        b[scast(u32, i + j * ldb)],
-                                        ops.mul(
-                                            temp,
-                                            b[scast(u32, i + k * ldb)],
-                                            ctx,
-                                        ) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-                                }
-                            }
+                        for (i + 1..m) |k| {
+                            // temp += a[k + i * lda] * b[k + j * ldb]
+                            numeric.fmaInto(
+                                &temp,
+                                if (comptime noconja)
+                                    a[k + i * lda]
+                                else
+                                    numeric.conj(a[k + i * lda]),
+                                b[k + j * ldb],
+                                temp,
+                            );
                         }
 
-                        var temp: T3 = scast(T3, alpha);
-
-                        if (diag == .non_unit) {
-                            if (noconj) {
-                                ops.mul_( // temp *= a[k + k * lda]
-                                    &temp,
-                                    temp,
-                                    a[scast(u32, k + k * lda)],
-                                    ctx,
-                                ) catch unreachable;
-                            } else {
-                                ops.mul_( // temp *= conj(a[k + k * lda])
-                                    &temp,
-                                    temp,
-                                    ops.conj(a[scast(u32, k + k * lda)], ctx) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
-                            }
-                        }
-
-                        if (ops.ne(temp, 1, ctx) catch unreachable) {
-                            var i: i32 = 0;
-                            while (i < m) : (i += 1) {
-                                ops.mul_( // b[i + k * ldb] *= temp
-                                    &b[scast(u32, i + k * ldb)],
-                                    b[scast(u32, i + k * ldb)],
-                                    temp,
-                                    ctx,
-                                ) catch unreachable;
-                            }
-                        }
+                        // b[i + j * ldb] = alpha * temp
+                        numeric.mulInto(
+                            &b[i + j * ldb],
+                            alpha,
+                            temp,
+                        );
                     }
                 }
             }
         }
     } else {
-        // Arbitrary precision types not supported yet
-        @compileError("zml.linalg.blas.trmm not implemented for arbitrary precision types yet");
+        if (transa == .no_trans or transa == .conj_no_trans) {
+            if (uplo == .upper) {
+                var j: usize = n;
+                while (j > 0) {
+                    j -= 1;
+
+                    var temp = numeric.cast(numeric.Mul(Al, A), alpha);
+
+                    if (diag == .non_unit) {
+                        // temp *= a[j + j * lda]
+                        numeric.mulInto(
+                            &temp,
+                            temp,
+                            if (comptime noconja)
+                                a[j + j * lda]
+                            else
+                                numeric.conj(a[j + j * lda]),
+                        );
+                    }
+
+                    for (0..m) |i| {
+                        // b[i + j * ldb] *= temp
+                        numeric.mulInto(
+                            &b[i + j * ldb],
+                            b[i + j * ldb],
+                            temp,
+                        );
+                    }
+
+                    for (0..j) |k| {
+                        if (numeric.ne(a[k + j * lda], 0)) {
+                            // temp = alpha * a[k + j * lda]
+                            numeric.mulInto(
+                                &temp,
+                                alpha,
+                                if (comptime noconja)
+                                    a[k + j * lda]
+                                else
+                                    numeric.conj(a[k + j * lda]),
+                            );
+
+                            for (0..m) |i| {
+                                // b[i + j * ldb] += temp * b[i + k * ldb]
+                                numeric.fmaInto(
+                                    &b[i + j * ldb],
+                                    temp,
+                                    b[i + k * ldb],
+                                    b[i + j * ldb],
+                                );
+                            }
+                        }
+                    }
+                }
+            } else {
+                for (0..n) |j| {
+                    var temp = numeric.cast(numeric.Mul(Al, A), alpha);
+
+                    if (diag == .non_unit) {
+                        // temp *= a[j + j * lda]
+                        numeric.mulInto(
+                            &temp,
+                            temp,
+                            if (comptime noconja)
+                                a[j + j * lda]
+                            else
+                                numeric.conj(a[j + j * lda]),
+                        );
+                    }
+
+                    for (0..m) |i| {
+                        // b[i + j * ldb] *= temp
+                        numeric.mulInto(
+                            &b[i + j * ldb],
+                            b[i + j * ldb],
+                            temp,
+                        );
+                    }
+
+                    for (j + 1..n) |k| {
+                        if (numeric.ne(a[k + j * lda], 0)) {
+                            // temp = alpha * a[k + j * lda]
+                            numeric.mulInto(
+                                &temp,
+                                alpha,
+                                if (comptime noconja)
+                                    a[k + j * lda]
+                                else
+                                    numeric.conj(a[k + j * lda]),
+                            );
+
+                            for (0..m) |i| {
+                                // b[i + j * ldb] += temp * b[i + k * ldb]
+                                numeric.fmaInto(
+                                    &b[i + j * ldb],
+                                    temp,
+                                    b[i + k * ldb],
+                                    b[i + j * ldb],
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            if (uplo == .upper) {
+                for (0..n) |k| {
+                    for (0..k) |j| {
+                        if (numeric.ne(a[j + k * lda], 0)) {
+                            var temp = numeric.cast(numeric.Mul(Al, A), alpha);
+
+                            // temp *= a[j + k * lda]
+                            numeric.mulInto(
+                                &temp,
+                                temp,
+                                if (comptime noconja)
+                                    a[j + k * lda]
+                                else
+                                    numeric.conj(a[j + k * lda]),
+                            );
+
+                            for (0..m) |i| {
+                                // b[i + j * ldb] += temp * b[i + k * ldb]
+                                numeric.fmaInto(
+                                    &b[i + j * ldb],
+                                    temp,
+                                    b[i + k * ldb],
+                                    b[i + j * ldb],
+                                );
+                            }
+                        }
+                    }
+
+                    var temp = numeric.cast(numeric.Mul(Al, A), alpha);
+
+                    if (diag == .non_unit) {
+                        // temp *= a[k + k * lda]
+                        numeric.mulInto(
+                            &temp,
+                            temp,
+                            if (comptime noconja)
+                                a[k + k * lda]
+                            else
+                                numeric.conj(a[k + k * lda]),
+                        );
+                    }
+
+                    if (numeric.ne(temp, 1)) {
+                        for (0..m) |i| {
+                            // b[i + k * ldb] *= temp
+                            numeric.mulInto(
+                                &b[i + k * ldb],
+                                b[i + k * ldb],
+                                temp,
+                            );
+                        }
+                    }
+                }
+            } else {
+                var k: usize = n;
+                while (k > 0) {
+                    k -= 1;
+
+                    for (k + 1..n) |j| {
+                        if (numeric.ne(a[j + k * lda], 0)) {
+                            var temp = numeric.cast(numeric.Mul(Al, A), alpha);
+
+                            // temp *= a[j + k * lda]
+                            numeric.mulInto(
+                                &temp,
+                                temp,
+                                if (comptime noconja)
+                                    a[j + k * lda]
+                                else
+                                    numeric.conj(a[j + k * lda]),
+                            );
+
+                            for (0..m) |i| {
+                                // b[i + j * ldb] += temp * b[i + k * ldb]
+                                numeric.fmaInto(
+                                    &b[i + j * ldb],
+                                    temp,
+                                    b[i + k * ldb],
+                                    b[i + j * ldb],
+                                );
+                            }
+                        }
+                    }
+
+                    var temp = numeric.cast(numeric.Mul(Al, A), alpha);
+
+                    if (diag == .non_unit) {
+                        // temp *= a[k + k * lda]
+                        numeric.mulInto(
+                            &temp,
+                            temp,
+                            if (comptime noconja)
+                                a[k + k * lda]
+                            else
+                                numeric.conj(a[k + k * lda]),
+                        );
+                    }
+
+                    if (numeric.ne(temp, 1)) {
+                        for (0..m) |i| {
+                            // b[i + k * ldb] *= temp
+                            numeric.mulInto(
+                                &b[i + k * ldb],
+                                b[i + k * ldb],
+                                temp,
+                            );
+                        }
+                    }
+                }
+            }
+        }
     }
 
     return;

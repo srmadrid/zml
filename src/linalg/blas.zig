@@ -105,16 +105,16 @@ pub const trmvParallel = @import("blas/level2/trmv.zig").trmvParallel;
 pub const trsv = @import("blas/level2/trsv.zig").trsv; // Unparallelized
 
 // Level 3
-// pub const gemm = @import("blas/level3/gemm.zig").gemm;
-// pub const gemmtr = @import("blas/level3/gemmtr.zig").gemmtr;
-// pub const hemm = @import("blas/level3/hemm.zig").hemm;
-// pub const herk = @import("blas/level3/herk.zig").herk;
-// pub const her2k = @import("blas/level3/her2k.zig").her2k;
-// pub const symm = @import("blas/level3/symm.zig").symm;
-// pub const syrk = @import("blas/level3/syrk.zig").syrk;
-// pub const syr2k = @import("blas/level3/syr2k.zig").syr2k;
-// pub const trmm = @import("blas/level3/trmm.zig").trmm;
-// pub const trsm = @import("blas/level3/trsm.zig").trsm;
+pub const gemm = @import("blas/level3/gemm.zig").gemm; // Unoptimized, unparallelized
+pub const gemmtr = @import("blas/level3/gemmtr.zig").gemmtr; // Unoptimized, unparallelized
+pub const hemm = @import("blas/level3/hemm.zig").hemm; // Unoptimized, unparallelized
+pub const herk = @import("blas/level3/herk.zig").herk; // Unoptimized, unparallelized
+pub const her2k = @import("blas/level3/her2k.zig").her2k; // Unoptimized, unparallelized
+pub const symm = @import("blas/level3/symm.zig").symm; // Unoptimized, unparallelized
+pub const syrk = @import("blas/level3/syrk.zig").syrk; // Unoptimized, unparallelized
+pub const syr2k = @import("blas/level3/syr2k.zig").syr2k; // Unoptimized, unparallelized
+pub const trmm = @import("blas/level3/trmm.zig").trmm; // Unoptimized, unparallelized
+pub const trsm = @import("blas/level3/trsm.zig").trsm; // Unoptimized, unparallelized
 
 pub const Error = error{
     InvalidArgument,

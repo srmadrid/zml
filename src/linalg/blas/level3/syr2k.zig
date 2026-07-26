@@ -1,135 +1,83 @@
 const std = @import("std");
 
-const types = @import("../../types.zig");
-const scast = types.scast;
-const ops = @import("../../ops.zig");
-const constants = @import("../../constants.zig");
-const int = @import("../../int.zig");
+const options = @import("options");
 
-const linalg = @import("../../linalg.zig");
-const blas = @import("../blas.zig");
-const Order = types.Order;
-const Transpose = linalg.Transpose;
-const Uplo = types.Uplo;
+const int = @import("../../../int.zig");
+const linalg = @import("../../../linalg.zig");
+const matrix = @import("../../../matrix.zig");
+const meta = @import("../../../meta.zig");
+const numeric = @import("../../../numeric.zig");
+const thread = @import("../../../thread.zig");
 
-/// Performs a symmetric rank-`2k` update.
-///
-/// The `syr2k` routine performs a rank-`2k` matrix-matrix operation for a
-/// symmetric matrix `C` using general matrices `A` and `B`. The operation is
-/// defined as:
+/// Performs a symmetric rank-`2k` update defined as:
 ///
 /// ```zig
-///     C = alpha * A * B^T + alpha * B * A^T + beta * C,
+///     C = alpha * A * Bᵀ + alpha * B * Aᵀ + beta * C,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     C = alpha * A^T * B + alpha * B^T * A + beta * C,
+///     C = alpha * Aᵀ * B + alpha * Bᵀ * A + beta * C,
 /// ```
 ///
-/// where `alpha` and `beta` are scalars, `C` is an `n`-by-`n` symmetric
-/// matrix, `A` and `B` are `n`-by-`k` matrices in the first case and `k`-by-`n`
-/// matrices in the second case.
+/// where `alpha` and `beta` are numerics, `A` and `B` are `n`-by-`k` or
+/// `k`-by-`n` matrices, and `C` is an `n`-by-`n` symmetric matrix.
 ///
-/// Signature
-/// ---------
+/// ## Signature
 /// ```zig
-/// fn syr2k(order: Order, uplo: Uplo, trans: Transpose, n: i32, k: i32, alpha: Al, a: [*]const A, lda: i32, b: [*]const B, ldb: i32, beta: Be, c: [*]C, ldc: i32, ctx: anytype) !void
+/// linalg.blas.syr2k(layout: matrix.Layout, uplo: matrix.Uplo, transab: linalg.blas.Transpose, n: usize, k: usize, alpha: Al, a: [*]const A, lda: usize, b: [*]const B, ldb: usize, beta: Be, c: [*]C, ldc: usize) !void
 /// ```
 ///
-/// Parameters
-/// ----------
-/// `order` (`Order`): Specifies whether two-dimensional array storage is
-/// row-major or column-major.
+/// ## Arguments
+/// * `layout` (`matrix.Layout`): Specifies whether two-dimensional array
+///   storage is col-major or row-major.
+/// * `uplo` (`matrix.Uplo`): Specifies whether the upper or lower triangular
+///   part of the symmetric matrix `C` is used.
+/// * `transab` (`Transpose`): Specifies whether the conjugate transpose of
+///   matrix `A` appears on the left or right in the operation:
+///   * `no_trans`: `C = alpha * A * Aᵀ + beta * C`.
+///   * `conj_trans`: `C = alpha * Aᵀ * A + beta * C`.
+/// * `n` (`usize`): Specifies the number of rows or columns of the matrix `A`
+///   and the size of the matrix `C`.
+/// * `k` (`usize`): Specifies the number of columns or rows of the matrix `A`.
+/// * `alpha` (`anytype`): Specifies the numeric `alpha`.
+/// * `a` (`anytype`): Many-item pointer, size at least `lda * ka`, where ka` is
+///   `k` when `transab` is `no_trans`, or `n` when `transab` is `conj_trans`.
+/// * `lda` (`usize`): Specifies the leading dimension of `a` as declared in the
+///   calling (sub)program. Must be greater than or equal to `max(1, n)` when
+///   `transab` is `no_trans`, or `max(1, k)` when `transab` is `conj_trans`.
+/// * `b` (`anytype`): Many-item pointer, size at least `ldb * kb`, where kb` is
+///   `k` when `transab` is `no_trans`, or `n` when `transab` is `conj_trans`.
+/// * `ldb` (`usize`): Specifies the leading dimension of `b` as declared in the
+///   calling (sub)program. Must be greater than or equal to `max(1, n)` when
+///   `transab` is `no_trans`, or `max(1, k)` when `transab` is `conj_trans`.
+/// * `beta` (`anytype`): Specifies the numeric `beta`. When `beta` is 0, then
+///   `c` need not be set on input.
+/// * `c` (`anytype`): Many-item pointer, size at least `ldc * n`.
+/// * `ldc` (`usize`): Specifies the leading dimension of `c` as declared in the
+///   calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
-/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
-/// symmetric matrix `C` is used:
-/// - If `uplo = upper`, then the upper triangular part of `C` is used.
-/// - If `uplo = lower`, then the lower triangular part of `C` is used.
+/// ## Returns
+/// `void`
 ///
-/// `trans` (`Transpose`): Specifies the operation:
-/// - If `trans = no_trans`, then `C = alpha * A * B^T + alpha * B * A^T + beta * C`.
-/// - If `trans = trans`, then `C = alpha * A^T * B + alpha * B^T * A + beta * C`.
-///
-/// `n` (`i32`): Specifies the order of the matrix `C`. Must be greater than
-/// or equal to 0.
-///
-/// `k` (`i32`): With `trans = no_trans`, specifies the number of columns of
-/// the matrices `A` and `B`. With `trans = trans`, specifies the number
-/// of rows of the matrices `A` and `B`. Must be greater than or equal to 0.
-///
-/// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
-/// `complex` or `expression`): Specifies the scalar `alpha`.
-///
-/// `a` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
-/// `real`, `complex` or `expression`): Array, size at least:
-/// |                     | `transa = no_trans` | `transa = trans` |
-/// |---------------------|---------------------|------------------|
-/// | `order = col_major` | `lda * k`           | `lda * n`        |
-/// | `order = row_major` | `lda * n`           | `lda * k`        |
-///
-/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
-/// calling (sub)program. Must be greater than or equal to:
-/// |                     | `transa = no_trans` | `transa = trans` |
-/// |---------------------|---------------------|------------------|
-/// | `order = col_major` | `max(1, n)`         | `max(1, k)`      |
-/// | `order = row_major` | `max(1, k)`         | `max(1, n)`      |
-///
-/// `b` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
-/// `real`, `complex` or `expression`): Array, size at least:
-/// |                     | `transa = no_trans` | `transa = trans` |
-/// |---------------------|---------------------|------------------|
-/// | `order = col_major` | `ldb * k`           | `ldb * n`        |
-/// | `order = row_major` | `ldb * n`           | `ldb * k`        |
-///
-/// `ldb` (`i32`): Specifies the leading dimension of `b` as declared in the
-/// calling (sub)program. Must be greater than or equal to:
-/// |                     | `transa = no_trans` | `transa = trans` |
-/// |---------------------|---------------------|------------------|
-/// | `order = col_major` | `max(1, n)`         | `max(1, k)`      |
-/// | `order = row_major` | `max(1, k)`         | `max(1, n)`      |
-///
-/// `beta` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
-/// `complex` or `expression`): Specifies the scalar `beta`.
-///
-/// `c` (mutable many-item pointer to `int`, `float`, `cfloat`, `integer`,
-/// `rational`, `real`, `complex` or `expression`): Array, size at least
-/// `ldc * n`.
-///
-/// `ldc` (`i32`): Specifies the leading dimension of `c` as declared in the
-/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
-///
-/// Returns
-/// -------
-/// `void`: The result is stored in `c`.
-///
-/// Errors
-/// ------
-/// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
-/// than `max(1, n)` or `max(1, k)`, if `ldb` is less than `max(1, n)` or
-/// `max(1, k)`, or if `ldc` is less than `max(1, n)`.
-///
-/// Notes
-/// -----
-/// If the `link_cblas` option is not `null`, the function will try to call the
-/// corresponding CBLAS function, if available. In that case, no errors will be
-/// raised even if the arguments are invalid.
+/// ## Errors
+/// * `linalg.blas.Error.InvalidArgument`: If `lda` or `ldb` is less than
+///   `max(1, n)` or `max(1, k)`, or if `ldc` is less than `max(1, n)`.
 pub fn syr2k(
-    order: Layout,
-    uplo: Uplo,
-    trans: Transpose,
-    n: i32,
-    k: i32,
+    layout: matrix.Layout,
+    uplo: matrix.Uplo,
+    transab: linalg.blas.Transpose,
+    n: usize,
+    k: usize,
     alpha: anytype,
     a: anytype,
-    lda: i32,
+    lda: usize,
     b: anytype,
-    ldb: i32,
+    ldb: usize,
     beta: anytype,
     c: anytype,
-    ldc: i32,
-    ctx: anytype,
+    ldc: usize,
 ) !void {
     const Al: type = @TypeOf(alpha);
     comptime var A: type = @TypeOf(a);
@@ -137,523 +85,248 @@ pub fn syr2k(
     const Be: type = @TypeOf(beta);
     comptime var C: type = @TypeOf(c);
 
-    comptime if (!types.isNumeric(Al))
-        @compileError("zml.linalg.blas.syr2k requires alpha to be numeric, got " ++ @typeName(Al));
+    comptime if (!meta.isNumeric(Al) or !meta.isNumeric(Be) or
+        !meta.isManyItemPointer(A) or !meta.isNumeric(meta.Child(A)) or
+        !meta.isManyItemPointer(B) or !meta.isNumeric(meta.Child(B)) or
+        !meta.isManyItemPointer(C) or meta.isConstPointer(C) or !meta.isNumeric(meta.Child(C)))
+        @compileError("zsl.linalg.blas.syr2k: alpha and beta must be numerics, a and b must be many-item pointers to numerics, and c must be a mutable many-item pointer to numerics, got \n\talpha: " ++ @typeName(Al) ++ "\n\ta: " ++ @typeName(A) ++ "\n\tb: " ++ @typeName(B) ++ "\n\tbeta: " ++ @typeName(Be) ++ "\n\tc: " ++ @typeName(C) ++ "\n");
 
-    comptime if (!types.isManyPointer(A))
-        @compileError("zml.linalg.blas.syr2k requires a to be a many-item pointer, got " ++ @typeName(A));
+    A = meta.Child(A);
+    B = meta.Child(B);
+    C = meta.Child(C);
 
-    A = types.Child(A);
+    const nrowab: usize = if (transab == .no_trans) n else k;
+    const ncolab: usize = if (transab == .no_trans) k else n;
 
-    comptime if (!types.isNumeric(A))
-        @compileError("zml.linalg.blas.syr2k requires a's child type to numeric, got " ++ @typeName(A));
+    if (layout == .col_major) {
+        if (transab == .conj_no_trans or transab == .conj_trans or lda < int.max(1, nrowab) or ldb < int.max(1, nrowab) or ldc < int.max(1, n))
+            return linalg.blas.Error.InvalidArgument;
 
-    comptime if (!types.isManyPointer(B))
-        @compileError("zml.linalg.blas.syr2k requires b to be a many-item pointer, got " ++ @typeName(B));
+        // Quick return if possible.
+        if (n == 0)
+            return;
 
-    B = types.Child(B);
-
-    comptime if (!types.isNumeric(B))
-        @compileError("zml.linalg.blas.syr2k requires b's child type to numeric, got " ++ @typeName(B));
-
-    comptime if (!types.isNumeric(Be))
-        @compileError("zml.linalg.blas.syr2k requires beta to be numeric, got " ++ @typeName(Be));
-
-    comptime if (!types.isManyPointer(C) or types.isConstPointer(C))
-        @compileError("zml.linalg.blas.syr2k requires c to be a mutable many-item pointer, got " ++ @typeName(C));
-
-    C = types.Child(C);
-
-    comptime if (!types.isNumeric(C))
-        @compileError("zml.linalg.blas.syr2k requires c's child type to be numeric, got " ++ @typeName(C));
-
-    comptime if (Al == bool and A == bool and B == bool and Be == bool and C == bool)
-        @compileError("zml.linalg.blas.syr2k does not support alpha, a, b, beta and c all being bool");
-
-    comptime if (types.isArbitraryPrecision(Al) or
-        types.isArbitraryPrecision(A) or
-        types.isArbitraryPrecision(B) or
-        types.isArbitraryPrecision(Be) or
-        types.isArbitraryPrecision(C))
-    {
-        // When implemented, expand if
-        @compileError("zml.linalg.blas.syr2k not implemented for arbitrary precision types yet");
-    } else {
-        types.validateContext(@TypeOf(ctx), .{});
-    };
-
-    if (comptime A == B and A == C and types.canCoerce(Al, A) and types.canCoerce(Be, A) and options.link_cblas != null) {
-        switch (comptime types.numericType(A)) {
-            .float => {
-                if (comptime A == f32) {
-                    return ci.cblas_ssyr2k(order.toCUInt(), uplo.toCUInt(), trans.toCUInt(), scast(c_int, n), scast(c_int, k), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb), scast(A, beta), c, scast(c_int, ldc));
-                } else if (comptime A == f64) {
-                    return ci.cblas_dsyr2k(order.toCUInt(), uplo.toCUInt(), trans.toCUInt(), scast(c_int, n), scast(c_int, k), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb), scast(A, beta), c, scast(c_int, ldc));
-                }
-            },
-            .cfloat => {
-                if (comptime Scalar(A) == f32) {
-                    const alpha_casted: A = scast(A, alpha);
-                    const beta_casted: A = scast(A, beta);
-                    return ci.cblas_csyr2k(order.toCUInt(), uplo.toCUInt(), trans.toCUInt(), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), &beta_casted, c, scast(c_int, ldc));
-                } else if (comptime Scalar(A) == f64) {
-                    const alpha_casted: A = scast(A, alpha);
-                    const beta_casted: A = scast(A, beta);
-                    return ci.cblas_zsyr2k(order.toCUInt(), uplo.toCUInt(), trans.toCUInt(), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), &beta_casted, c, scast(c_int, ldc));
-                }
-            },
-            else => {},
-        }
-    }
-
-    return _syr2k(order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc, ctx);
-}
-
-fn _syr2k(
-    order: Order,
-    uplo: Uplo,
-    trans: Transpose,
-    n: i32,
-    k: i32,
-    alpha: anytype,
-    a: anytype,
-    lda: i32,
-    b: anytype,
-    ldb: i32,
-    beta: anytype,
-    c: anytype,
-    ldc: i32,
-    ctx: anytype,
-) !void {
-    if (order == .col_major) {
-        return k_syr2k(
-            uplo,
-            trans,
-            n,
-            k,
-            alpha,
-            a,
-            lda,
-            b,
-            ldb,
-            beta,
-            c,
-            ldc,
-            ctx,
-        );
-    } else {
-        return k_syr2k(
-            uplo.invert(),
-            trans.invert(),
-            n,
-            k,
-            alpha,
-            b,
-            ldb,
-            a,
-            lda,
-            beta,
-            c,
-            ldc,
-            ctx,
-        );
-    }
-}
-
-fn k_syr2k(
-    uplo: Uplo,
-    trans: Transpose,
-    n: i32,
-    k: i32,
-    alpha: anytype,
-    a: anytype,
-    lda: i32,
-    b: anytype,
-    ldb: i32,
-    beta: anytype,
-    c: anytype,
-    ldc: i32,
-    ctx: anytype,
-) !void {
-    const Al: type = @TypeOf(alpha);
-    const A: type = types.Child(@TypeOf(a));
-    const B: type = types.Child(@TypeOf(b));
-    const Be: type = @TypeOf(beta);
-    const C: type = types.Child(@TypeOf(c));
-    const T1: type = types.Coerce(Al, B);
-    const T2: type = types.Coerce(Al, A);
-    const T3: type = types.Coerce(A, B);
-    const CC: type = types.Coerce(Al, types.Coerce(A, types.Coerce(B, types.Coerce(Be, C))));
-
-    const nrowa: i32 = if (trans == .no_trans) n else k;
-
-    if (trans == .conj_no_trans or trans == .conj_trans or
-        n < 0 or k < 0 or lda < int.max(1, nrowa) or ldb < int.max(1, nrowa) or ldc < int.max(1, n))
-        return blas.Error.InvalidArgument;
-
-    // Quick return if possible.
-    if (n == 0 or
-        ((ops.eq(alpha, 0, ctx) catch unreachable or k == 0) and
-            ops.eq(beta, 1, ctx) catch unreachable))
-        return;
-
-    if (comptime !types.isArbitraryPrecision(CC)) {
-        if (ops.eq(alpha, 0, ctx) catch unreachable) {
-            if (uplo == .upper) {
-                if (ops.eq(beta, 0, ctx) catch unreachable) {
-                    var j: i32 = 0;
-                    while (j < n) : (j += 1) {
-                        var i: i32 = 0;
-                        while (i <= j) : (i += 1) {
-                            ops.set( // c[i + j * ldc] = 0
-                                &c[scast(u32, i + j * ldc)],
-                                0,
-                                ctx,
-                            ) catch unreachable;
-                        }
-                    }
-                } else {
-                    var j: i32 = 0;
-                    while (j < n) : (j += 1) {
-                        var i: i32 = 0;
-                        while (i <= j) : (i += 1) {
-                            ops.mul_( // c[i + j * ldc] *= beta
-                                &c[scast(u32, i + j * ldc)],
-                                c[scast(u32, i + j * ldc)],
-                                beta,
-                                ctx,
-                            ) catch unreachable;
-                        }
-                    }
-                }
-            } else {
-                if (ops.eq(beta, 0, ctx) catch unreachable) {
-                    var j: i32 = 0;
-                    while (j < n) : (j += 1) {
-                        var i: i32 = j;
-                        while (i < n) : (i += 1) {
-                            ops.set( // c[i + j * ldc] = 0
-                                &c[scast(u32, i + j * ldc)],
-                                0,
-                                ctx,
-                            ) catch unreachable;
-                        }
-                    }
-                } else {
-                    var j: i32 = 0;
-                    while (j < n) : (j += 1) {
-                        var i: i32 = j;
-                        while (i < n) : (i += 1) {
-                            ops.mul_( // c[i + j * ldc] *= beta
-                                &c[scast(u32, i + j * ldc)],
-                                c[scast(u32, i + j * ldc)],
-                                beta,
-                                ctx,
-                            ) catch unreachable;
-                        }
-                    }
+        if (numeric.eq(alpha, 0)) {
+            if (numeric.ne(beta, 1)) {
+                for (0..n) |j| {
+                    linalg.blas.scal(
+                        if (uplo == .upper)
+                            j + 1
+                        else
+                            n - j,
+                        beta,
+                        c + if (uplo == .upper)
+                            j * ldc
+                        else
+                            j + j * ldc,
+                        1,
+                    ) catch unreachable;
                 }
             }
 
             return;
         }
 
-        if (trans == .no_trans) {
-            if (uplo == .upper) {
-                var j: i32 = 0;
-                while (j < n) : (j += 1) {
-                    if (ops.eq(beta, 0, ctx) catch unreachable) {
-                        var i: i32 = 0;
-                        while (i <= j) : (i += 1) {
-                            ops.set( // c[i + j * ldc] = 0
-                                &c[scast(u32, i + j * ldc)],
-                                0,
-                                ctx,
-                            ) catch unreachable;
-                        }
-                    } else if (ops.ne(beta, 1, ctx) catch unreachable) {
-                        var i: i32 = 0;
-                        while (i <= j) : (i += 1) {
-                            ops.mul_( // c[i + j * ldc] *= beta
-                                &c[scast(u32, i + j * ldc)],
-                                c[scast(u32, i + j * ldc)],
-                                beta,
-                                ctx,
-                            ) catch unreachable;
-                        }
-                    }
+        return k_syr2k(uplo, transab, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
+    } else {
+        if (transab == .conj_no_trans or transab == .conj_trans or lda < int.max(1, ncolab) or ldb < int.max(1, ncolab) or ldc < int.max(1, n))
+            return linalg.blas.Error.InvalidArgument;
 
-                    var l: i32 = 0;
-                    while (l < k) : (l += 1) {
-                        if (ops.ne(a[scast(u32, j + l * lda)], 0, ctx) catch unreachable or
-                            ops.ne(b[scast(u32, j + l * ldb)], 0, ctx) catch unreachable)
-                        {
-                            const temp1: T1 = ops.mul( // temp1 = alpha * b[j + l * ldb]
-                                alpha,
-                                b[scast(u32, j + l * ldb)],
-                                ctx,
-                            ) catch unreachable;
-                            const temp2: T2 = ops.mul( // temp2 = alpha * a[j + l * lda]
-                                alpha,
-                                a[scast(u32, j + l * lda)],
-                                ctx,
-                            ) catch unreachable;
+        // Quick return if possible.
+        if (n == 0)
+            return;
 
-                            var i: i32 = 0;
-                            while (i <= j) : (i += 1) {
-                                ops.add_( // c[i + j * ldc] += a[i + l * lda] * temp1 + b[i + l * ldb] * temp2
-                                    &c[scast(u32, i + j * ldc)],
-                                    c[scast(u32, i + j * ldc)],
-                                    ops.add(
-                                        ops.mul(
-                                            a[scast(u32, i + l * lda)],
-                                            temp1,
-                                            ctx,
-                                        ) catch unreachable,
-                                        ops.mul(
-                                            b[scast(u32, i + l * ldb)],
-                                            temp2,
-                                            ctx,
-                                        ) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
-                            }
-                        }
-                    }
+        if (numeric.eq(alpha, 0)) {
+            if (numeric.ne(beta, 1)) {
+                for (0..n) |i| {
+                    linalg.blas.scal(
+                        if (uplo == .upper)
+                            n - i
+                        else
+                            i + 1,
+                        beta,
+                        c +
+                            if (uplo == .upper)
+                                i + i * ldc
+                            else
+                                i * ldc,
+                        1,
+                    ) catch unreachable;
                 }
-            } else {
-                var j: i32 = 0;
-                while (j < n) : (j += 1) {
-                    if (ops.eq(beta, 0, ctx) catch unreachable) {
-                        var i: i32 = j;
-                        while (i < n) : (i += 1) {
-                            ops.set( // c[i + j * ldc] = 0
-                                &c[scast(u32, i + j * ldc)],
-                                0,
-                                ctx,
-                            ) catch unreachable;
-                        }
-                    } else if (ops.ne(beta, 1, ctx) catch unreachable) {
-                        var i: i32 = j;
-                        while (i < n) : (i += 1) {
-                            ops.mul_( // c[i + j * ldc] *= beta
-                                &c[scast(u32, i + j * ldc)],
-                                c[scast(u32, i + j * ldc)],
-                                beta,
-                                ctx,
-                            ) catch unreachable;
-                        }
-                    }
+            }
 
-                    var l: i32 = 0;
-                    while (l < k) : (l += 1) {
-                        if (ops.ne(a[scast(u32, j + l * lda)], 0, ctx) catch unreachable or
-                            ops.ne(b[scast(u32, j + l * ldb)], 0, ctx) catch unreachable)
-                        {
-                            const temp1: T1 = ops.mul( // temp1 = alpha * b[j + l * ldb]
-                                alpha,
-                                b[scast(u32, j + l * ldb)],
-                                ctx,
-                            ) catch unreachable;
-                            const temp2: T2 = ops.mul( // temp2 = alpha * a[j + l * lda]
-                                alpha,
-                                a[scast(u32, j + l * lda)],
-                                ctx,
-                            ) catch unreachable;
+            return;
+        }
 
-                            var i: i32 = j;
-                            while (i < n) : (i += 1) {
-                                ops.add_( // c[i + j * ldc] += a[i + l * lda] * temp1 + b[i + l * ldb] * temp2
-                                    &c[scast(u32, i + j * ldc)],
-                                    c[scast(u32, i + j * ldc)],
-                                    ops.add(
-                                        ops.mul(
-                                            a[scast(u32, i + l * lda)],
-                                            temp1,
-                                            ctx,
-                                        ) catch unreachable,
-                                        ops.mul(
-                                            b[scast(u32, i + l * ldb)],
-                                            temp2,
-                                            ctx,
-                                        ) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
-                            }
+        return k_syr2k(uplo.invert(), transab.invert(), n, k, alpha, b, ldb, a, lda, beta, c, ldc);
+    }
+}
+
+fn k_syr2k(
+    uplo: matrix.Uplo,
+    transab: linalg.blas.Transpose,
+    n: usize,
+    k: usize,
+    alpha: anytype,
+    a: anytype,
+    lda: usize,
+    b: anytype,
+    ldb: usize,
+    beta: anytype,
+    c: anytype,
+    ldc: usize,
+) !void {
+    const A: type = meta.Child(@TypeOf(a));
+    const B: type = meta.Child(@TypeOf(b));
+
+    // First form  C = beta * C.
+    if (numeric.ne(beta, 1)) {
+        for (0..n) |j| {
+            linalg.blas.scal(
+                if (uplo == .upper)
+                    j + 1
+                else
+                    n - j,
+                beta,
+                c + if (uplo == .upper)
+                    j * ldc
+                else
+                    j + j * ldc,
+                1,
+            ) catch unreachable;
+        }
+    }
+
+    if (transab == .no_trans) {
+        if (uplo == .upper) {
+            for (0..n) |j| {
+                for (0..k) |l| {
+                    if (numeric.ne(a[j + l * lda], 0) or numeric.ne(b[j + l * ldb], 0)) {
+                        // temp1 = alpha * b[j + l * ldb]
+                        const temp1 = numeric.mul(alpha, b[j + l * ldb]);
+
+                        // temp2 = alpha * a[j + l * lda]
+                        const temp2 = numeric.mul(alpha, a[j + l * lda]);
+
+                        for (0..j + 1) |i| {
+                            // c[i + j * ldc] += a[i + l * lda] * temp1 + b[i + l * ldb] * temp2
+                            numeric.fmaInto(
+                                &c[i + j * ldc],
+                                a[i + l * lda],
+                                temp1,
+                                numeric.fma(
+                                    b[i + l * ldb],
+                                    temp2,
+                                    c[i + j * ldc],
+                                ),
+                            );
                         }
                     }
                 }
             }
         } else {
-            if (uplo == .upper) {
-                var j: i32 = 0;
-                while (j < n) : (j += 1) {
-                    var i: i32 = 0;
-                    while (i <= j) : (i += 1) {
-                        var temp1: T3 = constants.zero(T3, ctx) catch unreachable;
-                        var temp2: T3 = constants.zero(T3, ctx) catch unreachable;
+            for (0..n) |j| {
+                for (0..k) |l| {
+                    if (numeric.ne(a[j + l * lda], 0) or numeric.ne(b[j + l * ldb], 0)) {
+                        // temp1 = alpha * b[j + l * ldb]
+                        const temp1 = numeric.mul(alpha, b[j + l * ldb]);
 
-                        var l: i32 = 0;
-                        while (l < k) : (l += 1) {
-                            ops.add_( // temp1 += a[l + i * lda] * b[l + j * ldb]
-                                &temp1,
+                        // temp2 = alpha * a[j + l * lda]
+                        const temp2 = numeric.mul(alpha, a[j + l * lda]);
+
+                        for (j..n) |i| {
+                            // c[i + j * ldc] += a[i + l * lda] * temp1 + b[i + l * ldb] * temp2
+                            numeric.fmaInto(
+                                &c[i + j * ldc],
+                                a[i + l * lda],
                                 temp1,
-                                ops.mul(
-                                    a[scast(u32, l + i * lda)],
-                                    b[scast(u32, l + j * ldb)],
-                                    ctx,
-                                ) catch unreachable,
-                                ctx,
-                            ) catch unreachable;
-
-                            ops.add_( // temp2 += b[l + i * ldb] * a[l + j * lda]
-                                &temp2,
-                                temp2,
-                                ops.mul(
-                                    b[scast(u32, l + i * ldb)],
-                                    a[scast(u32, l + j * lda)],
-                                    ctx,
-                                ) catch unreachable,
-                                ctx,
-                            ) catch unreachable;
-                        }
-
-                        if (ops.eq(beta, 0, ctx) catch unreachable) {
-                            ops.set( // c[i + j * ldc] = alpha * temp1 + alpha * temp2
-                                &c[scast(u32, i + j * ldc)],
-                                ops.add(
-                                    ops.mul(
-                                        alpha,
-                                        temp1,
-                                        ctx,
-                                    ) catch unreachable,
-                                    ops.mul(
-                                        alpha,
-                                        temp2,
-                                        ctx,
-                                    ) catch unreachable,
-                                    ctx,
-                                ) catch unreachable,
-                                ctx,
-                            ) catch unreachable;
-                        } else {
-                            ops.mul_( // c[i + j * ldc] *= beta
-                                &c[scast(u32, i + j * ldc)],
-                                c[scast(u32, i + j * ldc)],
-                                beta,
-                                ctx,
-                            ) catch unreachable;
-
-                            ops.add_( // c[i + j * ldc] += alpha * temp1 + alpha * temp2
-                                &c[scast(u32, i + j * ldc)],
-                                c[scast(u32, i + j * ldc)],
-                                ops.add(
-                                    ops.mul(
-                                        alpha,
-                                        temp1,
-                                        ctx,
-                                    ) catch unreachable,
-                                    ops.mul(
-                                        alpha,
-                                        temp2,
-                                        ctx,
-                                    ) catch unreachable,
-                                    ctx,
-                                ) catch unreachable,
-                                ctx,
-                            ) catch unreachable;
-                        }
-                    }
-                }
-            } else {
-                var j: i32 = 0;
-                while (j < n) : (j += 1) {
-                    var i: i32 = j;
-                    while (i < n) : (i += 1) {
-                        var temp1: T3 = constants.zero(T3, ctx) catch unreachable;
-                        var temp2: T3 = constants.zero(T3, ctx) catch unreachable;
-
-                        var l: i32 = 0;
-                        while (l < k) : (l += 1) {
-                            ops.add_( // temp1 += a[l + i * lda] * b[l + j * ldb]
-                                &temp1,
-                                temp1,
-                                ops.mul(
-                                    a[scast(u32, l + i * lda)],
-                                    b[scast(u32, l + j * ldb)],
-                                    ctx,
-                                ) catch unreachable,
-                                ctx,
-                            ) catch unreachable;
-
-                            ops.add_( // temp2 += b[l + i * ldb] * a[l + j * lda]
-                                &temp2,
-                                temp2,
-                                ops.mul(
-                                    b[scast(u32, l + i * ldb)],
-                                    a[scast(u32, l + j * lda)],
-                                    ctx,
-                                ) catch unreachable,
-                                ctx,
-                            ) catch unreachable;
-                        }
-
-                        if (ops.eq(beta, 0, ctx) catch unreachable) {
-                            ops.set( // c[i + j * ldc] = alpha * temp1 + alpha * temp2
-                                &c[scast(u32, i + j * ldc)],
-                                ops.add(
-                                    ops.mul(
-                                        alpha,
-                                        temp1,
-                                        ctx,
-                                    ) catch unreachable,
-                                    ops.mul(
-                                        alpha,
-                                        temp2,
-                                        ctx,
-                                    ) catch unreachable,
-                                    ctx,
-                                ) catch unreachable,
-                                ctx,
-                            ) catch unreachable;
-                        } else {
-                            ops.mul_( // c[i + j * ldc] *= beta
-                                &c[scast(u32, i + j * ldc)],
-                                c[scast(u32, i + j * ldc)],
-                                beta,
-                                ctx,
-                            ) catch unreachable;
-
-                            ops.add_( // c[i + j * ldc] += alpha * temp1 + alpha * temp2
-                                &c[scast(u32, i + j * ldc)],
-                                c[scast(u32, i + j * ldc)],
-                                ops.add(
-                                    ops.mul(
-                                        alpha,
-                                        temp1,
-                                        ctx,
-                                    ) catch unreachable,
-                                    ops.mul(
-                                        alpha,
-                                        temp2,
-                                        ctx,
-                                    ) catch unreachable,
-                                    ctx,
-                                ) catch unreachable,
-                                ctx,
-                            ) catch unreachable;
+                                numeric.fma(
+                                    b[i + l * ldb],
+                                    temp2,
+                                    c[i + j * ldc],
+                                ),
+                            );
                         }
                     }
                 }
             }
         }
     } else {
-        // Arbitrary precision types not supported yet
-        @compileError("zml.linalg.blas.syr2k not implemented for arbitrary precision types yet");
+        if (uplo == .upper) {
+            for (0..n) |j| {
+                for (0..j + 1) |i| {
+                    var temp1 = numeric.zero(meta.Accumulator(numeric.Mul(A, B)));
+                    var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(A, B)));
+
+                    for (0..k) |l| {
+                        // temp1 += a[l + i * lda] * b[l + j * ldb]
+                        numeric.fmaInto(
+                            &temp1,
+                            a[l + i * lda],
+                            b[l + j * ldb],
+                            temp1,
+                        );
+
+                        // temp2 += b[l + i * ldb] * a[l + j * lda]
+                        numeric.fmaInto(
+                            &temp2,
+                            b[l + i * ldb],
+                            a[l + j * lda],
+                            temp2,
+                        );
+                    }
+
+                    // c[i + j * ldc] += alpha * temp1 + alpha * temp2
+                    numeric.fmaInto(
+                        &c[i + j * ldc],
+                        alpha,
+                        temp1,
+                        numeric.fma(
+                            alpha,
+                            temp2,
+                            c[i + j * ldc],
+                        ),
+                    );
+                }
+            }
+        } else {
+            for (0..n) |j| {
+                for (j..n) |i| {
+                    var temp1 = numeric.zero(meta.Accumulator(numeric.Mul(A, B)));
+                    var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(A, B)));
+
+                    for (0..k) |l| {
+                        // temp1 += a[l + i * lda] * b[l + j * ldb]
+                        numeric.fmaInto(
+                            &temp1,
+                            a[l + i * lda],
+                            b[l + j * ldb],
+                            temp1,
+                        );
+
+                        // temp2 += b[l + i * ldb] * a[l + j * lda]
+                        numeric.fmaInto(
+                            &temp2,
+                            b[l + i * ldb],
+                            a[l + j * lda],
+                            temp2,
+                        );
+                    }
+
+                    // c[i + j * ldc] += alpha * temp1 + alpha * temp2
+                    numeric.fmaInto(
+                        &c[i + j * ldc],
+                        alpha,
+                        temp1,
+                        numeric.fma(
+                            alpha,
+                            temp2,
+                            c[i + j * ldc],
+                        ),
+                    );
+                }
+            }
+        }
     }
 
     return;

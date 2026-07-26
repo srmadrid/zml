@@ -115,9 +115,6 @@ fn k_hemv(uplo: matrix.Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x
     if (numeric.ne(beta, 1))
         linalg.blas.scal(n, beta, y, incy) catch unreachable;
 
-    if (numeric.eq(alpha, 0))
-        return;
-
     if (uplo == .upper) {
         // Form  y  when upper triangle of A is stored.
         const unroll = 2 * int.min(

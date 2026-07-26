@@ -106,15 +106,15 @@ pub fn gemv(
     X = meta.Child(X);
     Y = meta.Child(Y);
 
-    if (lda < int.max(1, if (layout == .col_major) m else n) or incx == 0 or incy == 0)
-        return linalg.blas.Error.InvalidArgument;
-
     const eff_transa = if (layout == .col_major) transa else transa.invert();
     const eff_m = if (layout == .col_major) m else n;
     const eff_n = if (layout == .col_major) n else m;
     const notrans = eff_transa == .no_trans or eff_transa == .conj_no_trans;
     const noconj = transa == .no_trans or transa == .trans;
     const leny = if (notrans) eff_m else eff_n;
+
+    if (lda < int.max(1, eff_m) or incx == 0 or incy == 0)
+        return linalg.blas.Error.InvalidArgument;
 
     // Quick return if possible.
     if (m == 0 or n == 0)
@@ -232,15 +232,15 @@ pub fn gemvParallel(
     X = meta.Child(X);
     Y = meta.Child(Y);
 
-    if (lda < int.max(1, if (layout == .col_major) m else n) or incx == 0 or incy == 0)
-        return linalg.blas.Error.InvalidArgument;
-
     const eff_transa = if (layout == .col_major) transa else transa.invert();
     const eff_m = if (layout == .col_major) m else n;
     const eff_n = if (layout == .col_major) n else m;
     const notrans = eff_transa == .no_trans or eff_transa == .conj_no_trans;
     const noconj = transa == .no_trans or transa == .trans;
     const leny = if (notrans) eff_m else eff_n;
+
+    if (lda < int.max(1, eff_m) or incx == 0 or incy == 0)
+        return linalg.blas.Error.InvalidArgument;
 
     // Quick return if possible.
     if (m == 0 or n == 0)
@@ -323,9 +323,6 @@ fn k_gemv(transa: linalg.blas.Transpose, m: usize, n: usize, alpha: anytype, a: 
     // First form  y = beta * y.
     if (numeric.ne(beta, 1))
         linalg.blas.scal(leny, beta, y, incy) catch unreachable;
-
-    if (numeric.eq(alpha, 0))
-        return;
 
     // Set up the start points in x and y.
     const kx: isize = if (incx < 0) (-numeric.cast(isize, lenx) + 1) * incx else 0;
