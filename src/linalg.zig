@@ -17,8 +17,9 @@ pub const Normalize = @import("linalg/normalize.zig").Normalize;
 pub const normalize = @import("linalg/normalize.zig").normalize;
 pub const normalizeAlloc = @import("linalg/normalize.zig").normalizeAlloc;
 pub const normalizeInto = @import("linalg/normalize.zig").normalizeInto;
+pub const normalizeIntoUnchecked = @import("linalg/normalize.zig").normalizeIntoUnchecked;
 
-// distance (with norm order)
+// distance (with norm order) without realizing y - x, i.e., computing it on the go
 
 // project(x, y): ((x ⋅ y)/(y ⋅ y)) * y
 
@@ -30,6 +31,8 @@ pub const NormOrder = @import("linalg/norm.zig").NormOrder;
 pub const norm = @import("linalg/norm.zig").norm;
 pub const normAlloc = @import("linalg/norm.zig").normAlloc;
 
+// hadamard (also for vectors)
+
 pub const Matmul = @import("linalg/matmul.zig").Matmul;
 pub const matmul = @import("linalg/matmul.zig").matmul;
 pub const matmulUnchecked = @import("linalg/matmul.zig").matmulUnchecked;
@@ -37,8 +40,6 @@ pub const matmulAlloc = @import("linalg/matmul.zig").matmulAlloc;
 pub const matmulInto = @import("linalg/matmul.zig").matmulInto;
 pub const matmulIntoAlloc = @import("linalg/matmul.zig").matmulIntoAlloc;
 pub const matmulIntoUnchecked = @import("linalg/matmul.zig").matmulIntoUnchecked;
-
-// hadamard (also for vectors)
 
 // solve (with SolveMethod, to choose decomposition, and optional out parameter to save it)
 // Allow vector and matrix rhs

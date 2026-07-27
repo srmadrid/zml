@@ -66,7 +66,7 @@ pub fn NormOrder(N: type) type {
 /// ```
 ///
 /// ## Arguments
-/// * `x` (`anytype`): The matrix.
+/// * `x` (`anytype`): The vector or matrix.
 /// * `order` (`comptime linalg.NormOrder(meta.Numeric(X))`): the norm order.
 ///
 /// ## Returns
@@ -115,7 +115,7 @@ pub fn norm(x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)
 /// ```
 ///
 /// ## Arguments
-/// * `x` (`anytype`): The matrix.
+/// * `x` (`anytype`): The vector or matrix.
 /// * `order` (`comptime linalg.NormOrder(meta.Numeric(X))`): the norm order.
 ///
 /// ## Returns
