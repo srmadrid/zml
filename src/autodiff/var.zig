@@ -42,8 +42,8 @@ pub fn Var(N: type) type {
         pub fn init(tape: *autodiff.Tape(N), value: N) Var(N) {
             const id = tape.pushAssumeCapacity(.{
                 .op = .@"var",
-                .left = int.maxVal(usize),
-                .right = int.maxVal(usize),
+                .left = int.highest(usize),
+                .right = int.highest(usize),
                 .val = value,
             });
 
@@ -219,7 +219,7 @@ pub fn Var(N: type) type {
                             },
                             .add => {
                                 // d/dx (x + y) = 1
-                                if (node.left != int.maxVal(usize))
+                                if (node.left != int.highest(usize))
                                     numeric.addInto(
                                         &t.tape.nodes[node.left].grad,
                                         t.tape.nodes[node.left].grad,
@@ -227,7 +227,7 @@ pub fn Var(N: type) type {
                                     );
 
                                 // d/dy (x + y) = 1
-                                if (node.right != int.maxVal(usize))
+                                if (node.right != int.highest(usize))
                                     numeric.addInto(
                                         &t.tape.nodes[node.right].grad,
                                         t.tape.nodes[node.right].grad,
@@ -236,7 +236,7 @@ pub fn Var(N: type) type {
                             },
                             .sub => {
                                 // d/dx (x - y) = 1
-                                if (node.left != int.maxVal(usize))
+                                if (node.left != int.highest(usize))
                                     numeric.addInto(
                                         &t.tape.nodes[node.left].grad,
                                         t.tape.nodes[node.left].grad,
@@ -244,7 +244,7 @@ pub fn Var(N: type) type {
                                     );
 
                                 // d/dy (x - y) = -1
-                                if (node.right != int.maxVal(usize))
+                                if (node.right != int.highest(usize))
                                     numeric.subInto(
                                         &t.tape.nodes[node.right].grad,
                                         t.tape.nodes[node.right].grad,
@@ -381,7 +381,7 @@ pub fn Var(N: type) type {
                             },
                             .hypot => {
                                 // d/dx hypot(x, y) = x / hypot(x, y) = x / node.val
-                                if (node.left != int.maxVal(usize))
+                                if (node.left != int.highest(usize))
                                     numeric.addInto(
                                         &t.tape.nodes[node.left].grad,
                                         t.tape.nodes[node.left].grad,
@@ -392,7 +392,7 @@ pub fn Var(N: type) type {
                                     );
 
                                 // d/dy hypot(x, y) = y / hypot(x, y) = y / node.val
-                                if (node.right != int.maxVal(usize))
+                                if (node.right != int.highest(usize))
                                     numeric.addInto(
                                         &t.tape.nodes[node.right].grad,
                                         t.tape.nodes[node.right].grad,
@@ -666,7 +666,7 @@ pub fn abs(x: anytype) autodiff.@"var".Abs(@TypeOf(x)) {
             var node: autodiff.Tape(meta.Scalar(X)).Node = .{
                 .op = .abs,
                 .left = tx.id,
-                .right = int.maxVal(usize),
+                .right = int.highest(usize),
                 .val = undefined,
             };
 
@@ -704,7 +704,7 @@ pub fn abs1(x: anytype) autodiff.@"var".Abs1(@TypeOf(x)) {
             var node: autodiff.Tape(meta.Scalar(X)).Node = .{
                 .op = .abs1,
                 .left = tx.id,
-                .right = int.maxVal(usize),
+                .right = int.highest(usize),
                 .val = undefined,
             };
 
@@ -742,7 +742,7 @@ pub fn abs2(x: anytype) autodiff.@"var".Abs2(@TypeOf(x)) {
             var node: autodiff.Tape(meta.Scalar(X)).Node = .{
                 .op = .abs2,
                 .left = tx.id,
-                .right = int.maxVal(usize),
+                .right = int.highest(usize),
                 .val = undefined,
             };
 
@@ -780,7 +780,7 @@ pub fn neg(x: anytype) autodiff.@"var".Neg(@TypeOf(x)) {
             var node: autodiff.Tape(meta.Scalar(X)).Node = .{
                 .op = .neg,
                 .left = tx.id,
-                .right = int.maxVal(usize),
+                .right = int.highest(usize),
                 .val = undefined,
             };
 
@@ -818,7 +818,7 @@ pub fn re(x: anytype) autodiff.@"var".Re(@TypeOf(x)) {
             var node: autodiff.Tape(meta.Scalar(X)).Node = .{
                 .op = .re,
                 .left = tx.id,
-                .right = int.maxVal(usize),
+                .right = int.highest(usize),
                 .val = undefined,
             };
 
@@ -856,7 +856,7 @@ pub fn im(x: anytype) autodiff.@"var".Im(@TypeOf(x)) {
             var node: autodiff.Tape(meta.Scalar(X)).Node = .{
                 .op = .im,
                 .left = tx.id,
-                .right = int.maxVal(usize),
+                .right = int.highest(usize),
                 .val = undefined,
             };
 
@@ -894,7 +894,7 @@ pub fn conj(x: anytype) autodiff.@"var".Conj(@TypeOf(x)) {
             var node: autodiff.Tape(meta.Scalar(X)).Node = .{
                 .op = .conj,
                 .left = tx.id,
-                .right = int.maxVal(usize),
+                .right = int.highest(usize),
                 .val = undefined,
             };
 
@@ -932,7 +932,7 @@ pub fn sign(x: anytype) autodiff.@"var".Sign(@TypeOf(x)) {
             var node: autodiff.Tape(meta.Scalar(X)).Node = .{
                 .op = .sign,
                 .left = tx.id,
-                .right = int.maxVal(usize),
+                .right = int.highest(usize),
                 .val = undefined,
             };
 
@@ -1393,7 +1393,7 @@ pub fn exp(x: anytype) autodiff.@"var".Exp(@TypeOf(x)) {
             var node: autodiff.Tape(meta.Scalar(X)).Node = .{
                 .op = .exp,
                 .left = tx.id,
-                .right = int.maxVal(usize),
+                .right = int.highest(usize),
                 .val = undefined,
             };
 
@@ -1431,7 +1431,7 @@ pub fn ln(x: anytype) autodiff.@"var".Ln(@TypeOf(x)) {
             var node: autodiff.Tape(meta.Scalar(X)).Node = .{
                 .op = .ln,
                 .left = tx.id,
-                .right = int.maxVal(usize),
+                .right = int.highest(usize),
                 .val = undefined,
             };
 
@@ -1515,7 +1515,7 @@ pub fn sqrt(x: anytype) autodiff.@"var".Sqrt(@TypeOf(x)) {
             var node: autodiff.Tape(meta.Scalar(X)).Node = .{
                 .op = .sqrt,
                 .left = tx.id,
-                .right = int.maxVal(usize),
+                .right = int.highest(usize),
                 .val = undefined,
             };
 
@@ -1553,7 +1553,7 @@ pub fn cbrt(x: anytype) autodiff.@"var".Cbrt(@TypeOf(x)) {
             var node: autodiff.Tape(meta.Scalar(X)).Node = .{
                 .op = .cbrt,
                 .left = tx.id,
-                .right = int.maxVal(usize),
+                .right = int.highest(usize),
                 .val = undefined,
             };
 
@@ -1637,7 +1637,7 @@ pub fn sin(x: anytype) autodiff.@"var".Sin(@TypeOf(x)) {
             var node: autodiff.Tape(meta.Scalar(X)).Node = .{
                 .op = .sin,
                 .left = tx.id,
-                .right = int.maxVal(usize),
+                .right = int.highest(usize),
                 .val = undefined,
             };
 
@@ -1675,7 +1675,7 @@ pub fn cos(x: anytype) autodiff.@"var".Cos(@TypeOf(x)) {
             var node: autodiff.Tape(meta.Scalar(X)).Node = .{
                 .op = .cos,
                 .left = tx.id,
-                .right = int.maxVal(usize),
+                .right = int.highest(usize),
                 .val = undefined,
             };
 
@@ -1713,7 +1713,7 @@ pub fn tan(x: anytype) autodiff.@"var".Tan(@TypeOf(x)) {
             var node: autodiff.Tape(meta.Scalar(X)).Node = .{
                 .op = .tan,
                 .left = tx.id,
-                .right = int.maxVal(usize),
+                .right = int.highest(usize),
                 .val = undefined,
             };
 
@@ -1751,7 +1751,7 @@ pub fn asin(x: anytype) autodiff.@"var".Asin(@TypeOf(x)) {
             var node: autodiff.Tape(meta.Scalar(X)).Node = .{
                 .op = .asin,
                 .left = tx.id,
-                .right = int.maxVal(usize),
+                .right = int.highest(usize),
                 .val = undefined,
             };
 
@@ -1789,7 +1789,7 @@ pub fn acos(x: anytype) autodiff.@"var".Acos(@TypeOf(x)) {
             var node: autodiff.Tape(meta.Scalar(X)).Node = .{
                 .op = .acos,
                 .left = tx.id,
-                .right = int.maxVal(usize),
+                .right = int.highest(usize),
                 .val = undefined,
             };
 
@@ -1827,7 +1827,7 @@ pub fn atan(x: anytype) autodiff.@"var".Atan(@TypeOf(x)) {
             var node: autodiff.Tape(meta.Scalar(X)).Node = .{
                 .op = .atan,
                 .left = tx.id,
-                .right = int.maxVal(usize),
+                .right = int.highest(usize),
                 .val = undefined,
             };
 
@@ -1911,7 +1911,7 @@ pub fn sinh(x: anytype) autodiff.@"var".Sinh(@TypeOf(x)) {
             var node: autodiff.Tape(meta.Scalar(X)).Node = .{
                 .op = .sinh,
                 .left = tx.id,
-                .right = int.maxVal(usize),
+                .right = int.highest(usize),
                 .val = undefined,
             };
 
@@ -1949,7 +1949,7 @@ pub fn cosh(x: anytype) autodiff.@"var".Cosh(@TypeOf(x)) {
             var node: autodiff.Tape(meta.Scalar(X)).Node = .{
                 .op = .cosh,
                 .left = tx.id,
-                .right = int.maxVal(usize),
+                .right = int.highest(usize),
                 .val = undefined,
             };
 
@@ -1987,7 +1987,7 @@ pub fn tanh(x: anytype) autodiff.@"var".Tanh(@TypeOf(x)) {
             var node: autodiff.Tape(meta.Scalar(X)).Node = .{
                 .op = .tanh,
                 .left = tx.id,
-                .right = int.maxVal(usize),
+                .right = int.highest(usize),
                 .val = undefined,
             };
 
@@ -2025,7 +2025,7 @@ pub fn asinh(x: anytype) autodiff.@"var".Asinh(@TypeOf(x)) {
             var node: autodiff.Tape(meta.Scalar(X)).Node = .{
                 .op = .asinh,
                 .left = tx.id,
-                .right = int.maxVal(usize),
+                .right = int.highest(usize),
                 .val = undefined,
             };
 
@@ -2063,7 +2063,7 @@ pub fn acosh(x: anytype) autodiff.@"var".Acosh(@TypeOf(x)) {
             var node: autodiff.Tape(meta.Scalar(X)).Node = .{
                 .op = .acosh,
                 .left = tx.id,
-                .right = int.maxVal(usize),
+                .right = int.highest(usize),
                 .val = undefined,
             };
 
@@ -2101,7 +2101,7 @@ pub fn atanh(x: anytype) autodiff.@"var".Atanh(@TypeOf(x)) {
             var node: autodiff.Tape(meta.Scalar(X)).Node = .{
                 .op = .atanh,
                 .left = tx.id,
-                .right = int.maxVal(usize),
+                .right = int.highest(usize),
                 .val = undefined,
             };
 
@@ -2141,16 +2141,16 @@ inline fn ensureTracked(tape: anytype, x: anytype) usize {
             .tracked => |t| t.id,
             .constant => |c| tape.pushAssumeCapacity(.{
                 .op = .@"var",
-                .left = int.maxVal(usize),
-                .right = int.maxVal(usize),
+                .left = int.highest(usize),
+                .right = int.highest(usize),
                 .val = c,
             }),
         }
     else
         tape.pushAssumeCapacity(.{
             .op = .@"var",
-            .left = int.maxVal(usize),
-            .right = int.maxVal(usize),
+            .left = int.highest(usize),
+            .right = int.highest(usize),
             .val = numeric.cast(meta.Child(@TypeOf(tape)).Numeric, x),
         });
 }
@@ -2202,8 +2202,8 @@ inline fn idOf(x: anytype) usize {
     return if (comptime isVar(@TypeOf(x)))
         switch (x) {
             .tracked => |t| t.id,
-            .constant => int.maxVal(usize),
+            .constant => int.highest(usize),
         }
     else
-        int.maxVal(usize);
+        int.highest(usize);
 }

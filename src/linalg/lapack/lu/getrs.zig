@@ -10,6 +10,96 @@ const lapack = @import("../lapack.zig");
 const Order = types.Order;
 const Transpose = linalg.Transpose;
 
+/// Solves a system of linear equations with an LU-factored square coefficient
+/// matrix, with multiple right-hand sides.
+///
+/// The `getrs` routine solves for `X` the following systems of linear
+/// equations:
+///
+/// ```zig
+///     A * X = B,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A^T * X = B,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     conj(A) * X = B,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A^H * X = B,
+/// ```
+///
+/// where `A` is the LU factorization of a general `n`-by-`n` matrix `A`,
+/// computed by `getrf`, `B` is an `n`-by-`nrhs` matrix of right-hand
+/// sides, and `X` is an `n`-by-`nrhs` matrix of solutions.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn getrs(order: Order, transa: Transpose, n: i32, nrhs: i32, a: [*]const A, lda: i32, ipiv: [*]const i32, b: [*]B, ldb: i32, ctx: anytype) !void
+/// ```
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `transa` (`Transpose`): Specifies the form of the system of equations to
+/// solve:
+/// - If `transa = .no_trans`, then `A * X = B`.
+/// - If `transa = .trans`, then `A^T * X = B`.
+/// - If `transa = .conj_no_trans`, then `conj(A) * X = B`.
+/// - If `transa = .conj_trans`, then `A^H * X = B`.
+///
+/// `n` (`i32`): The order of the matrix `A` and the number of rows of the
+/// matrix `B`. Must be greater than or equal to 0.
+///
+/// `nrhs` (`i32`): The number of right-hand sides, i.e., the number of
+/// columns of the matrix `B`. Must be greater than or equal to 0.
+///
+/// `a` (many-item pointer to `bool`, `int`, `float`, `cfloat`, `integer`,
+/// `rational`, `real`, `complex` or `expression`): Array, size at least
+/// `lda * n`.
+///
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, n)`.
+///
+/// `ipiv` (`[*]i32`): Array, size at least `max(1, n)`. The pivot indices as
+/// returned by `getrf`.
+///
+/// `b` (mutable many-item pointer to `bool`, `int`, `float`, `cfloat`,
+/// `integer`, `rational`, `real`, `complex` or `expression`): Array, size at
+/// least `ldb * nrhs` if `order = .col_major` or `ldb * n` if
+/// `order = .row_major`. On return, contains the solution matrix `X`.
+///
+/// `ldb` (`i32`): The leading dimension of the array `b`. Must be greater
+/// than or equal to `max(1, n)` if `order = .col_major` or `max(1, nrhs)` if
+/// `order = .row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `b`.
+///
+/// Errors
+/// ------
+/// `linalg.lapack.Error.InvalidArgument`: If `n` or `nrhs` is less than 0, if
+/// `lda` is less than `max(1, n)`, or if `ldb` is less than `max(1, n)` or
+/// `max(1, nrhs)`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding LAPACKE function, if available. In that case, no errors will
+/// be raised even if the arguments are invalid.
 pub fn getrs(
     order: Order,
     transa: Transpose,

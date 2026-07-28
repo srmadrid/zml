@@ -446,36 +446,47 @@ pub fn min(x: anytype, y: anytype) int.Min(@TypeOf(x), @TypeOf(y)) {
     return if (numeric.cast(R, x) < numeric.cast(R, y)) numeric.cast(R, x) else numeric.cast(R, y);
 }
 
-/// Returns the maximum representable value of the given int type `Int`.
+/// Returns the highest representable value of the given int type `Int`.
 ///
 /// ## Arguments
 /// * `Int` (`type`): The int type to get the maximum value for.
 ///
 /// ## Returns
 /// `Int`: The maximum representable value of type `Int`.
-pub fn maxVal(comptime Int: type) Int {
+pub fn highest(comptime Int: type) Int {
     comptime if (!meta.isNumeric(Int) or meta.numericType(Int) != .int)
-        @compileError("zsl.int.maxVal: Int must be an int type, got \n\tInt = " ++ @typeName(Int) ++ "\n");
+        @compileError("zsl.int.highest: Int must be an int type, got \n\tInt = " ++ @typeName(Int) ++ "\n");
 
-    const info = @typeInfo(Int);
-    const bits = info.int.bits;
-    return (1 << (bits - numeric.cast(comptime_int, info.int.signedness == .signed))) - 1;
+    return std.math.maxInt(Int);
 }
 
-/// Returns the minimum representable value of the given int type `Int`.
+/// Returns the lowest representable value of the given int type `Int`.
+///
+/// ## Arguments
+/// * `Int` (`type`): The int type to get the lowest value for.
+///
+/// ## Returns
+/// `Int`: The minimum representable value of type `Int`.
+pub fn lowest(comptime Int: type) Int {
+    comptime if (!meta.isNumeric(Int) or meta.numericType(Int) != .int)
+        @compileError("zsl.int.lowest: Int must be an int type, got \n\tInt = " ++ @typeName(Int) ++ "\n");
+
+    return std.math.minInt(Int);
+}
+
+/// Returns the smallest positive magnitude strictly greater than zero of the
+/// given int type `Int`.
 ///
 /// ## Arguments
 /// * `Int` (`type`): The int type to get the minimum value for.
 ///
 /// ## Returns
 /// `Int`: The minimum representable value of type `Int`.
-pub fn minVal(comptime Int: type) Int {
+pub fn smallest(comptime Int: type) Int {
     comptime if (!meta.isNumeric(Int) or meta.numericType(Int) != .int)
-        @compileError("zsl.int.minVal: Int must be an int type, got \n\tInt = " ++ @typeName(Int) ++ "\n");
+        @compileError("zsl.int.smallest: Int must be an int type, got \n\tInt = " ++ @typeName(Int) ++ "\n");
 
-    const info = @typeInfo(Int);
-    const bits = info.int.bits;
-    return if (info.int.signedness == .signed) -(1 << (bits - 1)) else 0;
+    return 1;
 }
 
 pub const abs = @import("int/abs.zig").abs;

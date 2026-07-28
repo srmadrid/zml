@@ -119,18 +119,18 @@ pub fn sqrt(x: anytype) @TypeOf(x) {
     }
 
     // Check for overflow
-    if (result_exp >= int.maxVal(X.Exponent))
+    if (result_exp >= int.highest(X.Exponent))
         return .{
             .mantissa = 0,
-            .exponent = int.maxVal(X.Exponent),
+            .exponent = int.highest(X.Exponent),
             .positive = true,
         };
 
     // Check for underflow
-    if (result_exp <= int.minVal(X.Exponent))
+    if (result_exp <= int.lowest(X.Exponent))
         return .{
             .mantissa = 0,
-            .exponent = int.minVal(X.Exponent),
+            .exponent = int.lowest(X.Exponent),
             .positive = true,
         };
 

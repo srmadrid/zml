@@ -467,6 +467,49 @@ pub fn min(x: anytype, y: anytype) float.Min(@TypeOf(x), @TypeOf(y)) {
     return if (numeric.cast(R, x) < numeric.cast(R, y)) numeric.cast(R, x) else numeric.cast(R, y);
 }
 
+/// Returns the highest representable value of the given float type `Float`.
+///
+/// ## Arguments
+/// * `Float` (`type`): The float type to get the maximum value for.
+///
+/// ## Returns
+/// `Float`: The maximum representable value of type `Float`.
+pub fn highest(comptime Float: type) Float {
+    comptime if (!meta.isNumeric(Float) or meta.numericType(Float) != .float)
+        @compileError("zsl.float.highest: Float must be a float type, got \n\tFloat = " ++ @typeName(Float) ++ "\n");
+
+    return std.math.floatMax(Float);
+}
+
+/// Returns the lowest representable value of the given float type `Float`.
+///
+/// ## Arguments
+/// * `Float` (`type`): The Float type to get the lowest value for.
+///
+/// ## Returns
+/// `Float`: The minimum representable value of type `Float`.
+pub fn lowest(comptime Float: type) Float {
+    comptime if (!meta.isNumeric(Float) or meta.numericType(Float) != .float)
+        @compileError("zsl.float.lowest: Float must be a float type, got \n\tFloat = " ++ @typeName(Float) ++ "\n");
+
+    return -std.math.floatMax(Float);
+}
+
+/// Returns the smallest positive magnitude strictly greater than zero of the
+/// given float type `Float`.
+///
+/// ## Arguments
+/// * `Float` (`type`): The float type to get the minimum value for.
+///
+/// ## Returns
+/// `Float`: The minimum representable value of type `Float`.
+pub fn smallest(comptime Float: type) Float {
+    comptime if (!meta.isNumeric(Float) or meta.numericType(Float) != .float)
+        @compileError("zsl.float.smallest: Float must be a float type, got \n\tFloat = " ++ @typeName(Float) ++ "\n");
+
+    return std.math.floatMin(Float);
+}
+
 // Basic operations
 pub const abs = @import("float/abs.zig").abs;
 pub const sign = @import("float/sign.zig").sign;

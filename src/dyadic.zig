@@ -13,13 +13,13 @@ const int = @import("int.zig");
 /// Arbitrary-precision dyadic type.
 pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
     if (mantissa_bits == 0 or exponent_bits == 0 or
-        mantissa_bits >= int.maxVal(u16) / 2 or exponent_bits >= int.maxVal(u16) / 2)
+        mantissa_bits >= int.highest(u16) / 2 or exponent_bits >= int.highest(u16) / 2)
         @compileError(std.fmt.comptimePrint(
             "zsl.Dyadic: both mantissa_bits and exponent_bits must be non-zero and less than {}, got\n\tmantissa_bits: {}\n\texponent_bits: {}\n",
-            .{ int.maxVal(u16) / 2, mantissa_bits, exponent_bits },
+            .{ int.highest(u16) / 2, mantissa_bits, exponent_bits },
         ));
 
-    return extern struct {
+    return struct {
         mantissa: Mantissa,
         exponent: Exponent,
         positive: bool,
@@ -43,22 +43,22 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
         pub const WideExponent = @Int(.signed, 2 * exponent_bits);
 
         // Constants
-        pub const inf: Dyadic(mantissa_bits, exponent_bits) = .{ .mantissa = 0, .exponent = int.maxVal(Exponent), .positive = true };
-        pub const nan: Dyadic(mantissa_bits, exponent_bits) = .{ .mantissa = 1, .exponent = int.maxVal(Exponent), .positive = true };
-        pub const zero: Dyadic(mantissa_bits, exponent_bits) = .{ .mantissa = 0, .exponent = int.minVal(Exponent), .positive = true };
+        pub const inf: Dyadic(mantissa_bits, exponent_bits) = .{ .mantissa = 0, .exponent = int.highest(Exponent), .positive = true };
+        pub const nan: Dyadic(mantissa_bits, exponent_bits) = .{ .mantissa = 1, .exponent = int.highest(Exponent), .positive = true };
+        pub const zero: Dyadic(mantissa_bits, exponent_bits) = .{ .mantissa = 0, .exponent = int.lowest(Exponent), .positive = true };
         pub const one: Dyadic(mantissa_bits, exponent_bits) = .{ .mantissa = @as(Mantissa, 1) << (mantissa_bits - 1), .exponent = -numeric.cast(Exponent, mantissa_bits - 1), .positive = true };
         pub const two: Dyadic(mantissa_bits, exponent_bits) = .{ .mantissa = @as(Mantissa, 1) << (mantissa_bits - 1), .exponent = -numeric.cast(Exponent, mantissa_bits), .positive = true };
 
         pub fn isInf(self: Dyadic(mantissa_bits, exponent_bits)) bool {
-            return self.exponent == int.maxVal(Exponent) and self.mantissa == 0;
+            return self.exponent == int.highest(Exponent) and self.mantissa == 0;
         }
 
         pub fn isNan(self: Dyadic(mantissa_bits, exponent_bits)) bool {
-            return self.exponent == int.maxVal(Exponent) and self.mantissa != 0;
+            return self.exponent == int.highest(Exponent) and self.mantissa != 0;
         }
 
         pub fn isZero(self: Dyadic(mantissa_bits, exponent_bits)) bool {
-            return self.exponent == int.minVal(Exponent) and self.mantissa == 0;
+            return self.exponent == int.lowest(Exponent) and self.mantissa == 0;
         }
 
         /// Initializes a dyadic from any numeric value.
@@ -119,18 +119,18 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
                     }
 
                     // Check for overflow
-                    if (e >= int.maxVal(Exponent))
+                    if (e >= int.highest(Exponent))
                         return .{
                             .mantissa = 0,
-                            .exponent = int.maxVal(Exponent),
+                            .exponent = int.highest(Exponent),
                             .positive = value >= 0,
                         };
 
                     // Check for underflow
-                    if (e <= int.minVal(Exponent))
+                    if (e <= int.lowest(Exponent))
                         return .{
                             .mantissa = 0,
-                            .exponent = int.minVal(Exponent),
+                            .exponent = int.lowest(Exponent),
                             .positive = value >= 0,
                         };
 
@@ -169,7 +169,7 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
                     if (biased_exp == 0 and frac == 0)
                         return .{
                             .mantissa = 0,
-                            .exponent = int.minVal(Exponent),
+                            .exponent = int.lowest(Exponent),
                             .positive = positive,
                         };
 
@@ -228,18 +228,18 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
                     }
 
                     // Check for overflow
-                    if (e >= int.maxVal(Exponent))
+                    if (e >= int.highest(Exponent))
                         return .{
                             .mantissa = 0,
-                            .exponent = int.maxVal(Exponent),
+                            .exponent = int.highest(Exponent),
                             .positive = positive,
                         };
 
                     // Check for underflow
-                    if (e <= int.minVal(Exponent))
+                    if (e <= int.lowest(Exponent))
                         return .{
                             .mantissa = 0,
-                            .exponent = int.minVal(Exponent),
+                            .exponent = int.lowest(Exponent),
                             .positive = positive,
                         };
 
@@ -266,7 +266,7 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
         /// `void`
         pub fn normalize(self: *Dyadic(mantissa_bits, exponent_bits)) void {
             if (self.mantissa == 0) {
-                self.exponent = int.minVal(Exponent);
+                self.exponent = int.lowest(Exponent);
                 return;
             }
 
@@ -274,7 +274,7 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
             self.mantissa <<= lz;
             self.exponent -|= numeric.cast(Exponent, lz);
 
-            if (self.exponent == int.minVal(Exponent))
+            if (self.exponent == int.lowest(Exponent))
                 self.mantissa = 0;
 
             return;
@@ -302,7 +302,7 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
             // Zero check
             if (x.isZero())
                 return if (y.isZero())
-                    .{ .mantissa = 0, .exponent = int.minVal(Exponent), .positive = x.positive or y.positive }
+                    .{ .mantissa = 0, .exponent = int.lowest(Exponent), .positive = x.positive or y.positive }
                 else
                     y
             else if (y.isZero())
@@ -390,10 +390,10 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
             }
 
             // Check for overflow
-            if (exponent == int.maxVal(Exponent))
+            if (exponent == int.highest(Exponent))
                 return .{
                     .mantissa = 0,
-                    .exponent = int.maxVal(Exponent),
+                    .exponent = int.highest(Exponent),
                     .positive = true,
                 };
 
@@ -454,7 +454,7 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
             }
 
             // Check for underflow
-            if (exponent <= int.minVal(Exponent))
+            if (exponent <= int.lowest(Exponent))
                 return .zero;
 
             return .{
@@ -478,7 +478,7 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
 
                 return .{
                     .mantissa = 0,
-                    .exponent = int.maxVal(Exponent),
+                    .exponent = int.highest(Exponent),
                     .positive = result_positive,
                 };
             } else if (y.isInf()) {
@@ -487,7 +487,7 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
 
                 return .{
                     .mantissa = 0,
-                    .exponent = int.maxVal(Exponent),
+                    .exponent = int.highest(Exponent),
                     .positive = result_positive,
                 };
             }
@@ -496,7 +496,7 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
             if (x.isZero() or y.isZero())
                 return .{
                     .mantissa = 0,
-                    .exponent = int.minVal(Exponent),
+                    .exponent = int.lowest(Exponent),
                     .positive = result_positive,
                 };
 
@@ -530,18 +530,18 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
             }
 
             // Check for overflow
-            if (exponent >= int.maxVal(Exponent))
+            if (exponent >= int.highest(Exponent))
                 return .{
                     .mantissa = 0,
-                    .exponent = int.maxVal(Exponent),
+                    .exponent = int.highest(Exponent),
                     .positive = result_positive,
                 };
 
             // Check for underflow
-            if (exponent <= int.minVal(Exponent))
+            if (exponent <= int.lowest(Exponent))
                 return .{
                     .mantissa = 0,
-                    .exponent = int.minVal(Exponent),
+                    .exponent = int.lowest(Exponent),
                     .positive = result_positive,
                 };
 
@@ -569,7 +569,7 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
 
                 return .{
                     .mantissa = 0,
-                    .exponent = int.maxVal(Exponent),
+                    .exponent = int.highest(Exponent),
                     .positive = xy_positive,
                 };
             } else if (z.isInf()) {
@@ -581,7 +581,7 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
                 if (z.isZero())
                     return .{
                         .mantissa = 0,
-                        .exponent = int.minVal(Exponent),
+                        .exponent = int.lowest(Exponent),
                         .positive = xy_positive or z.positive,
                     };
 
@@ -661,7 +661,7 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
                 if (diff == 0 and frac == 0) {
                     return .{
                         .mantissa = 0,
-                        .exponent = int.minVal(Exponent),
+                        .exponent = int.lowest(Exponent),
                         .positive = true, // Exact zero is +0.0
                     };
                 }
@@ -709,18 +709,18 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
             }
 
             // Check for overflow
-            if (final_exp >= int.maxVal(Exponent))
+            if (final_exp >= int.highest(Exponent))
                 return .{
                     .mantissa = 0,
-                    .exponent = int.maxVal(Exponent),
+                    .exponent = int.highest(Exponent),
                     .positive = larger_pos,
                 };
 
             // Check for underflow
-            if (final_exp <= int.minVal(Exponent))
+            if (final_exp <= int.lowest(Exponent))
                 return .{
                     .mantissa = 0,
-                    .exponent = int.minVal(Exponent),
+                    .exponent = int.lowest(Exponent),
                     .positive = larger_pos,
                 };
 
@@ -745,13 +745,13 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
 
                 return .{
                     .mantissa = 0,
-                    .exponent = int.maxVal(Exponent),
+                    .exponent = int.highest(Exponent),
                     .positive = result_positive,
                 };
             } else if (y.isInf()) {
                 return .{
                     .mantissa = 0,
-                    .exponent = int.minVal(Exponent),
+                    .exponent = int.lowest(Exponent),
                     .positive = result_positive,
                 };
             }
@@ -763,13 +763,13 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
 
                 return .{
                     .mantissa = 0,
-                    .exponent = int.maxVal(Exponent),
+                    .exponent = int.highest(Exponent),
                     .positive = result_positive,
                 };
             } else if (x.isZero()) {
                 return .{
                     .mantissa = 0,
-                    .exponent = int.minVal(Exponent),
+                    .exponent = int.lowest(Exponent),
                     .positive = result_positive,
                 };
             }
@@ -815,18 +815,18 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
             }
 
             // Check for overflow
-            if (exponent >= int.maxVal(Exponent))
+            if (exponent >= int.highest(Exponent))
                 return .{
                     .mantissa = 0,
-                    .exponent = int.maxVal(Exponent),
+                    .exponent = int.highest(Exponent),
                     .positive = result_positive,
                 };
 
             // Check for underflow
-            if (exponent <= int.minVal(Exponent))
+            if (exponent <= int.lowest(Exponent))
                 return .{
                     .mantissa = 0,
-                    .exponent = int.minVal(Exponent),
+                    .exponent = int.lowest(Exponent),
                     .positive = result_positive,
                 };
 

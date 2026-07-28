@@ -14,6 +14,81 @@ const Uplo = types.Uplo;
 
 const utils = @import("../utils.zig");
 
+/// Computes the Cholesky factorization of a symmetric or Hermitian
+/// positive-definite matrix.
+///
+/// The `potrf` routine computes the Cholesky factorization of a real symmetric
+/// or complex hermitian positive definite matrix `A`. The factorization has the
+/// form:
+///
+/// ```zig
+///     A = U^T * U,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = L * L^T,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = U^H * U,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = L * L^H,
+/// ```
+///
+/// where `U` is an upper triangular matrix and `L` is lower triangular.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn potrf(order: Order, uplo: Uplo, n: i32, a: [*]A, lda: i32, ctx: anytype) !i32
+/// ```
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies which part of the matrix `A` is stored, and
+/// which factorization is computed:
+/// - If `uplo = upper`, then the upper triangular part of `A` is stored, and
+/// the factorization is `A = U^T * U` or `A = U^H * U` is computed.
+/// - If `uplo = lower`, then the lower triangular part of `A` is stored, and
+/// the factorization is `A = L * L^T` or `A = L * L^H` is computed.
+///
+/// `n` (`i32`): The order of the matrix `A`. Must be greater than or equal to
+/// 0.
+///
+/// `a` (mutable many-item pointer to `bool`, `int`, `float`, `cfloat`,
+/// `integer`, `rational`, `real`, `complex` or `expression`): Array, size at
+/// least `lda * n`. On return, contains the Cholesky factorization of the
+/// matrix `A`.
+///
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `i32`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// stored in `a`.
+///
+/// Errors
+/// ------
+/// `linalg.lapack.Error.InvalidArgument`: If `n` is less than 0, or if `lda` is
+/// less than `max(1, n)`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding LAPACKE function, if available. In that case, no errors will
+/// be raised even if the arguments are invalid.
 pub fn potrf(
     order: Order,
     uplo: Uplo,

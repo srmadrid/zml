@@ -4,8 +4,7 @@ const zsl = @import("zsl");
 pub fn main(init: std.process.Init) !void {
     @setEvalBranchQuota(10_000);
 
-    // try blas_lv1_threshold_calibration(init);
-    // try blas_lv2_threshold_calibration(init);
+    const N = zsl.Complex(f64);
 
     // const arena = init.arena.allocator();
     const gpa = init.gpa;
@@ -14,15 +13,103 @@ pub fn main(init: std.process.Init) !void {
 
     var xoshiro = std.Random.DefaultPrng.init(@bitCast(std.Io.Clock.real.now(io).toMicroseconds()));
     const prng = xoshiro.random();
-    // const normal = zsl.stats.Normal(f64).init(0.0, 1.0);
+    const normal = zsl.stats.Normal(N).init(zsl.numeric.zero(N), zsl.numeric.one(N));
 
-    var x: zsl.matrix.permutation.Sparse(f64, .forward) = try .init(gpa, 20);
-    defer x.deinit(gpa);
+    const m = 2500;
+    const n = 2500;
 
-    randomPermutation(prng, x.idx[0..20]);
+    var a: zsl.matrix.general.Dense(N, .col_major) = try .initFn(gpa, m, n, zsl.stats.Normal(N).sample, .{ normal, prng });
+    defer a.deinit(gpa);
 
-    std.debug.print("x: {f}\n", .{x.formatter("{d}")});
-    std.debug.print("norm(x): {d}\n", .{zsl.linalg.norm(x, .l2)});
+    // std.debug.print("a: {f}\n", .{a.formatter("{d:.4}")});
+
+    // Tiled
+    var lu1: zsl.matrix.general.Dense(N, .col_major) = try a.clone(gpa);
+    defer lu1.deinit(gpa);
+
+    const ipiv1 = try gpa.alloc(usize, zsl.int.min(m, n));
+    defer gpa.free(ipiv1);
+
+    var start = std.Io.Clock.real.now(io);
+    _ = try zsl.linalg.lapack.getrf(.col_major, m, n, lu1.data, lu1.ld, ipiv1.ptr);
+    var end = std.Io.Clock.real.now(io);
+
+    std.debug.print("getrf:  {d} s\n", .{zsl.numeric.cast(f128, end.nanoseconds - start.nanoseconds) / std.time.ns_per_s});
+
+    var p1: zsl.matrix.permutation.Sparse(N, .forward) = try .init(gpa, m);
+    defer p1.deinit(gpa);
+
+    for (0..m) |i| {
+        p1.idx[i] = i;
+    }
+
+    var i: usize = zsl.int.min(m, n);
+    while (i > 0) {
+        i -= 1;
+
+        const swap_idx = ipiv1[i];
+        if (i != swap_idx) {
+            const temp = p1.idx[i];
+            p1.idx[i] = p1.idx[swap_idx];
+            p1.idx[swap_idx] = temp;
+        }
+    }
+
+    var pl1 = try zsl.linalg.matmulAlloc(gpa, p1, lu1.triangularView(.lower, .unit));
+    defer pl1.deinit(gpa);
+
+    var plu1 = try zsl.linalg.matmulAlloc(gpa, pl1, lu1.triangularView(.upper, .non_unit));
+    defer plu1.deinit(gpa);
+
+    // std.debug.print("p * l * u: {f}\n", .{plu.formatter("{d:.4}")});
+
+    var diff1 = try zsl.matrix.subAlloc(gpa, a, plu1);
+    defer diff1.deinit(gpa);
+
+    std.debug.print("getrf: ‖a - p * l * 1‖ =  {e:.6}\n", .{zsl.linalg.norm(diff1, .l1)});
+
+    // Untiled
+    var lu2: zsl.matrix.general.Dense(N, .col_major) = try a.clone(gpa);
+    defer lu2.deinit(gpa);
+
+    const ipiv2 = try gpa.alloc(usize, zsl.int.min(m, n));
+    defer gpa.free(ipiv2);
+
+    start = std.Io.Clock.real.now(io);
+    _ = try zsl.linalg.lapack.getrf2(.col_major, m, n, lu2.data, lu2.ld, ipiv2.ptr);
+    end = std.Io.Clock.real.now(io);
+
+    std.debug.print("getrf2: {d} s\n", .{zsl.numeric.cast(f128, end.nanoseconds - start.nanoseconds) / std.time.ns_per_s});
+
+    var p2: zsl.matrix.permutation.Sparse(N, .forward) = try .init(gpa, m);
+    defer p2.deinit(gpa);
+
+    for (0..m) |j| {
+        p2.idx[j] = j;
+    }
+
+    var j: usize = zsl.int.min(m, n);
+    while (j > 0) {
+        j -= 1;
+
+        const swap_idx = ipiv2[j];
+        if (j != swap_idx) {
+            const temp = p2.idx[j];
+            p2.idx[j] = p2.idx[swap_idx];
+            p2.idx[swap_idx] = temp;
+        }
+    }
+
+    var pl2 = try zsl.linalg.matmulAlloc(gpa, p2, lu2.triangularView(.lower, .unit));
+    defer pl2.deinit(gpa);
+
+    var plu2 = try zsl.linalg.matmulAlloc(gpa, pl2, lu2.triangularView(.upper, .non_unit));
+    defer plu2.deinit(gpa);
+
+    var diff2 = try zsl.matrix.subAlloc(gpa, a, plu2);
+    defer diff2.deinit(gpa);
+
+    std.debug.print("getrf2: ‖a - p * l * 1‖ = {e:.6}\n", .{zsl.linalg.norm(diff2, .l1)});
 
     // const m = 4;
     // const n = 4;
@@ -260,60 +347,6 @@ pub fn dyadicToString(allocator: std.mem.Allocator, x: anytype) ![]u8 {
     return result.toOwnedSlice(allocator);
 }
 
-// fn avg(values: []const f64) f64 {
-//     var sum: f64 = 0;
-//     for (values) |value| {
-//         sum += value;
-//     }
-//     return zsl.float.div(sum, values.len);
-// }
-
-// fn avg_complex(values: []const zsl.cf64) f64 {
-//     var sum: f64 = 0;
-//     for (values) |value| {
-//         sum += zsl.cfloat.abs(value);
-//     }
-//     return zsl.float.div(sum, values.len);
-// }
-
-// fn random_buffer(
-//     allocator: std.mem.Allocator,
-//     size: u32,
-// ) ![]f64 {
-//     var prng = std.Random.DefaultPrng.init(@bitCast(std.time.timestamp()));
-//     const rand = prng.random();
-
-//     const buffer = try allocator.alloc(f64, size);
-//     for (0..buffer.len) |i| {
-//         buffer[i] = rand.float(f64);
-//     }
-//     return buffer;
-// }
-
-// fn random_buffer_fill(
-//     buffer: []f64,
-// ) void {
-//     var prng = std.Random.DefaultPrng.init(@bitCast(std.time.timestamp()));
-//     //var prng = std.Random.DefaultPrng.init(2); // fixed seed for reproducibility
-//     const rand = prng.random();
-
-//     for (0..buffer.len) |i| {
-//         buffer[i] = rand.float(f64);
-//     }
-// }
-
-// fn random_buffer_fill_complex(
-//     buffer: []zsl.cf64,
-// ) void {
-//     //var prng = std.Random.DefaultPrng.init(@bitCast(std.time.timestamp()));
-//     var prng = std.Random.DefaultPrng.init(2); // fixed seed for reproducibility
-//     const rand = prng.random();
-
-//     for (0..buffer.len) |i| {
-//         buffer[i] = zsl.cf64.init(rand.float(f64), rand.float(f64));
-//     }
-// }
-
 // /// Generate a random m×n matrix A with specified 2-norm condition number `kappa`.
 // pub fn random_matrix(
 //     allocator: std.mem.Allocator,
@@ -545,48 +578,6 @@ pub fn dyadicToString(allocator: std.mem.Allocator, x: anytype) ![]u8 {
 //     );
 // }
 
-// fn max_difference(a: []const f64, b: []const f64) struct {
-//     index: u32,
-//     value: f64,
-// } {
-//     std.debug.assert(a.len == b.len);
-
-//     var max_diff: f64 = 0;
-//     var max_index: u32 = 0;
-
-//     var i: u32 = 0;
-//     while (i < a.len) : (i += 1) {
-//         const diff = zsl.float.abs(a[i] - b[i]);
-//         if (diff > max_diff) {
-//             max_diff = diff;
-//             max_index = i;
-//         }
-//     }
-
-//     return .{ .index = max_index, .value = max_diff };
-// }
-
-// fn random_symmetric_matrix(
-//     allocator: std.mem.Allocator,
-//     size: u32,
-//     factor: f64,
-// ) ![]f64 {
-//     var prng = std.Random.DefaultPrng.init(@bitCast(std.time.timestamp()));
-//     const rand = prng.random();
-
-//     const matrix = try allocator.alloc(f64, size * size);
-
-//     for (0..size) |i| {
-//         for (i + 1..size) |j| {
-//             const value = rand.float(f64) * factor;
-//             matrix[i * size + j] = value;
-//             matrix[j * size + i] = value;
-//         }
-//     }
-
-//     return matrix;
-// }
-
 // /// Generates a random symmetric positive definite matrix with a specified condition number.
 // fn random_symmetric_positive_definite_matrix(
 //     allocator: std.mem.Allocator,
@@ -662,17 +653,6 @@ pub fn dyadicToString(allocator: std.mem.Allocator, x: anytype) ![]u8 {
 //     return A;
 // }
 
-// fn frobernius_norm_difference(a: []const f64, b: []const f64) f64 {
-//     std.debug.assert(a.len == b.len);
-
-//     var norm: f64 = 0;
-//     for (0..a.len) |i| {
-//         const diff = a[i] - b[i];
-//         norm += diff * diff;
-//     }
-//     return zsl.float.sqrt(norm);
-// }
-
 // fn frobernius_norm_difference_matrix(a: anytype, b: anytype) !f64 {
 //     const m = if (comptime zsl.meta.isSymmetricMatrix(@TypeOf(a)) or
 //         zsl.meta.isHermitianMatrix(@TypeOf(a)) or
@@ -708,33 +688,6 @@ pub fn dyadicToString(allocator: std.mem.Allocator, x: anytype) ![]u8 {
 //     return zsl.float.sqrt(norm);
 // }
 
-// fn is_symmetric(a: []const f64, size: u32) bool {
-//     for (0..size) |i| {
-//         for (i + 1..size) |j| {
-//             if (!std.math.approxEqRel(f64, a[i * size + j], a[j * size + i], 1e-9)) {
-//                 return false;
-//             }
-//         }
-//     }
-//     return true;
-// }
-
-// fn random_complex_matrix(
-//     allocator: std.mem.Allocator,
-//     rows: u32,
-//     cols: u32,
-//     factor: f64,
-// ) ![]zsl.cf64 {
-//     var prng = std.Random.DefaultPrng.init(@bitCast(std.time.timestamp()));
-//     const rand = prng.random();
-
-//     const matrix = try allocator.alloc(zsl.cf64, rows * cols);
-//     for (0..matrix.len) |i| {
-//         matrix[i] = zsl.cf64.init(rand.float(f64) * factor, rand.float(f64) * factor);
-//     }
-//     return matrix;
-// }
-
 // fn random_complex_hermitian_positive_definite_matrix(
 //     allocator: std.mem.Allocator,
 //     size: u32,
@@ -765,28 +718,4 @@ pub fn dyadicToString(allocator: std.mem.Allocator, x: anytype) ![]u8 {
 
 //     allocator.free(M);
 //     return A;
-// }
-
-// fn frobenius_norm_complex_difference(a: []const zsl.cf64, b: []const zsl.cf64) f64 {
-//     std.debug.assert(a.len == b.len);
-
-//     var norm: f64 = 0;
-//     for (0..a.len) |i| {
-//         const diff = zsl.cfloat.sub(a[i], b[i]);
-//         norm += diff.re * diff.re + diff.im * diff.im;
-//     }
-//     return zsl.float.sqrt(norm);
-// }
-
-// fn is_hermitian(a: []const zsl.cf64, size: u32) bool {
-//     for (0..size) |i| {
-//         for (i + 1..size) |j| {
-//             if (!std.math.approxEqRel(f64, a[i * size + j].re, a[j * size + i].re, 1e-9) or
-//                 !std.math.approxEqRel(f64, a[i * size + j].im, -a[j * size + i].im, 1e-9))
-//             {
-//                 return false;
-//             }
-//         }
-//     }
-//     return true;
 // }

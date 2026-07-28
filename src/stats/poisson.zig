@@ -146,7 +146,7 @@ pub fn Poisson(comptime Int: type, comptime Real: type) type {
                 return 0;
 
             if (numeric.ge(p, numeric.one(Real)))
-                return numeric.maxVal(Int);
+                return numeric.highest(Int);
 
             var k = numeric.zero(Int);
             var term = self.enl; // P(X = 0)

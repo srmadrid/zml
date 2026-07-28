@@ -23,5 +23,5 @@ pub fn Abs2(comptime Z: type) type {
 /// ## Returns
 /// `complex.Abs2(@TypeOf(z))`: The squared absolute value of `z`.
 pub fn abs2(z: anytype) complex.Abs2(@TypeOf(z)) {
-    return numeric.fma(numeric.mul(z.re, z.re), numeric.mul(z.im, z.im));
+    return numeric.fma(z.re, z.re, numeric.mul(z.im, z.im));
 }
