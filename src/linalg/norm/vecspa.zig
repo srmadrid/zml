@@ -4,6 +4,13 @@ const numeric = @import("../../numeric.zig");
 const linalg = @import("../../linalg.zig");
 
 pub fn norm(x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)))) linalg.Norm(@TypeOf(x), order) {
+    return switch (x.flags.noconj) {
+        true => k_norm(x, order, true),
+        false => k_norm(x, order, false),
+    };
+}
+
+fn k_norm(x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x))), comptime noconj_x: bool) linalg.Norm(@TypeOf(x), order) {
     const X = @TypeOf(x);
     const R = linalg.Norm(X, order);
 
@@ -11,12 +18,17 @@ pub fn norm(x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)
         .l1 => {
             var sum = numeric.zero(meta.Accumulator(R));
 
-            inline for (0..X.len) |i| {
+            for (0..x.nnz) |i| {
                 // sum += abs(x[i])
                 numeric.addInto(
                     &sum,
                     sum,
-                    numeric.abs(x.data[i]),
+                    numeric.abs(
+                        if (comptime noconj_x)
+                            x.data[i]
+                        else
+                            numeric.conj(x.data[i]),
+                    ),
                 );
             }
 
@@ -25,12 +37,17 @@ pub fn norm(x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)
         .l2, .frobenius => {
             var sum = numeric.zero(meta.Accumulator(R));
 
-            inline for (0..X.len) |i| {
+            for (0..x.nnz) |i| {
                 // sum += abs(x[i])²
                 numeric.addInto(
                     &sum,
                     sum,
-                    numeric.abs2(x.data[i]),
+                    numeric.abs2(
+                        if (comptime noconj_x)
+                            x.data[i]
+                        else
+                            numeric.conj(x.data[i]),
+                    ),
                 );
             }
 
@@ -39,11 +56,16 @@ pub fn norm(x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)
         .inf => {
             var max_val = numeric.zero(R);
 
-            inline for (0..X.len) |i| {
+            for (0..x.nnz) |i| {
                 numeric.maxInto(
                     &max_val,
                     max_val,
-                    numeric.abs(x.data[i]),
+                    numeric.abs(
+                        if (comptime noconj_x)
+                            x.data[i]
+                        else
+                            numeric.conj(x.data[i]),
+                    ),
                 );
             }
 
@@ -52,12 +74,20 @@ pub fn norm(x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)
         .p => |p_| {
             var sum = numeric.zero(meta.Accumulator(R));
 
-            inline for (0..X.len) |i| {
+            for (0..x.nnz) |i| {
                 // sum += abs(x[i])ᵖ
                 numeric.addInto(
                     &sum,
                     sum,
-                    numeric.pow(numeric.abs(x.data[i]), p_),
+                    numeric.pow(
+                        numeric.abs(
+                            if (comptime noconj_x)
+                                x.data[i]
+                            else
+                                numeric.conj(x.data[i]),
+                        ),
+                        p_,
+                    ),
                 );
             }
 

@@ -214,19 +214,19 @@ pub fn Sparse(N: type, direction_: matrix.permutation.Direction) type {
             };
         }
 
-        pub fn format(self: matrix.permutation.Sparse(N), writer: *std.Io.Writer) !void {
+        pub fn format(self: matrix.permutation.Sparse(N, direction), writer: *std.Io.Writer) !void {
             try self.formatter("{e}").format(writer);
         }
 
-        pub fn formatter(self: *const matrix.permutation.Sparse(N), comptime num_fmt: []const u8) Formatter(num_fmt) {
+        pub fn formatter(self: *const matrix.permutation.Sparse(N, direction), comptime num_fmt: []const u8) Formatter(num_fmt) {
             return .{ .matrix = self };
         }
 
         pub fn Formatter(comptime num_fmt: []const u8) type {
             return struct {
-                matrix: *const matrix.permutation.Sparse(N),
+                matrix: *const matrix.permutation.Sparse(N, direction),
 
-                pub fn format(self: matrix.permutation.Sparse(N).Formatter(num_fmt), writer: *std.Io.Writer) !void {
+                pub fn format(self: matrix.permutation.Sparse(N, direction).Formatter(num_fmt), writer: *std.Io.Writer) !void {
                     const rows = self.matrix.rows;
                     const cols = self.matrix.cols;
 

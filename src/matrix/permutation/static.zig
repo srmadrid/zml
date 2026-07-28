@@ -154,19 +154,19 @@ pub fn Static(size_: comptime_int, N: type, direction_: matrix.permutation.Direc
             };
         }
 
-        pub fn format(self: matrix.permutation.Static(size, N), writer: *std.Io.Writer) !void {
+        pub fn format(self: matrix.permutation.Static(size, N, direction), writer: *std.Io.Writer) !void {
             try self.formatter("{e}").format(writer);
         }
 
-        pub fn formatter(self: *const matrix.permutation.Static(size, N), comptime num_fmt: []const u8) Formatter(num_fmt) {
+        pub fn formatter(self: *const matrix.permutation.Static(size, N, direction), comptime num_fmt: []const u8) Formatter(num_fmt) {
             return .{ .matrix = self };
         }
 
         pub fn Formatter(comptime num_fmt: []const u8) type {
             return struct {
-                matrix: *const matrix.permutation.Static(size, N),
+                matrix: *const matrix.permutation.Static(size, N, direction),
 
-                pub fn format(self: matrix.permutation.Static(size, N).Formatter(num_fmt), writer: *std.Io.Writer) !void {
+                pub fn format(self: matrix.permutation.Static(size, N, direction).Formatter(num_fmt), writer: *std.Io.Writer) !void {
                     try writer.print("zsl.matrix.permutation.Static({d}, {s}) ({d} × {d}):\n\n", .{ size, @typeName(N), rows, cols });
 
                     return matutils.format(self, num_fmt, rows, cols, writer);

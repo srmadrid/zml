@@ -14,13 +14,15 @@ pub fn main(init: std.process.Init) !void {
 
     var xoshiro = std.Random.DefaultPrng.init(@bitCast(std.Io.Clock.real.now(io).toMicroseconds()));
     const prng = xoshiro.random();
-    const normal = zsl.stats.Normal(f64).init(0.0, 1.0);
+    // const normal = zsl.stats.Normal(f64).init(0.0, 1.0);
 
-    var x: zsl.matrix.general.Dense(f64, .col_major) = try .initFn(gpa, 10, 10, zsl.stats.Normal(f64).sample, .{ normal, prng });
+    var x: zsl.matrix.permutation.Sparse(f64, .forward) = try .init(gpa, 20);
     defer x.deinit(gpa);
 
-    std.debug.print("x: {f}\n", .{x.formatter("{d:.4}")});
-    std.debug.print("tr(x): {d:.4}\n", .{try zsl.linalg.trace(x)});
+    randomPermutation(prng, x.idx[0..20]);
+
+    std.debug.print("x: {f}\n", .{x.formatter("{d}")});
+    std.debug.print("norm(x): {d}\n", .{zsl.linalg.norm(x, .l2)});
 
     // const m = 4;
     // const n = 4;
@@ -78,6 +80,23 @@ pub fn main(init: std.process.Init) !void {
     // const diff_norm = try zsl.linalg.normAlloc(gpa, diff, .frobenius);
 
     // std.debug.print("‖A - U S V^T‖ = {e}\n", .{diff_norm});
+}
+
+fn randomPermutation(rand: std.Random, data: []usize) void {
+    // Initialize with identity permutation
+    var i: usize = 0;
+    while (i < data.len) : (i += 1) {
+        data[i] = i;
+    }
+
+    // Shuffle using Fisher-Yates algorithm
+    i = data.len - 1;
+    while (i > 0) : (i -= 1) {
+        const j = rand.intRangeAtMost(usize, 0, i);
+        const temp = data[i];
+        data[i] = data[j];
+        data[j] = temp;
+    }
 }
 
 /// Formats the dyadic exactly into a base-10 string.

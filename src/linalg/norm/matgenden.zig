@@ -6,6 +6,13 @@ const numeric = @import("../../numeric.zig");
 const linalg = @import("../../linalg.zig");
 
 pub fn norm(x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)))) linalg.Norm(@TypeOf(x), order) {
+    return switch (x.flags.noconj) {
+        true => k_norm(x, order, true),
+        false => k_norm(x, order, false),
+    };
+}
+
+fn k_norm(x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x))), comptime noconj_x: bool) linalg.Norm(@TypeOf(x), order) {
     const X = @TypeOf(x);
     const R = linalg.Norm(X, order);
 
@@ -21,11 +28,20 @@ pub fn norm(x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)
                     numeric.addInto(
                         &col_sum,
                         col_sum,
-                        numeric.abs(x.data[x._index(i, j)]),
+                        numeric.abs(
+                            if (comptime noconj_x)
+                                x.data[x._index(i, j)]
+                            else
+                                numeric.conj(x.data[x._index(i, j)]),
+                        ),
                     );
                 }
 
-                max_col_sum = numeric.max(max_col_sum, numeric.cast(R, col_sum));
+                numeric.maxInto(
+                    &max_col_sum,
+                    max_col_sum,
+                    col_sum,
+                );
             }
 
             return max_col_sum;
@@ -41,7 +57,12 @@ pub fn norm(x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)
                         numeric.addInto(
                             &sum,
                             sum,
-                            numeric.abs2(x.data[i + j * x.ld]),
+                            numeric.abs2(
+                                if (comptime noconj_x)
+                                    x.data[i + j * x.ld]
+                                else
+                                    numeric.conj(x.data[i + j * x.ld]),
+                            ),
                         );
                     }
                 }
@@ -52,7 +73,12 @@ pub fn norm(x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)
                         numeric.addInto(
                             &sum,
                             sum,
-                            numeric.abs2(x.data[i * x.ld + j]),
+                            numeric.abs2(
+                                if (comptime noconj_x)
+                                    x.data[i * x.ld + j]
+                                else
+                                    numeric.conj(x.data[i * x.ld + j]),
+                            ),
                         );
                     }
                 }
@@ -71,11 +97,20 @@ pub fn norm(x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)
                     numeric.addInto(
                         &row_sum,
                         row_sum,
-                        numeric.abs(x.data[x._index(i, j)]),
+                        numeric.abs(
+                            if (comptime noconj_x)
+                                x.data[x._index(i, j)]
+                            else
+                                numeric.conj(x.data[x._index(i, j)]),
+                        ),
                     );
                 }
 
-                max_row_sum = numeric.max(max_row_sum, numeric.cast(R, row_sum));
+                numeric.maxInto(
+                    &max_row_sum,
+                    max_row_sum,
+                    row_sum,
+                );
             }
 
             return max_row_sum;
@@ -85,6 +120,13 @@ pub fn norm(x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)
 }
 
 pub fn normAlloc(allocator: std.mem.Allocator, x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)))) !linalg.Norm(@TypeOf(x), order) {
+    return switch (x.flags.noconj) {
+        true => k_normAlloc(allocator, x, order, true),
+        false => k_normAlloc(allocator, x, order, false),
+    };
+}
+
+fn k_normAlloc(allocator: std.mem.Allocator, x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x))), comptime noconj_x: bool) !linalg.Norm(@TypeOf(x), order) {
     const X = @TypeOf(x);
     const R = linalg.Norm(X, order);
 
@@ -103,7 +145,12 @@ pub fn normAlloc(allocator: std.mem.Allocator, x: anytype, comptime order: linal
                     numeric.addInto(
                         &col_sums[j],
                         col_sums[j],
-                        numeric.abs(x.data[i * x.ld + j]),
+                        numeric.abs(
+                            if (comptime noconj_x)
+                                x.data[i * x.ld + j]
+                            else
+                                numeric.conj(x.data[i * x.ld + j]),
+                        ),
                     );
                 }
             }
@@ -111,7 +158,11 @@ pub fn normAlloc(allocator: std.mem.Allocator, x: anytype, comptime order: linal
             var max_col_sum = numeric.zero(R);
 
             for (0..x.cols) |j| {
-                max_col_sum = numeric.max(max_col_sum, numeric.cast(R, col_sums[j]));
+                numeric.maxInto(
+                    &max_col_sum,
+                    max_col_sum,
+                    col_sums[j],
+                );
             }
 
             return max_col_sum;
@@ -132,7 +183,12 @@ pub fn normAlloc(allocator: std.mem.Allocator, x: anytype, comptime order: linal
                     numeric.addInto(
                         &row_sums[i],
                         row_sums[i],
-                        numeric.abs(x.data[i + j * x.ld]),
+                        numeric.abs(
+                            if (comptime noconj_x)
+                                x.data[i + j * x.ld]
+                            else
+                                numeric.conj(x.data[i + j * x.ld]),
+                        ),
                     );
                 }
             }
@@ -140,7 +196,11 @@ pub fn normAlloc(allocator: std.mem.Allocator, x: anytype, comptime order: linal
             var max_row_sum = numeric.zero(R);
 
             for (0..x.rows) |i| {
-                max_row_sum = numeric.max(max_row_sum, numeric.cast(R, row_sums[i]));
+                numeric.maxInto(
+                    &max_row_sum,
+                    max_row_sum,
+                    row_sums[i],
+                );
             }
 
             return max_row_sum;
