@@ -4,10 +4,11 @@ const zsl = @import("zsl");
 pub fn main(init: std.process.Init) !void {
     @setEvalBranchQuota(10_000);
 
-    const N = zsl.Complex(f64);
+    const N: type = f64;
+    const layout: zsl.matrix.Layout = .col_major;
 
     // const arena = init.arena.allocator();
-    const gpa = init.gpa;
+    // const gpa = init.gpa;
 
     const io = init.io;
 
@@ -15,101 +16,16 @@ pub fn main(init: std.process.Init) !void {
     const prng = xoshiro.random();
     const normal = zsl.stats.Normal(N).init(zsl.numeric.zero(N), zsl.numeric.one(N));
 
-    const m = 2500;
-    const n = 2500;
+    const m = 4;
+    const n = 4;
 
-    var a: zsl.matrix.general.Dense(N, .col_major) = try .initFn(gpa, m, n, zsl.stats.Normal(N).sample, .{ normal, prng });
-    defer a.deinit(gpa);
+    const a: zsl.matrix.general.Static(m, n, N, layout) = try .initFn(zsl.stats.Normal(N).sample, .{ normal, prng });
 
-    // std.debug.print("a: {f}\n", .{a.formatter("{d:.4}")});
+    const plu: zsl.linalg.plu.Static(m, n, N, layout) = try zsl.linalg.plu.factor(a);
 
-    // Tiled
-    var lu1: zsl.matrix.general.Dense(N, .col_major) = try a.clone(gpa);
-    defer lu1.deinit(gpa);
+    const diff = zsl.matrix.subUnchecked(a, zsl.linalg.matmulUnchecked(zsl.linalg.matmulUnchecked(plu.p(), plu.l()), plu.u()));
 
-    const ipiv1 = try gpa.alloc(usize, zsl.int.min(m, n));
-    defer gpa.free(ipiv1);
-
-    var start = std.Io.Clock.real.now(io);
-    _ = try zsl.linalg.lapack.getrf(.col_major, m, n, lu1.data, lu1.ld, ipiv1.ptr);
-    var end = std.Io.Clock.real.now(io);
-
-    std.debug.print("getrf:  {d} s\n", .{zsl.numeric.cast(f128, end.nanoseconds - start.nanoseconds) / std.time.ns_per_s});
-
-    var p1: zsl.matrix.permutation.Sparse(N, .forward) = try .init(gpa, m);
-    defer p1.deinit(gpa);
-
-    for (0..m) |i| {
-        p1.idx[i] = i;
-    }
-
-    var i: usize = zsl.int.min(m, n);
-    while (i > 0) {
-        i -= 1;
-
-        const swap_idx = ipiv1[i];
-        if (i != swap_idx) {
-            const temp = p1.idx[i];
-            p1.idx[i] = p1.idx[swap_idx];
-            p1.idx[swap_idx] = temp;
-        }
-    }
-
-    var pl1 = try zsl.linalg.matmulAlloc(gpa, p1, lu1.triangularView(.lower, .unit));
-    defer pl1.deinit(gpa);
-
-    var plu1 = try zsl.linalg.matmulAlloc(gpa, pl1, lu1.triangularView(.upper, .non_unit));
-    defer plu1.deinit(gpa);
-
-    // std.debug.print("p * l * u: {f}\n", .{plu.formatter("{d:.4}")});
-
-    var diff1 = try zsl.matrix.subAlloc(gpa, a, plu1);
-    defer diff1.deinit(gpa);
-
-    std.debug.print("getrf: ‖a - p * l * 1‖ =  {e:.6}\n", .{zsl.linalg.norm(diff1, .l1)});
-
-    // Untiled
-    var lu2: zsl.matrix.general.Dense(N, .col_major) = try a.clone(gpa);
-    defer lu2.deinit(gpa);
-
-    const ipiv2 = try gpa.alloc(usize, zsl.int.min(m, n));
-    defer gpa.free(ipiv2);
-
-    start = std.Io.Clock.real.now(io);
-    _ = try zsl.linalg.lapack.getrf2(.col_major, m, n, lu2.data, lu2.ld, ipiv2.ptr);
-    end = std.Io.Clock.real.now(io);
-
-    std.debug.print("getrf2: {d} s\n", .{zsl.numeric.cast(f128, end.nanoseconds - start.nanoseconds) / std.time.ns_per_s});
-
-    var p2: zsl.matrix.permutation.Sparse(N, .forward) = try .init(gpa, m);
-    defer p2.deinit(gpa);
-
-    for (0..m) |j| {
-        p2.idx[j] = j;
-    }
-
-    var j: usize = zsl.int.min(m, n);
-    while (j > 0) {
-        j -= 1;
-
-        const swap_idx = ipiv2[j];
-        if (j != swap_idx) {
-            const temp = p2.idx[j];
-            p2.idx[j] = p2.idx[swap_idx];
-            p2.idx[swap_idx] = temp;
-        }
-    }
-
-    var pl2 = try zsl.linalg.matmulAlloc(gpa, p2, lu2.triangularView(.lower, .unit));
-    defer pl2.deinit(gpa);
-
-    var plu2 = try zsl.linalg.matmulAlloc(gpa, pl2, lu2.triangularView(.upper, .non_unit));
-    defer plu2.deinit(gpa);
-
-    var diff2 = try zsl.matrix.subAlloc(gpa, a, plu2);
-    defer diff2.deinit(gpa);
-
-    std.debug.print("getrf2: ‖a - p * l * 1‖ = {e:.6}\n", .{zsl.linalg.norm(diff2, .l1)});
+    std.debug.print("‖a - p * l * u‖ = {e:.6}\n", .{zsl.linalg.norm(diff, .frobenius)});
 
     // const m = 4;
     // const n = 4;

@@ -56,77 +56,6 @@ pub fn LU(M: type) type {
     };
 }
 
-pub fn PLU(T: type, order: Order) type {
-    return struct {
-        _rows: u32,
-        _cols: u32,
-        _ipiv: [*]i32, // 1-based indexing
-        _lu: [*]T,
-
-        pub fn init(ipiv: [*]i32, a: anytype, rows: u32, cols: u32) PLU(Numeric(Child(@TypeOf(a))), order) {
-            return .{
-                ._rows = rows,
-                ._cols = cols,
-                ._ipiv = ipiv,
-                ._lu = a,
-            };
-        }
-
-        pub fn deinit(self: *PLU(T, order), allocator: std.mem.Allocator) void {
-            allocator.free(self._ipiv[0..int.min(self._rows, self._cols)]);
-            allocator.free(self._lu[0 .. self._rows * self._cols]);
-
-            self.* = undefined;
-        }
-
-        pub fn p(self: *const PLU(T, order), allocator: std.mem.Allocator) !matrix.Permutation(T) {
-            var _p: matrix.Permutation(T) = try .init(allocator, self._rows);
-            errdefer _p.deinit(allocator);
-
-            var i: i32 = 0;
-            while (i < self._rows) : (i += 1) {
-                _p.data[types.scast(u32, i)] = types.scast(u32, i);
-            }
-
-            i = types.scast(i32, int.min(self._rows, self._cols) - 1);
-            while (i >= 0) : (i -= 1) {
-                const tmp: u32 = _p.data[types.scast(u32, i)];
-                _p.data[types.scast(u32, i)] = _p.data[types.scast(u32, self._ipiv[types.scast(u32, i)] - 1)];
-                _p.data[types.scast(u32, self._ipiv[types.scast(u32, i)] - 1)] = tmp;
-            }
-
-            return _p;
-        }
-
-        pub fn l(self: *const PLU(T, order)) matrix.Triangular(T, .lower, .unit, order) {
-            return .{
-                .data = self._lu,
-                .rows = self._rows,
-                .cols = int.min(self._rows, self._cols),
-                .ld = if (order == .col_major) self._rows else self._cols,
-                .flags = .{ .owns_data = false },
-            };
-        }
-
-        pub fn u(self: *const PLU(T, order)) matrix.Triangular(T, .upper, .non_unit, order) {
-            return .{
-                .data = self._lu,
-                .rows = int.min(self._rows, self._cols),
-                .cols = self._cols,
-                .ld = if (order == .col_major) self._rows else self._cols,
-                .flags = .{ .owns_data = false },
-            };
-        }
-
-        pub fn reconstruct(self: *const PLU(T, order), allocator: std.mem.Allocator) void {
-            _ = self;
-            _ = allocator;
-            // A = P * L * U
-            @compileError("PLU.reconstruct not implemented yet");
-        }
-    };
-}
-
 pub fn PLUQ(T: type, order: Order) type {
     return struct {
         p: matrix.Permutation(T),
@@ -173,51 +102,6 @@ pub fn PLUQ(T: type, order: Order) type {
             self.* = undefined;
         }
     };
-}
-
-pub fn plu(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !PLU(Numeric(@TypeOf(a)), orderOf(@TypeOf(a))) {
-    const A: type = @TypeOf(a);
-
-    comptime if (!types.isMatrix(A) or (types.matrixType(A) != .general and types.matrixType(A) != .banded and types.matrixType(A) != .tridiagonal))
-        @compileError("plu: argument must be a general, banded or tridiagonal matrix, got " ++ @typeName(A));
-
-    comptime if (types.isArbitraryPrecision(Numeric(A))) {
-        // When implemented, expand if
-        @compileError("zml.linalg.plu not implemented for arbitrary precision types yet");
-    } else {
-        types.validateContext(@TypeOf(ctx), .{});
-    };
-
-    switch (comptime types.matrixType(A)) {
-        .general => {
-            const m: u32 = a.rows;
-            const n: u32 = a.cols;
-
-            var lu: matrix.General(Numeric(@TypeOf(a)), orderOf(A)) = try a.copy(allocator, ctx);
-            errdefer lu.deinit(allocator);
-
-            const ipiv: []i32 = try allocator.alloc(i32, int.min(m, n));
-            errdefer allocator.free(ipiv);
-
-            const info: i32 = try linalg.lapack.getrf(
-                types.orderOf(A),
-                types.scast(i32, m),
-                types.scast(i32, n),
-                lu.data,
-                types.scast(i32, lu.ld),
-                ipiv.ptr,
-                ctx,
-            );
-
-            if (info != 0)
-                return error.SingularMatrix;
-
-            return .init(ipiv.ptr, lu.data, m, n);
-        },
-        .banded => return linalg.Error.NotImplemented, // lapack.gbtrf
-        .tridiagonal => return linalg.Error.NotImplemented, // lapack.gttrf
-        else => unreachable,
-    }
 }
 
 pub fn pluq(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !PLUQ(Numeric(@TypeOf(a)), orderOf(@TypeOf(a))) {

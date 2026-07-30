@@ -70,31 +70,20 @@ pub const traceUnchecked = @import("linalg/trace.zig").traceUnchecked;
 
 // pinv
 
-// pub const LU = @import("linalg/lu.zig").LU;
-// pub const lu = @import("linalg/lu.zig").lu;
-// pub const PLU = @import("linalg/lu.zig").PLU;
-// pub const plu = @import("linalg/lu.zig").plu;
-// pub const PLUQ = @import("linalg/lu.zig").PLUQ;
-// pub const pluq = @import("linalg/lu.zig").pluq;
+// pub const lu = @import("linalg/lu.zig");
+pub const plu = @import("linalg/plu.zig");
+// pub const pluq = @import("linalg/pluq.zig");
 
 // ilu
 
-// pub const LLT = @import("linalg/cholesky.zig").LLT;
-// pub const llt = @import("linalg/cholesky.zig").llt;
-// pub const UTU = @import("linalg/cholesky.zig").UTU;
-// pub const utu = @import("linalg/cholesky.zig").utu;
-// pub const cholesky = @import("linalg/cholesky.zig").cholesky;
+// pub const llt = @import("linalg/llt.zig").llt;
+// pub const utu = @import("linalg/utu.zig").utu;
 
-// pub const LDLT = @import("linalg/bunchkaufman.zig").LDLT;
-// pub const ldlt = @import("linalg/bunchkaufman.zig").ldlt;
-// pub const UDUT = @import("linalg/bunchkaufman.zig").UDUT;
-// pub const udut = @import("linalg/bunchkaufman.zig").udut;
-// pub const bunchkaufman = @import("linalg/bunchkaufman.zig").bunchkaufman;
+// pub const ldlt = @import("linalg/ldlt.zig").ldlt;
+// pub const udut = @import("linalg/udut.zig").udut;
 
-// pub const QR = @import("linalg/qr.zig").QR;
 // pub const qr = @import("linalg/qr.zig").qr;
-// pub const QRP = @import("linalg/qr.zig").QRP;
-// pub const qrp = @import("linalg/qr.zig").qrp;
+// pub const qrp = @import("linalg/qrp.zig").qrp;
 
 // rq
 
@@ -124,4 +113,5 @@ pub const Error = error{
     SingularMatrix,
     IndefiniteMatrix,
     NotImplemented,
+    ZeroDimension,
 };
