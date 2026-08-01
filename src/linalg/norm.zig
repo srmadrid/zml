@@ -179,9 +179,9 @@ pub fn norm(x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)
 pub fn normAlloc(allocator: std.mem.Allocator, x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)))) !linalg.Norm(@TypeOf(x), order) {
     const X: type = @TypeOf(x);
 
-    switch (comptime meta.domain(X)) {
+    return switch (comptime meta.domain(X)) {
         .vector => switch (comptime meta.vectorType(X)) {
-            .static => return @import("norm/vecsta.zig").norm(x, order),
+            .static => @import("norm/vecsta.zig").norm(x, order),
             // .dense => return @import("norm/de.zig").norm(x, norm_type),
             // .sparse => return @import("norm/sp.zig").norm(x, norm_type),
             else => @compileError("zsl.linalg.normAlloc: not implemented yet for \n\tX = " ++ @typeName(X) ++ "\n"),
@@ -207,5 +207,5 @@ pub fn normAlloc(allocator: std.mem.Allocator, x: anytype, comptime order: linal
             else => unreachable,
         },
         else => unreachable,
-    }
+    };
 }

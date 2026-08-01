@@ -15,6 +15,7 @@ pub const two = constants.two;
 pub const Coerce = ops.Coerce;
 pub const cast = ops.cast;
 pub const set = ops.set;
+pub const isNan = ops.isNan;
 
 // Basic operations
 pub const Abs = ops.Abs;

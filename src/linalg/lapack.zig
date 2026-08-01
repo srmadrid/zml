@@ -24,16 +24,16 @@ pub const Storage = enum {
 // rmax  (O) -> numeric.highest (highest)
 
 // LU
-pub const getrf2 = @import("lapack/lu/getrf2.zig").getrf2;
-pub const getrf = @import("lapack/lu/getrf.zig").getrf;
-// pub const getrs = @import("lapack/lu/getrs.zig").getrs;
-// pub const gesv = @import("lapack/lu/gesv.zig").gesv;
+pub const getrf2 = @import("lapack/lu/getrf2.zig").getrf2; // Unoptimized
+pub const getrf = @import("lapack/lu/getrf.zig").getrf; // Unoptimized
+pub const getrs = @import("lapack/lu/getrs.zig").getrs; // Unoptimized
+pub const gesv = @import("lapack/lu/gesv.zig").gesv; // Unoptimized
 
 // Cholesky
-// pub const potrf2 = @import("lapack/cholesky/potrf2.zig").potrf2;
-// pub const potrf = @import("lapack/cholesky/potrf.zig").potrf;
-// pub const potrs = @import("lapack/cholesky/potrs.zig").potrs;
-// pub const posv = @import("lapack/cholesky/posv.zig").posv;
+pub const potrf2 = @import("lapack/cholesky/potrf2.zig").potrf2; // Unoptimized
+pub const potrf = @import("lapack/cholesky/potrf.zig").potrf; // Unoptimized
+pub const potrs = @import("lapack/cholesky/potrs.zig").potrs; // Unoptimized
+pub const posv = @import("lapack/cholesky/posv.zig").posv; // Unoptimized
 
 // Bunch-Kaufman
 // pub const sytf2 = @import("lapack/bunchkaufman/sytf2.zig").sytf2;

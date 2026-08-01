@@ -43,7 +43,7 @@ const utils = @import("../utils.zig");
 /// * `a` (`anytype`): Mutable many-item pointer, size at least `lda * k`, where
 ///   `k` is `n` when `layout` is `col_major`, or `m` when `layout` is
 ///   `row_major`.
-/// * `lda` (`usize`): Specifies the leading dimension of `c` as declared in the
+/// * `lda` (`usize`): Specifies the leading dimension of `a` as declared in the
 ///   calling (sub)program. Must be greater than or equal to `max(1, m)` when
 ///   `layout` is `col_major`, or `max(1, n)` when `layout` is `row_major`.
 /// * `ipiv` (`[*]usize`): Mutable many-item pointer, size at least
@@ -52,7 +52,7 @@ const utils = @import("../utils.zig");
 ///   `ipiv[i]`.
 ///
 /// ## Returns
-/// `usize`: `int.highest(usize)` if successful, or `i` if `u₁₁` is exactly
+/// `usize`: `int.highest(usize)` if successful, or `i` if `uᵢᵢ` is exactly
 /// zero.
 ///
 /// ## Errors

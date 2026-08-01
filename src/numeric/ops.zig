@@ -2,6 +2,7 @@
 pub const Coerce = @import("ops/coerce.zig").Coerce;
 pub const cast = @import("ops/cast.zig").cast;
 pub const set = @import("ops/set.zig").set;
+pub const isNan = @import("ops/isNan.zig").isNan;
 
 // Basic operations
 pub const Abs = @import("ops/abs.zig").Abs;

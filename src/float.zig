@@ -510,6 +510,15 @@ pub fn smallest(comptime Float: type) Float {
     return std.math.floatMin(Float);
 }
 
+pub fn isNan(x: anytype) bool {
+    const X: type = @TypeOf(x);
+
+    comptime if (!meta.isNumeric(X) or meta.numericType(X) != .float)
+        @compileError("zsl.float.isNan: x must be a float, got \n\tx: " ++ @typeName(X) ++ "\n");
+
+    return std.math.isNan(x);
+}
+
 // Basic operations
 pub const abs = @import("float/abs.zig").abs;
 pub const sign = @import("float/sign.zig").sign;

@@ -5,14 +5,13 @@ const numeric = @import("../../../../numeric.zig");
 
 pub fn factorIntoUnchecked(o: anytype, x: anytype) !void {
     const O: type = meta.Child(@TypeOf(o));
-    const X: type = @TypeOf(x);
 
     if (comptime O.storage_layout == .col_major) {
         inline for (0..O.cols) |j| {
             inline for (0..O.rows) |i| {
                 numeric.set(
                     &o.data[i + j * O.rows],
-                    x.data[X._index(i, j)],
+                    x.data[x._index(i, j)],
                 );
             }
         }
@@ -21,7 +20,7 @@ pub fn factorIntoUnchecked(o: anytype, x: anytype) !void {
             inline for (0..O.cols) |j| {
                 numeric.set(
                     &o.data[i * O.cols + j],
-                    x.data[X._index(i, j)],
+                    x.data[x._index(i, j)],
                 );
             }
         }

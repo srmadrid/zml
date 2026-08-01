@@ -1,231 +1,191 @@
-const std = @import("std");
-
-const types = @import("../../types.zig");
-const ops = @import("../../ops.zig");
-const int = @import("../../int.zig");
-
-const linalg = @import("../../linalg.zig");
-const blas = @import("../blas.zig");
-const lapack = @import("../lapack.zig");
-const Order = types.Order;
-const Transpose = linalg.Transpose;
+const int = @import("../../../int.zig");
+const linalg = @import("../../../linalg.zig");
+const matrix = @import("../../../matrix.zig");
+const meta = @import("../../../meta.zig");
 
 /// Solves a system of linear equations with an LU-factored square coefficient
-/// matrix, with multiple right-hand sides.
-///
-/// The `getrs` routine solves for `X` the following systems of linear
-/// equations:
+/// matrix, defined as:
 ///
 /// ```zig
-///     A * X = B,
+/// A * X = B,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     A^T * X = B,
+/// Aᵀ * X = B,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     conj(A) * X = B,
+/// conj(A) * X = B,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     A^H * X = B,
+/// Aᴴ * X = B,
 /// ```
 ///
-/// where `A` is the LU factorization of a general `n`-by-`n` matrix `A`,
-/// computed by `getrf`, `B` is an `n`-by-`nrhs` matrix of right-hand
-/// sides, and `X` is an `n`-by-`nrhs` matrix of solutions.
+/// where `A` is the LU factorization of a general `n × n` matrix `A`, as
+/// computed by `linalg.lapack.getrf`, `B` is an `n × nrhs` matrix of right-hand
+/// sides, and `X` is an `n × nrhs` matrix of solutions.
 ///
-/// Signature
-/// ---------
+/// ## Signature
 /// ```zig
-/// fn getrs(order: Order, transa: Transpose, n: i32, nrhs: i32, a: [*]const A, lda: i32, ipiv: [*]const i32, b: [*]B, ldb: i32, ctx: anytype) !void
+/// linalg.lapack.getrs(layout: matrix.Layout, transa: linalg.blas.Transpose, n: usize, nrhs: usize, a: [*]const A, lda: usize, ipiv: [*]const usize, b: [*]B, ldb: usize) !void
 /// ```
 ///
-/// Parameters
-/// ----------
-/// `order` (`Order`): Specifies whether two-dimensional array storage is
-/// row-major or column-major.
+/// ## Arguments
+/// * `layout` (`matrix.Layout`): Specifies whether two-dimensional array
+///   storage is col-major or row-major.
+/// * `transa` (`linalg.blas.Transpose`): Specifies the operation to be
+///   performed on `A`:
+///   * `no_transpose`: `A * X  = B`
+///   * `transpose`: `Aᵀ * X = B`
+///   * `conj_no_transpose`: `conj(A) * X = B`
+///   * `conj_transpose`: `Aᴴ * X = B`
+/// * `n` (`usize`): Specifies the size of the matrix `A`, and the number of
+///   rows of the matrices `B` and `X`.
+/// * `nrhs` (`usize`): Specifies the number of columns of the matrices `B` and
+///   `X`.
+/// * `a` (`anytype`): Many-item pointer, size at least `lda * n`.
+/// * `lda` (`usize`): Specifies the leading dimension of `a` as declared in the
+///   calling (sub)program. Must be greater than or equal to `max(1, n)`.
+/// * `ipiv` (`[*]const usize`): Mutable many-item pointer, size at least
+///   `max(1, min(m, n))`.
+/// * `b` (`anytype`): Mutable many-item pointer, size at least `ldb * k`, where
+///   `k` is `nrhs` when `layout` is `col_major`, or `n` when `layout` is
+///   `row_major`. On return, contains the solution matrix `X`.
+/// * `ldb` (`usize`): Specifies the leading dimension of `b` as declared in the
+///   calling (sub)program. Must be greater than or equal to `max(1, n)` when
+///   `layout` is `col_major`, or `max(1, nrhs)` when `layout` is `row_major`.
 ///
-/// `transa` (`Transpose`): Specifies the form of the system of equations to
-/// solve:
-/// - If `transa = .no_trans`, then `A * X = B`.
-/// - If `transa = .trans`, then `A^T * X = B`.
-/// - If `transa = .conj_no_trans`, then `conj(A) * X = B`.
-/// - If `transa = .conj_trans`, then `A^H * X = B`.
+/// ## Returns
+/// `void`
 ///
-/// `n` (`i32`): The order of the matrix `A` and the number of rows of the
-/// matrix `B`. Must be greater than or equal to 0.
-///
-/// `nrhs` (`i32`): The number of right-hand sides, i.e., the number of
-/// columns of the matrix `B`. Must be greater than or equal to 0.
-///
-/// `a` (many-item pointer to `bool`, `int`, `float`, `cfloat`, `integer`,
-/// `rational`, `real`, `complex` or `expression`): Array, size at least
-/// `lda * n`.
-///
-/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
-/// or equal to `max(1, n)`.
-///
-/// `ipiv` (`[*]i32`): Array, size at least `max(1, n)`. The pivot indices as
-/// returned by `getrf`.
-///
-/// `b` (mutable many-item pointer to `bool`, `int`, `float`, `cfloat`,
-/// `integer`, `rational`, `real`, `complex` or `expression`): Array, size at
-/// least `ldb * nrhs` if `order = .col_major` or `ldb * n` if
-/// `order = .row_major`. On return, contains the solution matrix `X`.
-///
-/// `ldb` (`i32`): The leading dimension of the array `b`. Must be greater
-/// than or equal to `max(1, n)` if `order = .col_major` or `max(1, nrhs)` if
-/// `order = .row_major`.
-///
-/// Returns
-/// -------
-/// `void`: The result is stored in `b`.
-///
-/// Errors
-/// ------
-/// `linalg.lapack.Error.InvalidArgument`: If `n` or `nrhs` is less than 0, if
-/// `lda` is less than `max(1, n)`, or if `ldb` is less than `max(1, n)` or
-/// `max(1, nrhs)`.
-///
-/// Notes
-/// -----
-/// If the `link_cblas` option is not `null`, the function will try to call the
-/// corresponding LAPACKE function, if available. In that case, no errors will
-/// be raised even if the arguments are invalid.
+/// ## Errors
+/// * `linalg.lapack.Error.InvalidArgument`: If `lda` is less than `max(1, n)`,
+///   or if `ldb` is less than `max(1, n)` or `max(1, nrhs)`.
 pub fn getrs(
-    order: Order,
-    transa: Transpose,
-    n: i32,
-    nrhs: i32,
+    layout: matrix.Layout,
+    transa: linalg.blas.Transpose,
+    n: usize,
+    nrhs: usize,
     a: anytype,
-    lda: i32,
-    ipiv: [*]i32,
+    lda: usize,
+    ipiv: [*]const usize,
     b: anytype,
-    ldb: i32,
-    ctx: anytype,
+    ldb: usize,
 ) !void {
-    const A: type = types.Child(@TypeOf(a));
-    const B: type = types.Child(@TypeOf(b));
-    const C: type = types.Coerce(A, B);
+    const A: type = @TypeOf(a);
+    const B: type = @TypeOf(b);
 
-    const nota: bool = transa == .no_trans or transa == .conj_no_trans;
+    comptime if (!meta.isManyItemPointer(A) or !meta.isNumeric(meta.Child(A)) or
+        !meta.isManyItemPointer(B) or meta.isConstPointer(B) or !meta.isNumeric(meta.Child(B)))
+        @compileError("zsl.linalg.lapack.getrs: a must be a many-item pointer to numerics, and b must be a mutable many-item pointer to numerics, got \n\ta: " ++
+            @typeName(A) ++ "\n\tb: " ++ @typeName(B) ++ "\n");
 
-    if (n < 0 or nrhs < 0 or lda < int.max(1, n) or ldb < int.max(1, if (order == .col_major) n else nrhs))
-        return lapack.Error.InvalidArgument;
+    if (lda < int.max(1, n) or ldb < int.max(1, if (layout == .col_major) n else nrhs))
+        return linalg.lapack.Error.InvalidArgument;
 
     // Quick return if possible.
     if (n == 0 or nrhs == 0)
         return;
 
-    if (comptime !types.isArbitraryPrecision(C)) {
-        if (nota) {
-            // Solve A * X = B or conj(A) * X = B.
+    if (transa == .no_trans or transa == .conj_no_trans) {
+        // Solve  A * X = B  or  conj(A) * X = B.
 
-            // Apply row interchanges to the right hand sides.
-            lapack.laswp(
-                order,
-                nrhs,
-                b,
-                ldb,
-                1,
-                n,
-                ipiv,
-                1,
-            ) catch unreachable;
+        // Apply row interchanges to the right hand sides.
+        linalg.lapack.laswp(
+            layout,
+            nrhs,
+            b,
+            ldb,
+            0,
+            n,
+            ipiv,
+            1,
+        ) catch unreachable;
 
-            // Solve L * X = B or conj(L) * X = B, overwriting B with X.
-            blas.trsm(
-                order,
-                .left,
-                .lower,
-                transa,
-                .unit,
-                n,
-                nrhs,
-                1,
-                a,
-                lda,
-                b,
-                ldb,
-                ctx,
-            ) catch unreachable;
+        // Solve  L * X = B  or  conj(L) * X = B, overwriting B with X.
+        linalg.blas.trsm(
+            layout,
+            .left,
+            .lower,
+            transa,
+            .unit,
+            n,
+            nrhs,
+            1,
+            a,
+            lda,
+            b,
+            ldb,
+        ) catch unreachable;
 
-            // Solve U * X = B or conj(U) * X = B, overwriting B with X.
-            blas.trsm(
-                order,
-                .left,
-                .upper,
-                transa,
-                .non_unit,
-                n,
-                nrhs,
-                1,
-                a,
-                lda,
-                b,
-                ldb,
-                ctx,
-            ) catch unreachable;
-        } else {
-            // Solve A^T * X = B or A^H * X = B.
-
-            // Solve U^T * X = B or U^H * X = B, overwriting B with X.
-            blas.trsm(
-                order,
-                .left,
-                .upper,
-                transa,
-                .non_unit,
-                n,
-                nrhs,
-                1,
-                a,
-                lda,
-                b,
-                ldb,
-                ctx,
-            ) catch unreachable;
-
-            // Solve L^T * X = B or L^H * X = B, overwriting B with X.
-            blas.trsm(
-                order,
-                .left,
-                .lower,
-                transa,
-                .unit,
-                n,
-                nrhs,
-                1,
-                a,
-                lda,
-                b,
-                ldb,
-                ctx,
-            ) catch unreachable;
-
-            // Apply row interchanges to the solution vectors.
-            lapack.laswp(
-                order,
-                nrhs,
-                b,
-                ldb,
-                1,
-                n,
-                ipiv,
-                -1,
-            ) catch unreachable;
-        }
+        // Solve  U * X = B  or  conj(U) * X = B, overwriting B with X.
+        linalg.blas.trsm(
+            layout,
+            .left,
+            .upper,
+            transa,
+            .non_unit,
+            n,
+            nrhs,
+            1,
+            a,
+            lda,
+            b,
+            ldb,
+        ) catch unreachable;
     } else {
-        // Arbitrary precision types not supported yet
-        @compileError("zml.linalg.lapack.getrs not implemented for arbitrary precision types yet");
+        // Solve  Aᵀ * X = B  or  Aᴴ * X = B.
+
+        // Solve  Uᵀ * X = B  or  Uᴴ * X = B, overwriting B with X.
+        linalg.blas.trsm(
+            layout,
+            .left,
+            .upper,
+            transa,
+            .non_unit,
+            n,
+            nrhs,
+            1,
+            a,
+            lda,
+            b,
+            ldb,
+        ) catch unreachable;
+
+        // Solve  Lᵀ * X = B  or  Lᴴ * X = B, overwriting B with X.
+        linalg.blas.trsm(
+            layout,
+            .left,
+            .lower,
+            transa,
+            .unit,
+            n,
+            nrhs,
+            1,
+            a,
+            lda,
+            b,
+            ldb,
+        ) catch unreachable;
+
+        // Apply row interchanges to the solution vectors.
+        linalg.lapack.laswp(
+            layout,
+            nrhs,
+            b,
+            ldb,
+            0,
+            n,
+            ipiv,
+            -1,
+        ) catch unreachable;
     }
 
     return;

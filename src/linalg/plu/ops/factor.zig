@@ -108,14 +108,14 @@ pub fn factorIntoUnchecked(o: anytype, x: anytype) !void {
     switch (comptime o_storage) {
         .static => switch (comptime meta.matrixStorage(X)) {
             .static => try @import("factor/plusta_matgensta.zig").factorIntoUnchecked(o, x),
-            // .dense => try @import("factor/plusta_matgenden.zig").factorIntoUnchecked(o, x),
+            .dense => try @import("factor/plusta_matgenden.zig").factorIntoUnchecked(o, x),
             // .sparse => try @import("factor/plusta_matgenspa.zig").factorIntoUnchecked(o, x),
             .numeric => unreachable,
             else => @compileError("zsl.linalg.plu.factorIntoUnchecked: not implemented yet for o: *" ++
                 @typeName(O) ++ "x: " ++ @typeName(X) ++ "\n"),
         },
         .dense => switch (comptime meta.matrixStorage(X)) {
-            // .static => try @import("factor/pluden_matgensta.zig").factorIntoUnchecked(o, x),
+            .static => try @import("factor/pluden_matgensta.zig").factorIntoUnchecked(o, x),
             .dense => try @import("factor/pluden_matgenden.zig").factorIntoUnchecked(o, x),
             // .sparse => try @import("factor/pluden_matgenspa.zig").factorIntoUnchecked(o, x),
             .numeric => unreachable,

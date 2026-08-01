@@ -1,19 +1,12 @@
-const std = @import("std");
-
-const types = @import("../../types.zig");
-const scast = types.scast;
-const Scalar = types.Scalar;
-const ops = @import("../../ops.zig");
-const int = @import("../../int.zig");
-
-const linalg = @import("../../linalg.zig");
-const blas = @import("../blas.zig");
-const lapack = @import("../lapack.zig");
-const Order = types.Order;
-const Uplo = types.Uplo;
+const int = @import("../../../int.zig");
+const linalg = @import("../../../linalg.zig");
+const matrix = @import("../../../matrix.zig");
+const meta = @import("../../../meta.zig");
+const numeric = @import("../../../numeric.zig");
+const utils = @import("../utils.zig");
 
 /// Solves a system of linear equations with a Cholesky-factored symmetric or
-/// Hermitian positive-definite coefficient matrix.
+/// Hermitian positive-definite coefficient matrix, defined as:
 ///
 /// The `potrs` routine solves for `X` the system of linear equations
 /// `A * X = B` with a symmetric positive-definite or, for complex data,
@@ -21,185 +14,139 @@ const Uplo = types.Uplo;
 /// `A`:
 ///
 /// ```zig
-///     A = U^T * U,
+/// A * X = B,
 /// ```
 ///
-/// or
+/// where `A` is the Cholesky factorization of a symmetric or Hermitian
+/// positive-definite `n × n` matrix `A`, as computed by `linalg.lapack.potrf`,
+/// `B` is an `n × nrhs` matrix of right-hand sides, and `X` is an `n × nrhs`
+/// matrix of solutions.
 ///
+/// ## Signature
 /// ```zig
-///     A = L * L^T,
+/// linalg.lapack.potrs(layout: matrix.Layout, transa: linalg.blas.Transpose, n: usize, nrhs: usize, a: [*]const A, lda: usize, b: [*]B, ldb: usize) !void
 /// ```
 ///
-/// or
+/// ## Arguments
+/// * `layout` (`matrix.Layout`): Specifies whether two-dimensional array
+///   storage is col-major or row-major.
+/// * `uplo` (`matrix.Uplo`): Specifies whether the upper or lower triangular
+///   part of the matrix `A` is used, and which factorization has been computed:
+///   * `upper`: `A = Uᵀ * U` or `A = Uᴴ * U`
+///   * `lower`: `A = L * Lᵀ` or `A = L * Lᴴ`
+/// * `n` (`usize`): Specifies the size of the matrix `A`, and the number of
+///   rows of the matrices `B` and `X`.
+/// * `nrhs` (`usize`): Specifies the number of columns of the matrices `B` and
+///   `X`.
+/// * `a` (`anytype`): Many-item pointer, size at least `lda * n`.
+/// * `lda` (`usize`): Specifies the leading dimension of `a` as declared in the
+///   calling (sub)program. Must be greater than or equal to `max(1, n)`.
+/// * `b` (`anytype`): Mutable many-item pointer, size at least `ldb * k`, where
+///   `k` is `nrhs` when `layout` is `col_major`, or `n` when `layout` is
+///   `row_major`. On return, contains the solution matrix `X`.
+/// * `ldb` (`usize`): Specifies the leading dimension of `b` as declared in the
+///   calling (sub)program. Must be greater than or equal to `max(1, n)` when
+///   `layout` is `col_major`, or `max(1, nrhs)` when `layout` is `row_major`.
 ///
-/// ```zig
-///     A = U^H * U,
-/// ```
+/// ## Returns
+/// `void`
 ///
-/// or
-///
-/// ```zig
-///     A = L * L^H,
-/// ```
-///
-/// where `U` is an upper triangular matrix and `L` is lower triangular. The
-/// system is solved with multiple right-hand sides stored in the columns of the
-/// matrix `B`. Before calling this routine, you must call `potrf` to compute
-/// the Cholesky factorization of `A`.
-///
-/// Signature
-/// ---------
-/// ```zig
-/// fn potrs(order: Order, uplo: Uplo, n: i32, nrhs: i32, a: [*]const A, lda: i32, b: [*]B, ldb: i32, ctx: anytype) !void
-/// ```
-///
-/// Parameters
-/// ----------
-/// `order` (`Order`): Specifies whether two-dimensional array storage is
-/// row-major or column-major.
-///
-/// `uplo` (`Uplo`): Specifies how the matrix `A` has been factored:
-/// - If `uplo = upper`, then the factorization is `A = U^T * U` or
-/// `A = U^H * U`.
-/// - If `uplo = lower`, then the factorization is `A = L * L^T` or
-/// `A = L * L^H`.
-///
-/// `n` (`i32`): The order of the matrix `A`. Must be greater than or equal to
-/// 0.
-///
-/// `nrhs` (`i32`): The number of right-hand sides, i.e., the number of
-/// columns of the matrix `B`. Must be greater than or equal to 0.
-///
-/// `a` (many-item pointer to `bool`, `int`, `float`, `cfloat`, `integer`,
-/// `rational`, `real`, `complex` or `expression`): Array, size at least
-/// `lda * n`.
-///
-/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
-/// or equal to `max(1, n)`.
-///
-/// `b` (mutable many-item pointer to `bool`, `int`, `float`, `cfloat`,
-/// `integer`, `rational`, `real`, `complex` or `expression`): Array, size at
-/// least `ldb * nrhs` if `order = col_major`, or `ldb * n` if
-/// `order = row_major`. On return, contains the solution matrix `X`.
-///
-/// `ldb` (`i32`): The leading dimension of the array `b`. Must be greater
-/// than or equal to `max(1, n)` if `order = col_major`, or `max(1, nrhs)` if
-/// `order = row_major`.
-///
-/// Returns
-/// -------
-/// `void`: The result is stored in `b`.
-///
-/// Errors
-/// ------
-/// `linalg.lapack.Error.InvalidArgument`: If `n` or `nrhs` is less than 0, if
-/// `lda` is less than `max(1, n)`, or if `ldb` is less than `max(1, n)` or
-/// `max(1, nrhs)`.
-///
-/// Notes
-/// -----
-/// If the `link_cblas` option is not `null`, the function will try to call the
-/// corresponding LAPACKE function, if available. In that case, no errors will
-/// be raised even if the arguments are invalid.
+/// ## Errors
+/// * `linalg.lapack.Error.InvalidArgument`: If `lda` is less than `max(1, n)`,
+///   or if `ldb` is less than `max(1, n)` or `max(1, nrhs)`.
 pub fn potrs(
-    order: Order,
-    uplo: Uplo,
-    n: i32,
-    nrhs: i32,
+    layout: matrix.Layout,
+    uplo: matrix.Uplo,
+    n: usize,
+    nrhs: usize,
     a: anytype,
-    lda: i32,
+    lda: usize,
     b: anytype,
-    ldb: i32,
-    ctx: anytype,
+    ldb: usize,
 ) !void {
-    const A: type = types.Child(@TypeOf(a));
-    const B: type = types.Child(@TypeOf(b));
-    const C: type = types.Coerce(A, B);
+    const A: type = @TypeOf(a);
+    const B: type = @TypeOf(b);
 
-    if (n < 0 or nrhs < 0 or lda < int.max(1, n) or ldb < int.max(1, n))
-        return lapack.Error.InvalidArgument;
+    comptime if (!meta.isManyItemPointer(A) or !meta.isNumeric(meta.Child(A)) or
+        !meta.isManyItemPointer(B) or meta.isConstPointer(B) or !meta.isNumeric(meta.Child(B)))
+        @compileError("zsl.linalg.lapack.potrs: a must be a many-item pointer to numerics, and b must be a mutable many-item pointer to numerics, got \n\ta: " ++
+            @typeName(A) ++ "\n\tb: " ++ @typeName(B) ++ "\n");
+
+    if (lda < int.max(1, n) or ldb < int.max(1, if (layout == .col_major) n else nrhs))
+        return linalg.lapack.Error.InvalidArgument;
 
     // Quick return if possible.
     if (n == 0 or nrhs == 0)
         return;
 
-    if (comptime !types.isArbitraryPrecision(C)) {
-        if (uplo == .upper) {
-            // Solve A * X = B, where A = U^T * U or A = U^H * U.
+    if (uplo == .upper) {
+        // Solve  A * X = B, where  A = Uᵀ * U  or  A = Uᴴ * U.
 
-            // Solve U^T * X = B or U^H * X = B, overwriting B with X.
-            blas.trsm(
-                order,
-                .left,
-                .upper,
-                .conj_trans,
-                .non_unit,
-                n,
-                nrhs,
-                1,
-                a,
-                lda,
-                b,
-                ldb,
-                ctx,
-            ) catch unreachable;
+        // Solve  Uᵀ * X = B  or  Uᴴ * X = B, overwriting B with X.
+        linalg.blas.trsm(
+            layout,
+            .left,
+            .upper,
+            .conj_trans,
+            .non_unit,
+            n,
+            nrhs,
+            1,
+            a,
+            lda,
+            b,
+            ldb,
+        ) catch unreachable;
 
-            // Solve U * X = B, overwriting B with X.
-            blas.trsm(
-                order,
-                .left,
-                .upper,
-                .no_trans,
-                .non_unit,
-                n,
-                nrhs,
-                1,
-                a,
-                lda,
-                b,
-                ldb,
-                ctx,
-            ) catch unreachable;
-        } else {
-            // Solve A * X = B, where A = L * L^T or A = L * L^H.
-
-            // Solve L * X = B, overwriting B with X.
-            blas.trsm(
-                order,
-                .left,
-                .lower,
-                .no_trans,
-                .non_unit,
-                n,
-                nrhs,
-                1,
-                a,
-                lda,
-                b,
-                ldb,
-                ctx,
-            ) catch unreachable;
-
-            // Solve L^T * X = B or L^H * X = B, overwriting B with X.
-            blas.trsm(
-                order,
-                .left,
-                .lower,
-                .conj_trans,
-                .non_unit,
-                n,
-                nrhs,
-                1,
-                a,
-                lda,
-                b,
-                ldb,
-                ctx,
-            ) catch unreachable;
-        }
+        // Solve  U * X = B, overwriting B with X.
+        linalg.blas.trsm(
+            layout,
+            .left,
+            .upper,
+            .no_trans,
+            .non_unit,
+            n,
+            nrhs,
+            1,
+            a,
+            lda,
+            b,
+            ldb,
+        ) catch unreachable;
     } else {
-        // Arbitrary precision types not supported yet
-        @compileError("zml.linalg.lapack.potrs not implemented for arbitrary precision types yet");
+        // Solve  A * X = B, where  A = L * Lᵀ  or  A = L * Lᴴ.
+
+        // Solve  L * X = B, overwriting B with X.
+        linalg.blas.trsm(
+            layout,
+            .left,
+            .lower,
+            .no_trans,
+            .non_unit,
+            n,
+            nrhs,
+            1,
+            a,
+            lda,
+            b,
+            ldb,
+        ) catch unreachable;
+
+        // Solve  Lᵀ * X = B  or  Lᴴ * X = B, overwriting B with X.
+        linalg.blas.trsm(
+            layout,
+            .left,
+            .lower,
+            .conj_trans,
+            .non_unit,
+            n,
+            nrhs,
+            1,
+            a,
+            lda,
+            b,
+            ldb,
+        ) catch unreachable;
     }
 
     return;

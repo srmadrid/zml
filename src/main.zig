@@ -8,7 +8,7 @@ pub fn main(init: std.process.Init) !void {
     const layout: zsl.matrix.Layout = .col_major;
 
     // const arena = init.arena.allocator();
-    // const gpa = init.gpa;
+    const gpa = init.gpa;
 
     const io = init.io;
 
@@ -16,19 +16,48 @@ pub fn main(init: std.process.Init) !void {
     const prng = xoshiro.random();
     const normal = zsl.stats.Normal(N).init(zsl.numeric.zero(N), zsl.numeric.one(N));
 
-    const m = 4;
-    const n = 4;
+    const m = 600;
+    const n = 600;
 
-    const a: zsl.matrix.general.Static(m, n, N, layout) = try .initFn(zsl.stats.Normal(N).sample, .{ normal, prng });
+    var a: zsl.matrix.general.Dense(N, layout) = try .initFn(gpa, m, n, zsl.stats.Normal(N).sample, .{ normal, prng });
+    defer a.deinit(gpa);
 
-    const plu: zsl.linalg.plu.Static(m, n, N, layout) = try zsl.linalg.plu.factor(a);
+    // std.debug.print("A: {f}\n", .{a.formatter("{d:.4}")});
 
-    const diff = zsl.matrix.subUnchecked(a, zsl.linalg.matmulUnchecked(zsl.linalg.matmulUnchecked(plu.p(), plu.l()), plu.u()));
+    var plu: zsl.linalg.plu.Dense(N, layout) = try zsl.linalg.plu.factorAlloc(gpa, a);
+    defer plu.deinit(gpa);
 
-    std.debug.print("‖a - p * l * u‖ = {e:.6}\n", .{zsl.linalg.norm(diff, .frobenius)});
+    var b: zsl.matrix.general.Dense(N, layout) = try .initFn(gpa, m, n, zsl.stats.Normal(N).sample, .{ normal, prng });
+    defer b.deinit(gpa);
 
-    // const m = 4;
-    // const n = 4;
+    // std.debug.print("B: {f}\n", .{b.formatter("{d:.4}")});
+
+    var x = try b.clone(gpa);
+    defer x.deinit(gpa);
+
+    try zsl.linalg.lapack.getrs(
+        layout,
+        .no_trans,
+        m,
+        n,
+        plu.data,
+        plu.ld,
+        plu.pivots,
+        x.data,
+        x.ld,
+    );
+
+    // std.debug.print("X: {f}\n", .{x.formatter("{d:.4}")});
+
+    var b_recreated = try zsl.linalg.matmulAlloc(gpa, a, x);
+    defer b_recreated.deinit(gpa);
+
+    // std.debug.print("A * X: {f}\n", .{b_recreated.formatter("{d:.4}")});
+
+    var diff = try zsl.matrix.subAlloc(gpa, b, b_recreated);
+    defer diff.deinit(gpa);
+
+    std.debug.print("‖B - A * X‖ = {e:.4}\n", .{try zsl.linalg.normAlloc(gpa, diff, .frobenius)});
 
     // var a: zsl.matrix.general.Dense(f64, .col_major) = try .initFn(gpa, m, n, zsl.stats.Normal(f64).sample, .{ normal, prng });
     // defer a.deinit(gpa);

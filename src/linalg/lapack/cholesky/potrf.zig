@@ -1,314 +1,241 @@
-const std = @import("std");
-
-const types = @import("../../types.zig");
-const scast = types.scast;
-const Scalar = types.Scalar;
-const ops = @import("../../ops.zig");
-const int = @import("../../int.zig");
-
-const linalg = @import("../../linalg.zig");
-const blas = @import("../blas.zig");
-const lapack = @import("../lapack.zig");
-const Order = types.Order;
-const Uplo = types.Uplo;
-
+const int = @import("../../../int.zig");
+const linalg = @import("../../../linalg.zig");
+const matrix = @import("../../../matrix.zig");
+const meta = @import("../../../meta.zig");
+const numeric = @import("../../../numeric.zig");
 const utils = @import("../utils.zig");
 
-/// Computes the Cholesky factorization of a symmetric or Hermitian
-/// positive-definite matrix.
-///
-/// The `potrf` routine computes the Cholesky factorization of a real symmetric
-/// or complex hermitian positive definite matrix `A`. The factorization has the
-/// form:
+/// Computes Cholesky factorization of a real symmetric or complex Hermitian
+/// positive definite matrix, defined as:
 ///
 /// ```zig
-///     A = U^T * U,
+/// A = Uᵀ * U,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     A = L * L^T,
+/// A = L * Lᵀ,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     A = U^H * U,
+/// A = Uᴴ * U,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     A = L * L^H,
+/// A = L * Lᴴ,
 /// ```
 ///
-/// where `U` is an upper triangular matrix and `L` is lower triangular.
+/// where `A` is an `n × n` symmetric or Hermitian positive difinite matrix, `U`
+/// is an `n × n` upper triangular matrix, and `L` is an `n × n` lower
+/// triangular matrix.
 ///
-/// Signature
-/// ---------
+/// ## Signature
 /// ```zig
-/// fn potrf(order: Order, uplo: Uplo, n: i32, a: [*]A, lda: i32, ctx: anytype) !i32
+/// linalg.lapack.potrf2(layout: matrix.Layout, uplo: matrix.Uplo, n: usize, a: [*]A, lda: usize) !usize
 /// ```
 ///
-/// Parameters
-/// ----------
-/// `order` (`Order`): Specifies whether two-dimensional array storage is
-/// row-major or column-major.
+/// ## Arguments
+/// * `layout` (`matrix.Layout`): Specifies whether two-dimensional array
+///   storage is col-major or row-major.
+/// * `uplo` (`matrix.Uplo`): Specifies whether the upper or lower triangular
+///   part of the matrix `A` is used, and which factorization is computed:
+///   * `upper`: `A = Uᵀ * U` or `A = Uᴴ * U`
+///   * `lower`: `A = L * Lᵀ` or `A = L * Lᴴ`
+/// * `n` (`usize`): Specifies the size of the matrix `A`.
+/// * `a` (`anytype`): Mutable many-item pointer, size at least `lda * n`.
+/// * `lda` (`usize`): Specifies the leading dimension of `c` as declared in the
+///   calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
-/// `uplo` (`Uplo`): Specifies which part of the matrix `A` is stored, and
-/// which factorization is computed:
-/// - If `uplo = upper`, then the upper triangular part of `A` is stored, and
-/// the factorization is `A = U^T * U` or `A = U^H * U` is computed.
-/// - If `uplo = lower`, then the lower triangular part of `A` is stored, and
-/// the factorization is `A = L * L^T` or `A = L * L^H` is computed.
+/// ## Returns
+/// `usize`: `int.highest(usize)` if successful, or `i` if `uᵢᵢ` is exactly
+/// zero.
 ///
-/// `n` (`i32`): The order of the matrix `A`. Must be greater than or equal to
-/// 0.
-///
-/// `a` (mutable many-item pointer to `bool`, `int`, `float`, `cfloat`,
-/// `integer`, `rational`, `real`, `complex` or `expression`): Array, size at
-/// least `lda * n`. On return, contains the Cholesky factorization of the
-/// matrix `A`.
-///
-/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
-/// or equal to `max(1, n)`.
-///
-/// Returns
-/// -------
-/// `i32`: 0 if successful, or `i` if `u11` is exactly zero. The result is
-/// stored in `a`.
-///
-/// Errors
-/// ------
-/// `linalg.lapack.Error.InvalidArgument`: If `n` is less than 0, or if `lda` is
-/// less than `max(1, n)`.
-///
-/// Notes
-/// -----
-/// If the `link_cblas` option is not `null`, the function will try to call the
-/// corresponding LAPACKE function, if available. In that case, no errors will
-/// be raised even if the arguments are invalid.
+/// ## Errors
+/// * `linalg.lapack.Error.InvalidArgument`: If `lda` is less than `max(1, n)`.
 pub fn potrf(
-    order: Order,
-    uplo: Uplo,
-    n: i32,
+    layout: matrix.Layout,
+    uplo: matrix.Uplo,
+    n: usize,
     a: anytype,
-    lda: i32,
-    ctx: anytype,
-) !i32 {
-    const A: type = types.Child(@TypeOf(a));
+    lda: usize,
+) !usize {
+    const A: type = @TypeOf(a);
 
-    if (n < 0 or lda < int.max(1, n))
-        return lapack.Error.InvalidArgument;
+    comptime if (!meta.isManyItemPointer(A) or meta.isConstPointer(A) or !meta.isNumeric(meta.Child(A)))
+        @compileError("zsl.linalg.lapack.potrf: a must be a mutable many-item pointer to numerics, got \n\ta: " ++ @typeName(A) ++ "\n");
 
-    var info: i32 = 0;
+    if (lda < int.max(1, n))
+        return linalg.lapack.Error.InvalidArgument;
+
+    return k_potrf(layout, uplo, n, a, lda);
+}
+
+pub fn k_potrf(
+    layout: matrix.Layout,
+    uplo: matrix.Uplo,
+    n: usize,
+    a: anytype,
+    lda: usize,
+) !usize {
+    var info = int.highest(usize);
 
     // Quick return if possible.
     if (n == 0)
         return info;
 
-    // Determine the block size for this environment. Always returns the
-    // same number for getrf regardless of 'S', 'D', 'C', or 'Z'.
-    const nb: i32 = lapack.ilaenv(1, "DPOTRF", " ", n, -1, -1, -1);
-    if (comptime !types.isArbitraryPrecision(A)) {
-        if (nb <= 1 or nb >= n) {
-            // Use unblocked code.
-            info = lapack.potrf2(
-                order,
-                uplo,
-                n,
-                a,
-                lda,
-                ctx,
-            ) catch unreachable;
-        } else {
-            // Use blocked code.
-            if (uplo == .upper) {
-                // Compute the Cholesky factorization A = U^T * U or A = U^H * U.
-                var j: i32 = 0;
-                while (j < n) : (j += nb) {
-                    // Update and factorize the current diagonal block and test for non-positive-definiteness.
-                    const jb: i32 = int.min(nb, n - j);
+    const nb = 64; // Adapt to cache size
 
-                    if (comptime !types.isComplex(A)) {
-                        blas.syrk(
-                            order,
-                            .upper,
-                            .trans,
-                            jb,
-                            j,
-                            -1,
-                            a + utils.index(order, 0, j, lda),
-                            lda,
-                            1,
-                            a + utils.index(order, j, j, lda),
-                            lda,
-                            ctx,
-                        ) catch unreachable;
-                    } else {
-                        blas.herk(
-                            order,
-                            .upper,
-                            .conj_trans,
-                            jb,
-                            j,
-                            -1,
-                            a + utils.index(order, 0, j, lda),
-                            lda,
-                            1,
-                            a + utils.index(order, j, j, lda),
-                            lda,
-                            ctx,
-                        ) catch unreachable;
-                    }
+    if (nb <= 1 or nb >= n) {
+        // Use unblocked code.
+        info = linalg.lapack.potrf2(
+            layout,
+            uplo,
+            n,
+            a,
+            lda,
+        ) catch unreachable;
+    } else {
+        // Use blocked code.
+        if (uplo == .upper) {
+            // Compute the Cholesky factorization  A = Uᵀ * U  or  A = Uᴴ * U.
+            var j: usize = 0;
+            while (j < n) : (j += nb) {
+                const jb: usize = int.min(n - j, nb);
 
-                    info = lapack.potrf2(
-                        order,
+                // Update and factorize the current diagonal block and test for non-positive-definiteness.
+                linalg.blas.herk(
+                    layout,
+                    .upper,
+                    .conj_trans,
+                    jb,
+                    j,
+                    -1,
+                    a + utils.index(layout, 0, j, lda),
+                    lda,
+                    1,
+                    a + utils.index(layout, j, j, lda),
+                    lda,
+                ) catch unreachable;
+
+                info = linalg.lapack.potrf2(
+                    layout,
+                    .upper,
+                    jb,
+                    a + utils.index(layout, j, j, lda),
+                    lda,
+                ) catch unreachable;
+
+                if (info != int.highest(usize))
+                    return info + j;
+
+                if (j + jb < n) {
+                    // Compute the current block row.
+                    linalg.blas.gemm(
+                        layout,
+                        .conj_trans,
+                        .no_trans,
+                        jb,
+                        n - j - jb,
+                        j,
+                        -1,
+                        a + utils.index(layout, 0, j, lda),
+                        lda,
+                        a + utils.index(layout, 0, j + jb, lda),
+                        lda,
+                        1,
+                        a + utils.index(layout, j, j + jb, lda),
+                        lda,
+                    ) catch unreachable;
+
+                    linalg.blas.trsm(
+                        layout,
+                        .left,
                         .upper,
+                        .conj_trans,
+                        .non_unit,
                         jb,
-                        a + utils.index(order, j, j, lda),
+                        n - j - jb,
+                        1,
+                        a + utils.index(layout, j, j, lda),
                         lda,
-                        ctx,
+                        a + utils.index(layout, j, j + jb, lda),
+                        lda,
                     ) catch unreachable;
-
-                    if (info != 0) {
-                        info += j;
-                        return info;
-                    }
-
-                    if (j + jb < n) {
-                        // Compute the current block row.
-                        blas.gemm(
-                            order,
-                            .conj_trans,
-                            .no_trans,
-                            jb,
-                            n - j - jb,
-                            j,
-                            -1,
-                            a + utils.index(order, 0, j, lda),
-                            lda,
-                            a + utils.index(order, 0, j + jb, lda),
-                            lda,
-                            1,
-                            a + utils.index(order, j, j + jb, lda),
-                            lda,
-                            ctx,
-                        ) catch unreachable;
-
-                        blas.trsm(
-                            order,
-                            .left,
-                            .upper,
-                            .conj_trans,
-                            .non_unit,
-                            jb,
-                            n - j - jb,
-                            1,
-                            a + utils.index(order, j, j, lda),
-                            lda,
-                            a + utils.index(order, j, j + jb, lda),
-                            lda,
-                            ctx,
-                        ) catch unreachable;
-                    }
                 }
-            } else {
-                // Compute the Cholesky factorization A = L * L^T or A = L * L^H.
-                var j: i32 = 0;
-                while (j < n) : (j += nb) {
-                    // Update and factorize the current diagonal block and test for non-positive-definiteness.
-                    const jb: i32 = int.min(nb, n - j);
+            }
+        } else {
+            // Compute the Cholesky factorization  A = L * Lᵀ  or  A = L * Lᴴ.
+            var j: usize = 0;
+            while (j < n) : (j += nb) {
+                const jb: usize = int.min(n - j, nb);
 
-                    if (comptime !types.isComplex(A)) {
-                        blas.syrk(
-                            order,
-                            .lower,
-                            .no_trans,
-                            jb,
-                            j,
-                            -1,
-                            a + utils.index(order, j, 0, lda),
-                            lda,
-                            1,
-                            a + utils.index(order, j, j, lda),
-                            lda,
-                            ctx,
-                        ) catch unreachable;
-                    } else {
-                        blas.herk(
-                            order,
-                            .lower,
-                            .no_trans,
-                            jb,
-                            j,
-                            -1,
-                            a + utils.index(order, j, 0, lda),
-                            lda,
-                            1,
-                            a + utils.index(order, j, j, lda),
-                            lda,
-                            ctx,
-                        ) catch unreachable;
-                    }
+                // Update and factorize the current diagonal block and test for non-positive-definiteness.
+                linalg.blas.herk(
+                    layout,
+                    .lower,
+                    .no_trans,
+                    jb,
+                    j,
+                    -1,
+                    a + utils.index(layout, j, 0, lda),
+                    lda,
+                    1,
+                    a + utils.index(layout, j, j, lda),
+                    lda,
+                ) catch unreachable;
 
-                    info = lapack.potrf2(
-                        order,
-                        .lower,
+                info = linalg.lapack.potrf2(
+                    layout,
+                    .lower,
+                    jb,
+                    a + utils.index(layout, j, j, lda),
+                    lda,
+                ) catch unreachable;
+
+                if (info != int.highest(usize))
+                    return info + j;
+
+                if (j + jb < n) {
+                    // Compute the current block column.
+                    linalg.blas.gemm(
+                        layout,
+                        .no_trans,
+                        .conj_trans,
+                        n - j - jb,
                         jb,
-                        a + utils.index(order, j, j, lda),
+                        j,
+                        -1,
+                        a + utils.index(layout, j + jb, 0, lda),
                         lda,
-                        ctx,
+                        a + utils.index(layout, j, 0, lda),
+                        lda,
+                        1,
+                        a + utils.index(layout, j + jb, j, lda),
+                        lda,
                     ) catch unreachable;
 
-                    if (info != 0) {
-                        info += j;
-                        return info;
-                    }
-
-                    if (j + jb < n) {
-                        // Compute the current block column.
-                        blas.gemm(
-                            order,
-                            .no_trans,
-                            .conj_trans,
-                            n - j - jb,
-                            jb,
-                            j,
-                            -1,
-                            a + utils.index(order, j + jb, 0, lda),
-                            lda,
-                            a + utils.index(order, j, 0, lda),
-                            lda,
-                            1,
-                            a + utils.index(order, j + jb, j, lda),
-                            lda,
-                            ctx,
-                        ) catch unreachable;
-
-                        blas.trsm(
-                            order,
-                            .right,
-                            .lower,
-                            .conj_trans,
-                            .non_unit,
-                            n - j - jb,
-                            jb,
-                            1,
-                            a + utils.index(order, j, j, lda),
-                            lda,
-                            a + utils.index(order, j + jb, j, lda),
-                            lda,
-                            ctx,
-                        ) catch unreachable;
-                    }
+                    linalg.blas.trsm(
+                        layout,
+                        .right,
+                        .lower,
+                        .conj_trans,
+                        .non_unit,
+                        n - j - jb,
+                        jb,
+                        1,
+                        a + utils.index(layout, j, j, lda),
+                        lda,
+                        a + utils.index(layout, j + jb, j, lda),
+                        lda,
+                    ) catch unreachable;
                 }
             }
         }
-    } else {
-        // Arbitrary precision types not supported yet
-        @compileError("zml.linalg.lapack.potrf not implemented for arbitrary precision types yet");
     }
 
     return info;
