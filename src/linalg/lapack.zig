@@ -42,7 +42,7 @@ pub const posv = @import("lapack/cholesky/posv.zig").posv; // Unoptimized
 // pub const hetrf = @import("lapack/bunchkaufman/hetrf.zig").hetrf;
 
 // QR
-// pub const geqr2 = @import("lapack/qr/geqr2.zig").geqr2;
+pub const geqr2 = @import("lapack/qr/geqr2.zig").geqr2; // Unoptimized
 // pub const geqrf = @import("lapack/qr/geqrf.zig").geqrf;
 // pub const org2r = @import("lapack/qr/org2r.zig").org2r;
 // pub const orgqr = @import("lapack/qr/orgqr.zig").orgqr;
@@ -50,18 +50,15 @@ pub const posv = @import("lapack/cholesky/posv.zig").posv; // Unoptimized
 // pub const ungqr = @import("lapack/qr/ungqr.zig").ungqr;
 
 // Auxiliary functions
-// pub const ilaenv = @import("lapack/aux/ilaenv.zig").ilaenv;
-// pub const lapy2 = @import("lapack/aux/lapy2.zig").lapy2;
-// pub const lapy3 = @import("lapack/aux/lapy3.zig").lapy3;
 // pub const lacgv = @import("lapack/aux/lacgv.zig").lacgv;
-// pub const ilalc = @import("lapack/aux/ilalc.zig").ilalc;
-// pub const ilalr = @import("lapack/aux/ilalr.zig").ilalr;
+pub const ilalc = @import("lapack/aux/ilalc.zig").ilalc;
+pub const ilalr = @import("lapack/aux/ilalr.zig").ilalr;
 // pub const lacpy = @import("lapack/aux/lacpy.zig").lacpy;
 pub const laswp = @import("lapack/aux/laswp.zig").laswp; // Unoptimized
 // pub const lasyf = @import("lapack/aux/lasyf.zig").lasyf;
 // pub const lahef = @import("lapack/aux/lahef.zig").lahef;
-// pub const larfg = @import("lapack/aux/larfg.zig").larfg;
-// pub const larf1f = @import("lapack/aux/larf1f.zig").larf1f;
+pub const larfg = @import("lapack/aux/larfg.zig").larfg; // Unoptimized
+pub const larf1f = @import("lapack/aux/larf1f.zig").larf1f; // Unoptimized
 // pub const larft = @import("lapack/aux/larft.zig").larft;
 // pub const larfb = @import("lapack/aux/larfb.zig").larfb;
 
