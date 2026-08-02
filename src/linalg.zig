@@ -76,14 +76,14 @@ pub const plu = @import("linalg/plu.zig");
 
 // ilu
 
-// pub const llt = @import("linalg/llt.zig").llt;
-// pub const utu = @import("linalg/utu.zig").utu;
+pub const llt = @import("linalg/llt.zig");
+pub const utu = @import("linalg/utu.zig");
 
-// pub const ldlt = @import("linalg/ldlt.zig").ldlt;
-// pub const udut = @import("linalg/udut.zig").udut;
+// pub const ldlt = @import("linalg/ldlt.zig");
+// pub const udut = @import("linalg/udut.zig");
 
-// pub const qr = @import("linalg/qr.zig").qr;
-// pub const qrp = @import("linalg/qrp.zig").qrp;
+// pub const qr = @import("linalg/qr.zig");
+// pub const qrp = @import("linalg/qrp.zig");
 
 // rq
 

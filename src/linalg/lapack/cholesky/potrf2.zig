@@ -165,7 +165,7 @@ fn k_potrf2(
                 n2,
                 a + utils.index(layout, n1, n1, lda),
                 lda,
-            ) catch unreachable;
+            );
 
             if (iinfo != int.highest(usize))
                 return iinfo + n1;
@@ -209,7 +209,7 @@ fn k_potrf2(
                 n2,
                 a + utils.index(layout, n1, n1, lda),
                 lda,
-            ) catch unreachable;
+            );
 
             if (iinfo != int.highest(usize))
                 return iinfo + n1;

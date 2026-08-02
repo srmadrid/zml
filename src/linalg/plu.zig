@@ -1,8 +1,3 @@
-const std = @import("std");
-
-const linalg = @import("../linalg.zig");
-const meta = @import("../meta.zig");
-
 pub const Static = @import("plu/static.zig").Static;
 pub const Dense = @import("plu/dense.zig").Dense;
 // pub const Sparse = @import("plu/sparse.zig");
