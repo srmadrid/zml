@@ -8,7 +8,7 @@ pub const Transpose = enum(u2) {
 
     pub fn toInt(self: Transpose, comptime Int: type) Int {
         comptime if (!meta.isNumeric(Int) or meta.numericType(Int) != .int)
-            @compileError("zsl.linalg.Transpose.toInt: Int must be an int type, got:\n\tInt = " ++ @typeName(Int) ++ "\n");
+            @compileError("zsl.linalg.blas.Transpose.toInt: Int must be an int type, got:\n\tInt = " ++ @typeName(Int) ++ "\n");
 
         return switch (self) {
             .no_trans => if (comptime Int == u8) 'N' else 111,
@@ -43,7 +43,7 @@ pub const Side = enum(u1) {
 
     pub fn toInt(self: Side, comptime Int: type) Int {
         comptime if (!meta.isNumeric(Int) or meta.numericType(Int) != .int)
-            @compileError("zsl.linalg.Side.toInt: Int must be an int type, got:\n\tInt = " ++ @typeName(Int) ++ "\n");
+            @compileError("zsl.linalg.blas.Side.toInt: Int must be an int type, got:\n\tInt = " ++ @typeName(Int) ++ "\n");
 
         return switch (self) {
             .left => if (comptime Int == u8) 'L' else 141,

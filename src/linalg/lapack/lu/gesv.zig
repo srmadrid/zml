@@ -7,7 +7,7 @@ const meta = @import("../../../meta.zig");
 /// defined as:
 ///
 /// ```zig
-/// A * X = B,
+/// A X = B,
 /// ```
 ///
 /// where `A` is a general `n × n` matrix, `B` is an `n × nrhs` matrix of
@@ -75,7 +75,7 @@ pub fn gesv(
     if (n == 0 or nrhs == 0)
         return info;
 
-    // Compute the LU factorization of A.
+    // Compute the LU factorization of `A`.
     info = linalg.lapack.getrf(
         layout,
         n,
@@ -86,7 +86,7 @@ pub fn gesv(
     ) catch unreachable;
 
     if (info == int.highest(usize)) {
-        // Solve the system  A * X = B, overwriting B with X.
+        // Solve the system `A X = B`, overwriting `B` with `X`.
         linalg.lapack.getrs(
             layout,
             .no_trans,

@@ -9,25 +9,25 @@ const utils = @import("../utils.zig");
 /// positive definite matrix, defined as:
 ///
 /// ```zig
-/// A = Uᵀ * U,
+/// A = Uᵀ U,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-/// A = L * Lᵀ,
+/// A = L Lᵀ,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-/// A = Uᴴ * U,
+/// A = Uᴴ U,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-/// A = L * Lᴴ,
+/// A = L Lᴴ,
 /// ```
 ///
 /// where `A` is an `n × n` symmetric or Hermitian positive difinite matrix, `U`
@@ -44,8 +44,8 @@ const utils = @import("../utils.zig");
 ///   storage is col-major or row-major.
 /// * `uplo` (`matrix.Uplo`): Specifies whether the upper or lower triangular
 ///   part of the matrix `A` is used, and which factorization is computed:
-///   * `upper`: `A = Uᵀ * U` or `A = Uᴴ * U`
-///   * `lower`: `A = L * Lᵀ` or `A = L * Lᴴ`
+///   * `upper`: `A = Uᵀ U` or `A = Uᴴ U`
+///   * `lower`: `A = L Lᵀ` or `A = L Lᴴ`
 /// * `n` (`usize`): Specifies the size of the matrix `A`.
 /// * `a` (`anytype`): Mutable many-item pointer, size at least `lda * n`.
 /// * `lda` (`usize`): Specifies the leading dimension of `c` as declared in the
@@ -102,7 +102,7 @@ pub fn k_potrf(
     } else {
         // Use blocked code.
         if (uplo == .upper) {
-            // Compute the Cholesky factorization  A = Uᵀ * U  or  A = Uᴴ * U.
+            // Compute the Cholesky factorization `A = Uᵀ U` or `A = Uᴴ U`.
             var j: usize = 0;
             while (j < n) : (j += nb) {
                 const jb: usize = int.min(n - j, nb);
@@ -169,7 +169,7 @@ pub fn k_potrf(
                 }
             }
         } else {
-            // Compute the Cholesky factorization  A = L * Lᵀ  or  A = L * Lᴴ.
+            // Compute the Cholesky factorization `A = L Lᵀ` or `A = L Lᴴ`.
             var j: usize = 0;
             while (j < n) : (j += nb) {
                 const jb: usize = int.min(n - j, nb);

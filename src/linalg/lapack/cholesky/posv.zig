@@ -7,7 +7,7 @@ const meta = @import("../../../meta.zig");
 /// positive-definite coefficient matrix, defined as:
 ///
 /// ```zig
-/// A * X = B,
+/// A X = B,
 /// ```
 ///
 /// where `A` is a symmetric or Hermitian positive-definite `n × n` matrix, `B`
@@ -73,7 +73,8 @@ pub fn posv(
     if (n == 0 or nrhs == 0)
         return info;
 
-    // Compute the Cholesky factorization  A = Uᵀ * U  or  A = Uᴴ * U  or  A = L * Lᵀ  or  A = L * Lᴴ.
+    // Compute the Cholesky factorization `A = Uᵀ U` or `A = Uᴴ U` or `A = L Lᵀ`
+    // or `A = L Lᴴ`.
     info = linalg.lapack.potrf(
         layout,
         uplo,
@@ -83,7 +84,7 @@ pub fn posv(
     ) catch unreachable;
 
     if (info == int.highest(usize)) {
-        // Solve the system  A * X = B, overwriting B with X.
+        // Solve the system `A X = B`, overwriting `B` with `X`.
         linalg.lapack.potrs(
             layout,
             uplo,

@@ -1,32 +1,14 @@
-const std = @import("std");
+const numeric = @import("../../../numeric.zig");
 
-const types = @import("../../types.zig");
-const ops = @import("../../ops.zig");
-
-const blas = @import("../blas.zig");
-
-pub fn lacgv(
-    n: i32,
-    x: anytype,
-    incx: i32,
-) !void {
+pub fn lacgv(n: usize, x: anytype, incx: isize) !void {
     if (incx == 1) {
-        var i: u32 = 0;
-        while (i < types.scast(u32, n)) : (i += 1) {
-            try ops.conj_( // x[i] = conj(x[i])
-                &x[i],
-                x[i],
-                if (comptime types.isArbitraryPrecision(types.Child(@TypeOf(x)))) .{ .copy = false } else .{},
-            );
+        for (0..n) |i| {
+            numeric.conjInto(&x[i], x[i]);
         }
     } else {
-        var ix: i32 = if (incx < 0) (-n + 1) * incx else 0;
-        for (0..types.scast(u32, n)) |_| {
-            try ops.conj_( // x[ix] = conj(x[ix])
-                &x[types.scast(u32, ix)],
-                x[types.scast(u32, ix)],
-                if (comptime types.isArbitraryPrecision(types.Child(@TypeOf(x)))) .{ .copy = false } else .{},
-            );
+        var ix: isize = if (incx < 0) (-numeric.cast(isize, n) + 1) * incx else 0;
+        for (0..n) |_| {
+            numeric.conjInto(&x[numeric.cast(usize, ix)], x[numeric.cast(usize, ix)]);
 
             ix += incx;
         }

@@ -8,7 +8,7 @@ const utils = @import("../utils.zig");
 /// Computes the LU factorization of a general matrix, defined as:
 ///
 /// ```zig
-/// A = P * L * U,
+/// A = P L U,
 /// ```
 ///
 /// where `A` is an `m × n` matrix, `P` is an `m × m` permutation matrix, `L` is
@@ -19,16 +19,16 @@ const utils = @import("../utils.zig");
 /// four submatrices:
 ///
 /// ```zig
-///     ┌          ┐
-///     │ A₁₁  A₁₂ │
-/// A = │ A₂₁  A₂₂ │
-///     └          ┘
+///     ┌           ┐
+///     │ A₁₁   A₁₂ │
+/// A = │ A₂₁   A₂₂ │
+///     └           ┘
 /// ```
 ///
 /// where `A₁₁` is `n₁ × n₁` and `A₂₂` is `n₂ × n₂` with `n₁ = min(m, n)`, and
-/// `n₂ = n - n₁`. The function calls itself to factor `[ A₁₁  A₁₂ ]`,  does the
-/// swaps on `[ A₁₂  A₂₂ ]ᵀ`, solves `A₁₂`, updates `A₂₂`, and then it calls
-/// itself to factor `A₂₂` and do the swaps on `A₂₁`.
+/// `n₂ = n - n₁`. The function calls itself to factor `[ A₁₁   A₁₂ ]`,  does
+/// the swaps on `[ A₁₂   A₂₂ ]ᵀ`, solves `A₁₂`, updates `A₂₂`, and then it
+/// calls itself to factor `A₂₂` and do the swaps on `A₂₁`.
 ///
 /// ## Signature
 /// ```zig
@@ -94,7 +94,7 @@ fn k_getrf2(
         return info;
 
     if (m == 1) {
-        // Use unblocked code for one row case. Just need to handle ipiv and info.
+        // Use unblocked code for one row case. Just need to handle `ipiv` and `info`.
         ipiv[0] = 0;
 
         if (numeric.eq(a[0], 0))
@@ -119,7 +119,7 @@ fn k_getrf2(
                 a[utils.index(layout, ii, 0, lda)] = temp;
             }
 
-            // Compute elements 1..m of the column.
+            // Compute elements `1..m` of the column.
             if (numeric.ge(numeric.abs1(a[0]), numeric.smallest(meta.Real(A)))) {
                 linalg.blas.scal(
                     m - 1,
@@ -129,7 +129,7 @@ fn k_getrf2(
                 ) catch unreachable;
             } else {
                 for (1..m) |i| {
-                    // aᵢ₀ /= a₀
+                    // `aᵢ₀ /= a₀`
                     numeric.divInto(
                         &a[utils.index(layout, i, 0, lda)],
                         a[utils.index(layout, i, 0, lda)],
@@ -176,7 +176,7 @@ fn k_getrf2(
             1,
         ) catch unreachable;
 
-        // Solve  A₁₂.
+        // Solve `A₁₂`.
         linalg.blas.trsm(
             layout,
             .left,
@@ -192,7 +192,7 @@ fn k_getrf2(
             lda,
         ) catch unreachable;
 
-        // Update  A₂₂.
+        // Update `A₂₂`.
         linalg.blas.gemm(
             layout,
             .no_trans,
@@ -210,7 +210,7 @@ fn k_getrf2(
             lda,
         ) catch unreachable;
 
-        // Factor  A₂₂.
+        // Factor `A₂₂`.
         iinfo = k_getrf2(
             layout,
             m - n1,
@@ -228,7 +228,7 @@ fn k_getrf2(
             ipiv[i] += n1;
         }
 
-        // Apply interchanges to  A₂₁.
+        // Apply interchanges to `A₂₁`.
         linalg.lapack.laswp(
             layout,
             n1,

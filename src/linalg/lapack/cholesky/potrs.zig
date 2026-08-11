@@ -8,13 +8,8 @@ const utils = @import("../utils.zig");
 /// Solves a system of linear equations with a Cholesky-factored symmetric or
 /// Hermitian positive-definite coefficient matrix, defined as:
 ///
-/// The `potrs` routine solves for `X` the system of linear equations
-/// `A * X = B` with a symmetric positive-definite or, for complex data,
-/// Hermitian positive-definite matrix `A`, given the Cholesky factorization of
-/// `A`:
-///
 /// ```zig
-/// A * X = B,
+/// A X = B,
 /// ```
 ///
 /// where `A` is the Cholesky factorization of a symmetric or Hermitian
@@ -32,8 +27,8 @@ const utils = @import("../utils.zig");
 ///   storage is col-major or row-major.
 /// * `uplo` (`matrix.Uplo`): Specifies whether the upper or lower triangular
 ///   part of the matrix `A` is used, and which factorization has been computed:
-///   * `upper`: `A = Uᵀ * U` or `A = Uᴴ * U`
-///   * `lower`: `A = L * Lᵀ` or `A = L * Lᴴ`
+///   * `upper`: `A = Uᵀ U` or `A = Uᴴ U`
+///   * `lower`: `A = L Lᵀ` or `A = L Lᴴ`
 /// * `n` (`usize`): Specifies the size of the matrix `A`, and the number of
 ///   rows of the matrices `B` and `X`.
 /// * `nrhs` (`usize`): Specifies the number of columns of the matrices `B` and
@@ -80,9 +75,9 @@ pub fn potrs(
         return;
 
     if (uplo == .upper) {
-        // Solve  A * X = B, where  A = Uᵀ * U  or  A = Uᴴ * U.
+        // Solve `A X = B`, where `A = Uᵀ U` or `A = Uᴴ U`.
 
-        // Solve  Uᵀ * X = B  or  Uᴴ * X = B, overwriting B with X.
+        // Solve `Uᵀ X = B` or `Uᴴ X = B`, overwriting `B` with `X`.
         linalg.blas.trsm(
             layout,
             .left,
@@ -98,7 +93,7 @@ pub fn potrs(
             ldb,
         ) catch unreachable;
 
-        // Solve  U * X = B, overwriting B with X.
+        // Solve `U X = B`, overwriting `B` with `X`.
         linalg.blas.trsm(
             layout,
             .left,
@@ -114,9 +109,9 @@ pub fn potrs(
             ldb,
         ) catch unreachable;
     } else {
-        // Solve  A * X = B, where  A = L * Lᵀ  or  A = L * Lᴴ.
+        // Solve `A X = B`, where `A = L Lᵀ` or `A = L Lᴴ`.
 
-        // Solve  L * X = B, overwriting B with X.
+        // Solve `L X = B`, overwriting `B` with `X`.
         linalg.blas.trsm(
             layout,
             .left,
@@ -132,7 +127,7 @@ pub fn potrs(
             ldb,
         ) catch unreachable;
 
-        // Solve  Lᵀ * X = B  or  Lᴴ * X = B, overwriting B with X.
+        // Solve `Lᵀ X = B` or `Lᴴ X = B`, overwriting `B` with `X`.
         linalg.blas.trsm(
             layout,
             .left,

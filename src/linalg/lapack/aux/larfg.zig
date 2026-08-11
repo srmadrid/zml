@@ -8,28 +8,28 @@ const utils = @import("../utils.zig");
 /// Generates an elementary reflector `H` of size `n`, such that:
 ///
 /// ```zig
-///      ┌      ┐
-///      │ α  β │
-/// Hᴴ = │ x  0 │,  Hᴴ * H = 𝕀,
-///      └      ┘
+///      ┌       ┐
+///      │ α   β │
+/// Hᴴ = │ x   0 │,  Hᴴ H = 𝕀,
+///      └       ┘
 /// ```
 ///
 /// where `α` and `β` are numerics, with `β` real, and `x` is an `n - 1`-element
 /// vector. `H` is represented in the form:
 ///
 /// ```zig
-///             ┌   ┐
-///             │ 1 │   ┌       ┐
-/// H = 𝕀 - τ * │ v │ * │ 1  vᴴ │,
-///             └   ┘   └       ┘
+///           ┌   ┐
+///           │ 1 │ ┌        ┐
+/// H = 𝕀 - τ │ v │ │ 1   vᴴ │,
+///           └   ┘ └        ┘
 /// ```
 ///
 /// where `τ` is a numeric and `v` is an `n - 1`-element vector. Note that `H`
 /// is not Hermitian.
 ///
 /// If the elements of `x` are all zero and `α` is real, then `τ = 0` and `H` is
-/// taken to be the identity matrix. Otherwise `1 <= Re(tau) <= 2` and
-/// `|τ - 1| <= 1`.
+/// taken to be the identity matrix. Otherwise `1 ≤ Re(tau) ≤ 2` and
+/// `|τ - 1| ≤ 1`.
 ///
 /// ## Signature
 /// ```zig
@@ -76,7 +76,7 @@ pub fn larfg(
 
     var xnorm = linalg.blas.nrm2(n - 1, x, incx) catch unreachable;
     if (numeric.eq(xnorm, 0) and numeric.eq(numeric.im(alpha.*), 0)) {
-        // H = 𝕀
+        // `H = 𝕀`.
         numeric.set(tau, 0);
     } else {
         // General case.
@@ -101,7 +101,7 @@ pub fn larfg(
 
         var knt: usize = 0;
         if (numeric.lt(numeric.abs(beta), safmin)) {
-            // xnorm and beta may be inaccurate; scale x and recompute them.
+            // `xnorm` and `beta` may be inaccurate; scale `x` and recompute them.
             while (numeric.lt(numeric.abs(beta), safmin) and knt < 20) : (knt += 1) {
                 linalg.blas.scal(
                     n - 1,
@@ -114,7 +114,7 @@ pub fn larfg(
                 numeric.mulInto(alpha, alpha.*, rsafmn);
             }
 
-            // New beta is at most 1 and at least safmin.
+            // New beta is at most 1 and at least `safmin`.
             xnorm = linalg.blas.nrm2(n - 1, x, incx) catch unreachable;
 
             beta = numeric.neg(
@@ -148,7 +148,7 @@ pub fn larfg(
             incx,
         ) catch unreachable;
 
-        // If alpha is subnormal, it may lose relative accuracy.
+        // If `alpha` is subnormal, it may lose relative accuracy.
         for (0..knt) |_| {
             numeric.mulInto(&beta, beta, safmin);
         }

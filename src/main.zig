@@ -4,7 +4,7 @@ const zsl = @import("zsl");
 pub fn main(init: std.process.Init) !void {
     @setEvalBranchQuota(10_000);
 
-    const N: type = zsl.Complex(f64);
+    const N: type = f64;
     const layout: zsl.matrix.Layout = .row_major;
 
     // const arena = init.arena.allocator();
@@ -25,9 +25,9 @@ pub fn main(init: std.process.Init) !void {
     var xxh: zsl.matrix.general.Dense(N, layout) = try zsl.linalg.matmulAlloc(gpa, x, x.adjointView());
     defer xxh.deinit(gpa);
 
-    const a: zsl.matrix.hermitian.Static(n, N, .lower, layout) = .initArray((try xxh.hermitianView(.lower)).data[0 .. n * n].*);
+    const a: zsl.matrix.symmetric.Static(n, N, .lower, layout) = .initArray((try xxh.symmetricView(.lower)).data[0 .. n * n].*);
 
-    // std.debug.print("A: {f}\n", .{a.formatter("{d:.4}")});
+    std.debug.print("A: {f}\n", .{a.formatter("{d:.4}")});
 
     var utu: zsl.linalg.utu.Dense(N, layout) = try .init(gpa, n);
     defer utu.deinit(gpa);

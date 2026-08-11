@@ -1,8 +1,28 @@
+const meta = @import("../meta.zig");
+
+pub const Direction = enum {
+    forward,
+    backward,
+
+    pub fn toInt(self: Direction, comptime Int: type) Int {
+        comptime if (!meta.isNumeric(Int) or meta.numericType(Int) != .int)
+            @compileError("zsl.linalg.lapack.Direction.toInt: Int must be an int type, got:\n\tInt = " ++ @typeName(Int) ++ "\n");
+
+        return switch (self) {
+            .forward => 'F',
+            .backward => 'B',
+        };
+    }
+};
+
 pub const Storage = enum {
     columnwise,
     rowwise,
 
-    pub fn toChar(self: Storage) u8 {
+    pub fn toInt(self: Storage, comptime Int: type) Int {
+        comptime if (!meta.isNumeric(Int) or meta.numericType(Int) != .int)
+            @compileError("zsl.linalg.lapack.Storage.toInt: Int must be an int type, got:\n\tInt = " ++ @typeName(Int) ++ "\n");
+
         return switch (self) {
             .columnwise => 'C',
             .rowwise => 'R',
@@ -50,16 +70,16 @@ pub const geqr2 = @import("lapack/qr/geqr2.zig").geqr2; // Unoptimized
 // pub const ungqr = @import("lapack/qr/ungqr.zig").ungqr;
 
 // Auxiliary functions
-// pub const lacgv = @import("lapack/aux/lacgv.zig").lacgv;
-pub const ilalc = @import("lapack/aux/ilalc.zig").ilalc;
-pub const ilalr = @import("lapack/aux/ilalr.zig").ilalr;
-// pub const lacpy = @import("lapack/aux/lacpy.zig").lacpy;
+pub const lacgv = @import("lapack/aux/lacgv.zig").lacgv; // Unoptimized
+pub const ilalc = @import("lapack/aux/ilalc.zig").ilalc; // Unoptimized
+pub const ilalr = @import("lapack/aux/ilalr.zig").ilalr; // Unoptimized
+pub const lacpy = @import("lapack/aux/lacpy.zig").lacpy; // Unoptimized
 pub const laswp = @import("lapack/aux/laswp.zig").laswp; // Unoptimized
 // pub const lasyf = @import("lapack/aux/lasyf.zig").lasyf;
 // pub const lahef = @import("lapack/aux/lahef.zig").lahef;
 pub const larfg = @import("lapack/aux/larfg.zig").larfg; // Unoptimized
 pub const larf1f = @import("lapack/aux/larf1f.zig").larf1f; // Unoptimized
-// pub const larft = @import("lapack/aux/larft.zig").larft;
+pub const larft = @import("lapack/aux/larft.zig").larft;
 // pub const larfb = @import("lapack/aux/larfb.zig").larfb;
 
 pub const Error = error{

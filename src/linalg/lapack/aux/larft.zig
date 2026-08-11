@@ -1,119 +1,226 @@
-const std = @import("std");
-
-const types = @import("../../types.zig");
-const ops = @import("../../ops.zig");
-const constants = @import("../../constants.zig");
-const int = @import("../../int.zig");
-const float = @import("../../float.zig");
-
-const linalg = @import("../../linalg.zig");
-const blas = @import("../blas.zig");
-const lapack = @import("../lapack.zig");
-const Order = types.Order;
-const Direction = lapack.Direction;
-const Storage = lapack.Storage;
-
+const int = @import("../../../int.zig");
+const linalg = @import("../../../linalg.zig");
+const matrix = @import("../../../matrix.zig");
+const meta = @import("../../../meta.zig");
+const numeric = @import("../../../numeric.zig");
 const utils = @import("../utils.zig");
 
+/// Forms the triangular factor `T` of a block reflector `H` of size `n`, which
+/// is defined as a product of `k` elementary reflectors.
+///
+/// If `direction` is `forward`:
+///
+/// ```zig
+/// H = H₁ H₂ ⋯ Hₖ,
+/// ```
+///
+/// and `T` is upper triangular; If `direction` is `backward`:
+///
+/// ```zig
+/// H = Hₖ ⋯ H₂ H₁,
+/// ```
+///
+/// and `T` is lower triangular.
+///
+/// If `storev` is `columnwise`, the vector which defines the elementary
+/// reflector `Hᵢ` is stored in the `i`-th column of the matrix `V`, and
+///
+/// ```zig
+/// H = 𝕀 - V T Vᴴ.
+/// ```
+///
+/// If `storev` is `rowwise`, the vector which defines the elementary reflector
+/// `Hᵢ` is stored in the `i`-th row of the matrix `V`, and
+///
+/// ```zig
+/// H = 𝕀 - Vᴴ T V.
+/// ```
+///
+/// The shape of the matrix `V` and the storage of the vectors which define the
+/// `Hᵢ` is best illustrated by the following example with `n = 5` and `k = 3`.
+/// The elements equal to 1 are not stored. If `direction` is `forward` and
+/// `storev` is `columnwise`:
+///
+/// ```zig
+///     ┌              ┐
+///     │  1           │
+///     │ V₁    1      │
+/// V = │ V₁   V₂    1 │,
+///     │ V₁   V₂   V₃ │
+///     │ V₁   V₂   V₃ │
+///     └              ┘
+/// ```
+///
+/// if `direction` is `forward` and `storev` is `rowwise`:
+///
+/// ```zig
+///     ┌                        ┐
+///     │  1   V₁   V₁   V₁   V₁ │
+/// V = │       1   V₂   V₂   V₂ │,
+///     │            1   V₃   V₃ │
+///     └                        ┘
+/// ```
+///
+/// if `direction` is `backward` and `storev` is `columnwise`:
+///
+/// ```zig
+///     ┌              ┐
+///     │ V₁   V₂   V₃ │
+///     │ V₁   V₂   V₃ │
+/// V = │  1   V₂   V₃ │,
+///     │       1   V₃ │
+///     │            1 │
+///     └              ┘
+/// ```
+///
+/// and if `direction` is `backward` and `storev` is `rowwise`:
+///
+/// ```zig
+///     ┌                        ┐
+///     │ V₁   V₁    1           │
+/// V = │ V₂   V₂   V₂    1      │.
+///     │ V₃   V₃   V₃   V₃    1 │
+///     └                        ┘
+/// ```
+///
+/// ## Signature
+/// ```zig
+/// linalg.lapack.larft(layout: matrix.Layout, direct: linalg.lapack.Direction, storev: linalg.lapack.Storage, n: usize, k: usize, v: [*]const V, ldv: usize, tau: [*]const Ta, t: [*]T, ldt: usize) !void
+/// ```
+///
+/// ## Arguments
+/// * `n` (`usize`): Specifies the size of the block reflector `H`.
+/// * `k` (`usize`): Specifies the size of the triangular factor `T` and the
+///   number of elementary reflectors.
+/// * `v` (`anytype`): Many-item pointer, size at least `ldv * n`.
+/// * `ldv` (`usize`): Specifies the leading dimension of `v` as declared in the
+///   calling (sub)program. Must be greater than or equal to `max(1, k)` when
+///   `storage` is `columnwise`, or `max(1, n)` when `storage` is `rowwise`.
+/// * `tau` (`anytype`): Many-item pointer, size at least `k`.
+/// * `t` (`anytype`): Mutable many-item pointer, size at least `ldt * k`.
+/// * `ldt` (`usize`): Specifies the leading dimension of `y` as declared in the
+///   calling (sub)program. Must be greater than or equal to `max(1, k)`.
+///
+/// ## Returns
+/// `void`
+///
+/// ## Errors
+/// * `linalg.lapack.Error.InvalidArgument`: If `ldv` is less than `max(1, k)`
+///   or `max(1, n)`, or if `ldt` is less than `max(1, k)`.
 pub fn larft(
-    order: Order,
-    direct: Direction,
-    storev: Storage,
-    n: i32,
-    k: i32,
+    layout: matrix.Layout,
+    direct: linalg.lapack.Direction,
+    storev: linalg.lapack.Storage,
+    n: usize,
+    k: usize,
     v: anytype,
-    ldv: i32,
+    ldv: usize,
     tau: anytype,
     t: anytype,
-    ldt: i32,
-    ctx: anytype,
+    ldt: usize,
 ) !void {
-    // The general scheme used is inspired by the approach inside dgeqrt3
-    // which was (at the time of writing this code):
-    // based on the algorithm of elmroth and gustavson,
-    // ibm j. res. develop. vol 44 no. 4 july 2000.
+    const V: type = @TypeOf(v);
+    const Ta: type = @TypeOf(tau);
+    const T: type = @TypeOf(t);
 
+    comptime if (!meta.isPointer(V) or !meta.isNumeric(meta.Child(V)) or
+        !meta.isPointer(Ta) or !meta.isNumeric(meta.Child(Ta)) or
+        !meta.isPointer(Ta) or meta.isConstPointer(Ta) or !meta.isNumeric(meta.Child(Ta)))
+        @compileError("zsl.linalg.lapack.larft: v and tau must be many-item pointers to numerics, and t must be a mutable many-item pointer to numerics, got \n\tv: " ++ @typeName(V) ++ "\n\ttau: " ++ @typeName(Ta) ++ "\n\tt: " ++ @typeName(T) ++ "\n");
+
+    if (ldv < int.max(1, if (storev == .columnwise) k else n) or ldt < int.max(1, k))
+        return linalg.lapack.Error.InvalidArgument;
+
+    return k_larft(layout, direct, storev, n, k, v, ldv, tau, t, ldt);
+}
+
+pub fn k_larft(
+    layout: matrix.Layout,
+    direct: linalg.lapack.Direction,
+    storev: linalg.lapack.Storage,
+    n: usize,
+    k: usize,
+    v: anytype,
+    ldv: usize,
+    tau: anytype,
+    t: anytype,
+    ldt: usize,
+) void {
+    // Quick return if possible.
     if (n == 0 or k == 0)
         return;
 
     if (n == 1 or k == 1) {
-        try ops.set(
-            &t[utils.index(order, 0, 0, ldt)],
-            tau[0],
-            ctx,
-        );
+        numeric.set(&t[utils.index(layout, 0, 0, ldt)], tau[0]);
 
         return;
     }
 
-    const l: i32 = int.div(k, 2);
+    const l = k / 2;
 
-    // Determine what kind of q we need to compute
-    // qr happens when we have forward direction in column storage
-    const qr: bool = direct == .forward and storev == .columnwise;
-
-    // lq happens when we have forward direction in row storage
-    const lq: bool = direct == .forward and storev == .rowwise;
-
-    // ql happens when we have backward direction in column storage
-    const ql: bool = direct == .backward and storev == .columnwise;
-
-    // The last case is rq. due to how we structured this, if the
-    // above 3 are false, then rq must be true, so we never store
-    // this
+    // Determine what kind of q we need to compute:
+    // * QR: when we have forward direction in column storage.
+    // * LQ: when we have forward direction in row storage.
+    // * QL: when we have backward direction in column storage.
+    // * RQ: when we have backward direction in row storage.
+    const qr = direct == .forward and storev == .columnwise;
+    const lq = direct == .forward and storev == .rowwise;
+    const ql = direct == .backward and storev == .columnwise;
 
     if (qr) {
-        // Break v apart into 6 components
+        // Break `V` apart into 6 components:
         //
-        // v = |---------------|
-        //     |v_{1,1} 0      |
-        //     |v_{2,1} v_{2,2}|
-        //     |v_{3,1} v_{3,2}|
-        //     |---------------|
+        // ```zig
+        //     ┌           ┐
+        //     │ V₁₁     0 │
+        // V = │ V₂₁   V₂₂ │,
+        //     │ V₃₁   V₃₂ │
+        //     └           ┘
+        // ```
         //
-        // v_{1,1}\in\c^{l,l}      unit lower triangular
-        // v_{2,1}\in\c^{k-l,l}    rectangular
-        // v_{3,1}\in\c^{n-k,l}    rectangular
+        // where `V₁₁ ∈ ℂˡ×ˡ` unit lower triangular, `V₂₁ ∈ ℂᵏ⁻ˡ×ˡ`,
+        // `V₃₁ ∈ ℂⁿ⁻ᵏ×ˡ`, `V₂₂ ∈ ℂᵏ⁻ˡ×ᵏ⁻ˡ` unit lower triangular, and
+        // `V₃₂ ∈ ℂⁿ⁻ᵏ×ᵏ⁻ˡ`, with `l = ⌊ᵏ/₂⌋`. We will construct the matrix `T`
+        // as:
         //
-        // v_{2,2}\in\c^{k-l,k-l}  unit lower triangular
-        // v_{3,2}\in\c^{n-k,k-l}  rectangular
+        // ```zig
+        //     ┌           ┐
+        //     │ T₁₁   T₁₂ │
+        // T = │   0   T₂₂ │,
+        //     └           ┘
+        // ```
         //
-        // we will construct the t matrix
-        // t = |---------------|
-        //     |t_{1,1} t_{1,2}|
-        //     |0       t_{2,2}|
-        //     |---------------|
+        // where `T` is the triangular factor obtained from block reflectors,
+        // `T₁₁ ∈ ℂˡ×ˡ` upper triangular, `T₂₂ ∈ ℂᵏ⁻ˡ×ᵏ⁻ˡ` upper triangular, and
+        // `T₁₂ ∈ ℂˡ×ᵏ⁻ˡ`. To motivate the structure, assume we have already
+        // computed `T₁₁` and `T₂₂`. Then collect the associated reflectors in
+        // `V₁` and `V₂`. Consider the product:
         //
-        // t is the triangular factor obtained from block reflectors.
-        // to motivate the structure, assume we have already computed t_{1,1}
-        // and t_{2,2}. then collect the associated reflectors in v_1 and v_2
+        // ```zig
+        // (𝕀 - V₁ T₁₁ V₁ᴴ) (𝕀 - V₂ T₂₂ V₂ᴴ)
+        //     = 𝕀 - V₁ T₁₁ V₁ᴴ - V₂ T₂₂ V₂ᴴ + V₁ T₁₁ V₁ᴴ V₂ T₂₂ V₂ᴴ.
+        // ```
         //
-        // t_{1,1}\in\c^{l, l}     upper triangular
-        // t_{2,2}\in\c^{k-l, k-l} upper triangular
-        // t_{1,2}\in\c^{l, k-l}   rectangular
+        // Let `T₁₂ = -T₁₁ V₁ᴴ V₂ T₂₂`. Then, we can define the matrix `V` as:
         //
-        // where l = floor(k/2)
+        // ```zig
+        //     ┌         ┐
+        // V = │ V₁   V₂ │,
+        //     └         ┘
+        // ```
         //
-        // then, consider the product:
+        // so, our product is equivalent to the matrix product:
         //
-        // (i - v_1*t_{1,1}*v_1')*(i - v_2*t_{2,2}*v_2')
-        // = i - v_1*t_{1,1}*v_1' - v_2*t_{2,2}*v_2' + v_1*t_{1,1}*v_1'*v_2*t_{2,2}*v_2'
+        // ```zig
+        // 𝕀 - V T Vᴴ.
+        // ```
         //
-        // define t{1,2} = -t_{1,1}*v_1'*v_2*t_{2,2}
-        //
-        // then, we can define the matrix v as
-        // v = |-------|
-        //     |v_1 v_2|
-        //     |-------|
-        //
-        // so, our product is equivalent to the matrix product
-        // i - v*t*v'
-        // this means, we can compute t_{1,1} and t_{2,2}, then use this information
-        // to compute t_{1,2}
+        // This means we can compute `T₁₁` and `T₂₂`, then use this information
+        // to compute `T₁₂`.
 
-        // Compute t_{1,1} recursively
-        try larft(
-            order,
+        // Compute `T₁₁` recursively.
+        k_larft(
+            layout,
             direct,
             storev,
             n,
@@ -123,41 +230,35 @@ pub fn larft(
             tau,
             t,
             ldt,
-            ctx,
         );
 
-        // compute t_{2,2} recursively
-        try larft(
-            order,
+        // Compute `T₂₂` recursively.
+        k_larft(
+            layout,
             direct,
             storev,
             n - l,
             k - l,
-            v + utils.index(order, l, l, ldv),
+            v + utils.index(layout, l, l, ldv),
             ldv,
-            tau + types.scast(u32, l),
-            t + utils.index(order, l, l, ldt),
+            tau + l,
+            t + utils.index(layout, l, l, ldt),
             ldt,
-            ctx,
         );
 
-        // Compute t_{1,2}
-        // t_{1,2} = v_{2,1}'
-        var j: i32 = 0;
-        while (j < l) : (j += 1) {
-            var i: i32 = 0;
-            while (i < k - l) : (i += 1) {
-                try ops.set(
-                    &t[utils.index(order, j, l + i, ldt)],
-                    try ops.conj(v[utils.index(order, l + i, j, ldv)], ctx),
-                    ctx,
+        // Compute `T₁₂ = V₂₁ᴴ`.
+        for (0..l) |j| {
+            for (0..k - l) |i| {
+                numeric.conjInto(
+                    &t[utils.index(layout, j, l + i, ldt)],
+                    v[utils.index(layout, l + i, j, ldv)],
                 );
             }
         }
 
-        // t_{1,2} = t_{1,2}*v_{2,2}
-        try blas.trmm(
-            order,
+        // `T₁₂ = T₁₂ V₂₂`.
+        linalg.blas.trmm(
+            layout,
             .right,
             .lower,
             .no_trans,
@@ -165,40 +266,37 @@ pub fn larft(
             l,
             k - l,
             1,
-            v + utils.index(order, l, l, ldv),
+            v + utils.index(layout, l, l, ldv),
             ldv,
-            t + utils.index(order, 0, l, ldt),
+            t + utils.index(layout, 0, l, ldt),
             ldt,
-            ctx,
-        );
+        ) catch unreachable;
 
-        // t_{1,2} = v_{3,1}'*v_{3,2} + t_{1,2}
-        // note: we assume k <= n, and gemm will do nothing if n=k
-        try blas.gemm(
-            order,
+        // `T₁₂ = V₃₁ᴴ V₃₂ + T₁₂`. We assume `k ≤ n`, and gemm will do nothing
+        // if `n = k`.
+        linalg.blas.gemm(
+            layout,
             .conj_trans,
             .no_trans,
             l,
             k - l,
             n - k,
             1,
-            v + utils.index(order, k, 0, ldv),
+            v + utils.index(layout, k, 0, ldv),
             ldv,
-            v + utils.index(order, k, l, ldv),
+            v + utils.index(layout, k, l, ldv),
             ldv,
             1,
-            t + utils.index(order, 0, l, ldt),
+            t + utils.index(layout, 0, l, ldt),
             ldt,
-            ctx,
-        );
+        ) catch unreachable;
 
-        // At this point, we have that t_{1,2} = v_1'*v_2
-        // all that is left is to pre and post multiply by -t_{1,1} and t_{2,2}
-        // respectively.
+        // At this point, we have that `T₁₂ = V₁ᴴ V₂`. All that is left to do is
+        // to pre- and post-multiply by `-T₁₁` and `T₂₂`, respectively.
 
-        // t_{1,2} = -t_{1,1}*t_{1,2}
-        try blas.trmm(
-            order,
+        // `T₁₂ = -T₁₁ * T₁₂`.
+        linalg.blas.trmm(
+            layout,
             .left,
             .upper,
             .no_trans,
@@ -208,14 +306,13 @@ pub fn larft(
             -1,
             t,
             ldt,
-            t + utils.index(order, 0, l, ldt),
+            t + utils.index(layout, 0, l, ldt),
             ldt,
-            ctx,
-        );
+        ) catch unreachable;
 
-        // t_{1,2} = t_{1,2}*t_{2,2}
-        try blas.trmm(
-            order,
+        // `T₁₂ = T₁₂ * T₂₂`.
+        linalg.blas.trmm(
+            layout,
             .right,
             .upper,
             .no_trans,
@@ -223,64 +320,65 @@ pub fn larft(
             l,
             k - l,
             1,
-            t + utils.index(order, l, l, ldt),
+            t + utils.index(layout, l, l, ldt),
             ldt,
-            t + utils.index(order, 0, l, ldt),
+            t + utils.index(layout, 0, l, ldt),
             ldt,
-            ctx,
-        );
+        ) catch unreachable;
     } else if (lq) {
-        // Break v apart into 6 components
+        // Break `V` apart into 6 components:
         //
-        // v = |----------------------|
-        //     |v_{1,1} v_{1,2} v{1,3}|
-        //     |0       v_{2,2} v{2,3}|
-        //     |----------------------|
+        // ```zig
+        //     ┌                 ┐
+        //     │ V₁₁   V₁₂   V₁₃ │
+        // V = │   0   V₂₂   V₂₃ │,
+        //     └                 ┘
+        // ```
         //
-        // v_{1,1}\in\c^{l,l}      unit upper triangular
-        // v_{1,2}\in\c^{l,k-l}    rectangular
-        // v_{1,3}\in\c^{l,n-k}    rectangular
+        // where ´V₁₁ ∈ ℂˡ×ˡ´ unit upper triangular, ´V₁₂ ∈ ℂˡ×ᵏ⁻ˡ´,
+        // ´V₁₃ ∈ ℂˡ×ⁿ⁻ᵏ´, `V₂₂ ∈ ℂᵏ⁻ˡ×ᵏ⁻ˡ` unit upper triangular, and
+        // `V₂₃ ∈ ℂᵏ⁻ˡ×ⁿ⁻ᵏ`, with `l = ⌊ᵏ/₂⌋`. We will construct the matrix `T`
+        // as:
         //
-        // v_{2,2}\in\c^{k-l,k-l}  unit upper triangular
-        // v_{2,3}\in\c^{k-l,n-k}  rectangular
+        // ```zig
+        //     ┌           ┐
+        //     │ T₁₁   T₁₂ │
+        // T = │   0   T₂₂ │,
+        //     └           ┘
+        // ```
         //
-        // where l = floor(k/2)
+        // where `T` is the triangular factor obtained from block reflectors,
+        // `T₁₁ ∈ ℂˡ×ˡ` upper triangular, `T₂₂ ∈ ℂᵏ⁻ˡ×ᵏ⁻ˡ` upper triangular, and
+        // `T₁₂ ∈ ℂˡ×ᵏ⁻ˡ`. To motivate the structure, assume we have already
+        // computed `T₁₁` and `T₂₂`. Then collect the associated reflectors in
+        // `V₁` and `V₂`. Consider the product:
         //
-        // we will construct the t matrix
-        // t = |---------------|
-        //     |t_{1,1} t_{1,2}|
-        //     |0       t_{2,2}|
-        //     |---------------|
+        // ```zig
+        // (𝕀 - V₁ᴴ T₁₁ V₁) (𝕀 - V₂ᴴ T₂₂ V₂)
+        //     = 𝕀 - V₁ᴴ T₁₁ V₁ - V₂ᴴ T₂₂ V₂ + V₁ᴴ T₁₁ V₁ V₂ᴴ T₂₂ V₂.
+        // ```
         //
-        // t is the triangular factor obtained from block reflectors.
-        // to motivate the structure, assume we have already computed t_{1,1}
-        // and t_{2,2}. then collect the associated reflectors in v_1 and v_2
+        // Let `T₁₂ = -T₁₁ V₁ V₂ᴴ T₂₂`. Then, we can define the matrix `V` as:
         //
-        // t_{1,1}\in\c^{l, l}     upper triangular
-        // t_{2,2}\in\c^{k-l, k-l} upper triangular
-        // t_{1,2}\in\c^{l, k-l}   rectangular
+        // ```zig
+        //     ┌    ┐
+        //     │ V₁ │
+        // V = │ V₂ │,
+        //     └    ┘
+        // ```
         //
-        // then, consider the product:
+        // so, our product is equivalent to the matrix product:
         //
-        // (i - v_1'*t_{1,1}*v_1)*(i - v_2'*t_{2,2}*v_2)
-        // = i - v_1'*t_{1,1}*v_1 - v_2'*t_{2,2}*v_2 + v_1'*t_{1,1}*v_1*v_2'*t_{2,2}*v_2
+        // ```zig
+        // 𝕀 - Vᴴ T V.
+        // ```
         //
-        // define t_{1,2} = -t_{1,1}*v_1*v_2'*t_{2,2}
-        //
-        // then, we can define the matrix v as
-        // v = |---|
-        //     |v_1|
-        //     |v_2|
-        //     |---|
-        //
-        // so, our product is equivalent to the matrix product
-        // i - v'*t*v
-        // this means, we can compute t_{1,1} and t_{2,2}, then use this information
-        // to compute t_{1,2}
+        // This means we can compute `T₁₁` and `T₂₂`, then use this information
+        // to compute `T₁₂`.
 
-        // Compute t_{1,1} recursively
-        try larft(
-            order,
+        // Compute `T₁₁` recursively.
+        k_larft(
+            layout,
             direct,
             storev,
             n,
@@ -290,41 +388,37 @@ pub fn larft(
             tau,
             t,
             ldt,
-            ctx,
         );
 
-        // Compute t_{2,2} recursively
+        // Compute `T₂₂` recursively.
         try larft(
-            order,
+            layout,
             direct,
             storev,
             n - l,
             k - l,
-            v + utils.index(order, l, l, ldv),
+            v + utils.index(layout, l, l, ldv),
             ldv,
-            tau + types.scast(u32, l),
-            t + utils.index(order, l, l, ldt),
+            tau + l,
+            t + utils.index(layout, l, l, ldt),
             ldt,
-            ctx,
         );
 
-        // Compute t_{1,2}
-        // t_{1,2} = v_{1,2}
-        try lapack.lacpy(
-            order,
-            .{ .full = {} },
+        // Compute `T₁₂ = V₁₂`.
+        linalg.lapack.lacpy(
+            layout,
+            .full,
             l,
             k - l,
-            v + utils.index(order, 0, l, ldv),
+            v + utils.index(layout, 0, l, ldv),
             ldv,
-            t + utils.index(order, 0, l, ldt),
+            t + utils.index(layout, 0, l, ldt),
             ldt,
-            ctx,
-        );
+        ) catch unreachable;
 
-        // t_{1,2} = t_{1,2}*v_{2,2}'
-        try blas.trmm(
-            order,
+        // `T₁₂ = T₁₂ V₂₂ᴴ`.
+        linalg.blas.trmm(
+            layout,
             .right,
             .upper,
             .conj_trans,
@@ -332,40 +426,37 @@ pub fn larft(
             l,
             k - l,
             1,
-            v + utils.index(order, l, l, ldv),
+            v + utils.index(layout, l, l, ldv),
             ldv,
-            t + utils.index(order, 0, l, ldt),
+            t + utils.index(layout, 0, l, ldt),
             ldt,
-            ctx,
-        );
+        ) catch unreachable;
 
-        // t_{1,2} = v_{1,3}*v_{2,3}' + t_{1,2}
-        // note: we assume k <= n, and gemm will do nothing if n=k
-        try blas.gemm(
-            order,
+        // `T₁₂ = V₁₃ V₂₃ᴴ + T₁₂`. We assume `k ≤ n`, and gemm will do nothing
+        // if `n = k`.
+        linalg.blas.gemm(
+            layout,
             .no_trans,
             .conj_trans,
             l,
             k - l,
             n - k,
             1,
-            v + utils.index(order, 0, k, ldv),
+            v + utils.index(layout, 0, k, ldv),
             ldv,
-            v + utils.index(order, l, k, ldv),
+            v + utils.index(layout, l, k, ldv),
             ldv,
             1,
-            t + utils.index(order, 0, l, ldt),
+            t + utils.index(layout, 0, l, ldt),
             ldt,
-            ctx,
-        );
+        ) catch unreachable;
 
-        // At this point, we have that t_{1,2} = v_1*v_2'
-        // all that is left is to pre and post multiply by -t_{1,1} and t_{2,2}
-        // respectively.
+        // At this point, we have that `T₁₂ = V₁ V₂ᴴ`. All that is left is to do
+        // is to pre- and post-multiply by `-T₁₁` and `T₂₂`, respectively.
 
-        // t_{1,2} = -t_{1,1}*t_{1,2}
-        try blas.trmm(
-            order,
+        // `T₁₂ = -T₁₁ T₁₂`.
+        linalg.blas.trmm(
+            layout,
             .left,
             .upper,
             .no_trans,
@@ -375,14 +466,13 @@ pub fn larft(
             -1,
             t,
             ldt,
-            t + utils.index(order, 0, l, ldt),
+            t + utils.index(layout, 0, l, ldt),
             ldt,
-            ctx,
-        );
+        ) catch unreachable;
 
-        // t_{1,2} = t_{1,2}*t_{2,2}
-        try blas.trmm(
-            order,
+        // `T₁₂ = T₁₂ T₂₂`.
+        linalg.blas.trmm(
+            layout,
             .right,
             .upper,
             .no_trans,
@@ -390,64 +480,64 @@ pub fn larft(
             l,
             k - l,
             1,
-            t + utils.index(order, l, l, ldt),
+            t + utils.index(layout, l, l, ldt),
             ldt,
-            t + utils.index(order, 0, l, ldt),
+            t + utils.index(layout, 0, l, ldt),
             ldt,
-            ctx,
-        );
+        ) catch unreachable;
     } else if (ql) {
-        // Break v apart into 6 components
+        // Break `V` apart into 6 components:
         //
-        // v = |---------------|
-        //     |v_{1,1} v_{1,2}|
-        //     |v_{2,1} v_{2,2}|
-        //     |0       v_{3,2}|
-        //     |---------------|
+        // ```zig
+        //     ┌           ┐
+        //     │ V₁₁   V₁₂ │
+        // V = │ V₂₁   V₂₂ │,
+        //     │   0   V₃₂ │
+        //     └           ┘
+        // ```
         //
-        // v_{1,1}\in\c^{n-k,k-l}  rectangular
-        // v_{2,1}\in\c^{k-l,k-l}  unit upper triangular
+        // where `V₁₁ ∈ ℂⁿ⁻ᵏ×ᵏ⁻ˡ`, `V₂₁ ∈ ℂᵏ⁻ˡ×ᵏ⁻ˡ` unit upper triangular,
+        // `V₁₂ ∈ ℂⁿ⁻ᵏ×ˡ`, `V₂₂ ∈ ℂᵏ⁻ˡ×ˡ, and `V₃₂ ∈ ℂˡ×ˡ` unit upper
+        // triangular, with `l = ⌊ᵏ/₂⌋`. We will construct the matrix `T` as:
         //
-        // v_{1,2}\in\c^{n-k,l}    rectangular
-        // v_{2,2}\in\c^{k-l,l}    rectangular
-        // v_{3,2}\in\c^{l,l}      unit upper triangular
+        // ```zig
+        //     ┌           ┐
+        //     │ T₁₁     0 │
+        // T = │ T₂₁   T₂₂ │,
+        //     └           ┘
+        // ```
         //
-        // we will construct the t matrix
-        // t = |---------------|
-        //     |t_{1,1} 0      |
-        //     |t_{2,1} t_{2,2}|
-        //     |---------------|
+        // where `T` is the triangular factor obtained from block reflectors,
+        // `T₁₁ ∈ ℂᵏ⁻ˡ×ᵏ⁻ˡ` lower triangular, `T₂₂ ∈ ℂˡ×ˡ` lower triangular, and
+        // `T₂₁ ∈ ℂᵏ⁻ˡ×ˡ`. To motivate the structure, assume we have already
+        // computed `T₁₁` and `T₂₂`. then collect the associated reflectors in
+        // `V₁` and `V₂`. Consider the product:
         //
-        // t is the triangular factor obtained from block reflectors.
-        // to motivate the structure, assume we have already computed t_{1,1}
-        // and t_{2,2}. then collect the associated reflectors in v_1 and v_2
+        // ```zig
+        // (𝕀 - V₂ T₂₂ V₂ᴴ) (𝕀 - V₁ T₁₁ V₁ᴴ)
+        //     = 𝕀 - V₂ T₂₂ V₂ᴴ - V₁ T₁₁ V₁ᴴ + V₂ T₂₂ V₂ᴴ V₁ T₁₁ V₁ᴴ.
+        // ```
         //
-        // t_{1,1}\in\c^{k-l, k-l} non-unit lower triangular
-        // t_{2,2}\in\c^{l, l}     non-unit lower triangular
-        // t_{2,1}\in\c^{k-l, l}   rectangular
+        // Let `T₂₁ = -T₂₂ V₂ᴴ V₁ T₁₁`. Then, we can define the matrix `V` as:
         //
-        // where l = floor(k/2)
+        // ```zig
+        //     ┌         ┐
+        // V = │ V₁   V₂ │,
+        //     └         ┘
+        // ```
         //
-        // then, consider the product:
+        // so, our product is equivalent to the matrix product:
         //
-        // (i - v_2*t_{2,2}*v_2')*(i - v_1*t_{1,1}*v_1')
-        // = i - v_2*t_{2,2}*v_2' - v_1*t_{1,1}*v_1' + v_2*t_{2,2}*v_2'*v_1*t_{1,1}*v_1'
+        // ```zig
+        // 𝕀 - V T Vᴴ.
+        // ```
         //
-        // define t_{2,1} = -t_{2,2}*v_2'*v_1*t_{1,1}
-        //
-        // then, we can define the matrix v as
-        // v = |-------|
-        //     |v_1 v_2|
-        //     |-------|
-        //
-        // so, our product is equivalent to the matrix product
-        // i - v*t*v'
-        // this means, we can compute t_{1,1} and t_{2,2}, then use this information
-        // to compute t_{2,1}
+        // This means we can compute `T₁₁` and `T₂₂`, then use this information
+        // to compute `T₂₁`.
 
-        // Compute t_{1,1} recursively
-        try larft(
-            order,
+        // Compute `T₁₁` recursively.
+        k_larft(
+            layout,
             direct,
             storev,
             n - l,
@@ -457,41 +547,35 @@ pub fn larft(
             tau,
             t,
             ldt,
-            ctx,
         );
 
-        // Compute t_{2,2} recursively
-        try larft(
-            order,
+        // Compute T₂₂ recursively
+        k_larft(
+            layout,
             direct,
             storev,
             n,
             l,
-            v + utils.index(order, 0, k - l, ldv),
+            v + utils.index(layout, 0, k - l, ldv),
             ldv,
-            tau + types.scast(u32, k - l),
-            t + utils.index(order, k - l, k - l, ldt),
+            tau + k - l,
+            t + utils.index(layout, k - l, k - l, ldt),
             ldt,
-            ctx,
         );
 
-        // Compute t_{2,1}
-        // t_{2,1} = v_{2,2}'
-        var j: i32 = 0;
-        while (j < k - l) : (j += 1) {
-            var i: i32 = 0;
-            while (i < l) : (i += 1) {
-                try ops.set(
-                    &t[utils.index(order, k - l + i, j, ldt)],
-                    try ops.conj(v[utils.index(order, n - k + j, k - l + i, ldv)], ctx),
-                    ctx,
+        // Compute `T₂₁ = V₂₂ᴴ`.
+        for (0..k - l) |j| {
+            for (0..l) |i| {
+                numeric.conjInto(
+                    &t[utils.index(layout, k - l + i, j, ldt)],
+                    v[utils.index(layout, n - k + j, k - l + i, ldv)],
                 );
             }
         }
 
-        // t_{2,1} = t_{2,1}*v_{2,1}
-        try blas.trmm(
-            order,
+        // `T₂₁ = T₂₁ V₂₁`.
+        linalg.blas.trmm(
+            layout,
             .right,
             .upper,
             .no_trans,
@@ -499,40 +583,37 @@ pub fn larft(
             l,
             k - l,
             1,
-            v + utils.index(order, n - k, 0, ldv),
+            v + utils.index(layout, n - k, 0, ldv),
             ldv,
-            t + utils.index(order, k - l, 0, ldt),
+            t + utils.index(layout, k - l, 0, ldt),
             ldt,
-            ctx,
-        );
+        ) catch unreachable;
 
-        // t_{2,1} = v_{2,2}'*v_{2,1} + t_{2,1}
-        // note: we assume k <= n, and gemm will do nothing if n=k
-        try blas.gemm(
-            order,
+        // `T₂₁ = V₂₂ᴴ V₂₁ + T₂₁`. We assume `k ≤ n`, and gemm will do nothing
+        // if `n = k`.
+        linalg.blas.gemm(
+            layout,
             .conj_trans,
             .no_trans,
             l,
             k - l,
             n - k,
             1,
-            v + utils.index(order, 0, k - l, ldv),
+            v + utils.index(layout, 0, k - l, ldv),
             ldv,
             v,
             ldv,
             1,
-            t + utils.index(order, k - l, 0, ldt),
+            t + utils.index(layout, k - l, 0, ldt),
             ldt,
-            ctx,
-        );
+        ) catch unreachable;
 
-        // At this point, we have that t_{2,1} = v_2'*v_1
-        // all that is left is to pre and post multiply by -t_{2,2} and t_{1,1}
-        // respectively.
+        // At this point, we have that `T₂₁ = V₂ᴴ V₁`. All that is left is to do
+        // is to pre- and post-multiply by `-T₂₂` and `T₁₁` respectively.
 
-        // t_{2,1} = -t_{2,2}*t_{2,1}
-        try blas.trmm(
-            order,
+        // `T₂₁ = -T₂₂ T₂₁`.
+        linalg.blas.trmm(
+            layout,
             .left,
             .lower,
             .no_trans,
@@ -540,16 +621,15 @@ pub fn larft(
             l,
             k - l,
             -1,
-            t + utils.index(order, k - l, k - l, ldt),
+            t + utils.index(layout, k - l, k - l, ldt),
             ldt,
-            t + utils.index(order, k - l, 0, ldt),
+            t + utils.index(layout, k - l, 0, ldt),
             ldt,
-            ctx,
-        );
+        ) catch unreachable;
 
-        // t_{2,1} = t_{2,1}*t_{1,1}
-        try blas.trmm(
-            order,
+        // `T₂₁ = T₂₁ T₁₁`.
+        linalg.blas.trmm(
+            layout,
             .right,
             .lower,
             .no_trans,
@@ -559,64 +639,62 @@ pub fn larft(
             1,
             t,
             ldt,
-            t + utils.index(order, k - l, 0, ldt),
+            t + utils.index(layout, k - l, 0, ldt),
             ldt,
-            ctx,
-        );
-    } else {
-        // Else means rq case
+        ) catch unreachable;
+    } else { // RQ
+        // Break `V` apart into 6 components:
         //
-        // break v apart into 6 components
+        // ```zig
+        //     ┌                 ┐
+        //     │ V₁₁   V₁₂     0 │
+        // V = │ V₂₁   V₂₂   V₂₃ │,
+        //     └                 ┘
+        // ```
         //
-        // v = |-----------------------|
-        //     |v_{1,1} v_{1,2} 0      |
-        //     |v_{2,1} v_{2,2} v_{2,3}|
-        //     |-----------------------|
+        // `V₁₁ ∈ ℂᵏ⁻ˡ×ⁿ⁻ᵏ`, `V₁₂ ∈ ℂᵏ⁻ˡ×ᵏ⁻ˡ` unit lower triangular,
+        // `V₂₁ ∈ ℂˡ×ⁿ⁻ᵏ`, `V₂₂ ∈ ℂˡ×ᵏ⁻ˡ`, and `V₂₃ ∈ ℂˡ×ˡ` unit lower
+        // triangular, with `l = ⌊ᵏ/₂⌋`. We will construct the matrix `T` as:
         //
-        // v_{1,1}\in\c^{k-l,n-k}  rectangular
-        // v_{1,2}\in\c^{k-l,k-l}  unit lower triangular
+        // ```zig
+        //     ┌           ┐
+        //     │ T₁₁     0 │
+        // T = │ T₂₁   T₂₂ │,
+        //     └           ┘
+        // ```
         //
-        // v_{2,1}\in\c^{l,n-k}    rectangular
-        // v_{2,2}\in\c^{l,k-l}    rectangular
-        // v_{2,3}\in\c^{l,l}      unit lower triangular
+        // where `T` is the triangular factor obtained from block reflectors,
+        // `T₁₁ ∈ ℂᵏ⁻ˡ×ᵏ⁻ˡ` lower triangular, `T₂₂ ∈ ℂˡ×ˡ` lower triangular, and
+        // `T₂₁ ∈ ℂᵏ⁻ˡ×ˡ`. To motivate the structure, assume we have already
+        // computed `T₁₁` and `T₂₂`. then collect the associated reflectors in
+        // `V₁` and `V₂`. Consider the product:
         //
-        // we will construct the t matrix
-        // t = |---------------|
-        //     |t_{1,1} 0      |
-        //     |t_{2,1} t_{2,2}|
-        //     |---------------|
+        // ```zig
+        // (𝕀 - V₂ᴴ T₂₂ V₂) (𝕀 - V₁ᴴ T₁₁ V₁)
+        //     = 𝕀 - V₂ᴴ T₂₂ V₂ - V₁ᴴ T₁₁ V₁ + V₂ᴴ T₂₂ V₂ V₁ᴴ T₁₁ V₁.
+        // ```
         //
-        // t is the triangular factor obtained from block reflectors.
-        // to motivate the structure, assume we have already computed t_{1,1}
-        // and t_{2,2}. then collect the associated reflectors in v_1 and v_2
+        // Let `T₂₁ = -T₂₂ V₂ V₁ᴴ T₁₁`. Then, we can define the matrix `V` as:
         //
-        // t_{1,1}\in\c^{k-l, k-l} non-unit lower triangular
-        // t_{2,2}\in\c^{l, l}     non-unit lower triangular
-        // t_{2,1}\in\c^{k-l, l}   rectangular
+        // ```zig
+        //     ┌    ┐
+        //     │ V₁ │
+        // V = │ V₂ │,
+        //     └    ┘
+        // ```
         //
-        // where l = floor(k/2)
+        // so, our product is equivalent to the matrix product:
         //
-        // then, consider the product:
+        // ```zig
+        // 𝕀 - Vᴴ T V.
+        // ```
         //
-        // (i - v_2'*t_{2,2}*v_2)*(i - v_1'*t_{1,1}*v_1)
-        // = i - v_2'*t_{2,2}*v_2 - v_1'*t_{1,1}*v_1 + v_2'*t_{2,2}*v_2*v_1'*t_{1,1}*v_1
-        //
-        // define t_{2,1} = -t_{2,2}*v_2*v_1'*t_{1,1}
-        //
-        // then, we can define the matrix v as
-        // v = |---|
-        //     |v_1|
-        //     |v_2|
-        //     |---|
-        //
-        // so, our product is equivalent to the matrix product
-        // i - v'*t*v
-        // this means, we can compute t_{1,1} and t_{2,2}, then use this information
-        // to compute t_{2,1}
+        // This means, we can compute `T₁₁` and `T₂₂`, then use this information
+        // to compute `T₂₁`.
 
-        // Compute t_{1,1} recursively
-        try larft(
-            order,
+        // Compute `T₁₁` recursively.
+        k_larft(
+            layout,
             direct,
             storev,
             n - l,
@@ -626,41 +704,37 @@ pub fn larft(
             tau,
             t,
             ldt,
-            ctx,
         );
 
-        // Compute t_{2,2} recursively
-        try larft(
-            order,
+        // Compute `T₂₂` recursively.
+        k_larft(
+            layout,
             direct,
             storev,
             n,
             l,
-            v + utils.index(order, k - l, 0, ldv),
+            v + utils.index(layout, k - l, 0, ldv),
             ldv,
-            tau + types.scast(u32, k - l),
-            t + utils.index(order, k - l, k - l, ldt),
+            tau + k - l,
+            t + utils.index(layout, k - l, k - l, ldt),
             ldt,
-            ctx,
         );
 
-        // Compute t_{2,1}
-        // t_{2,1} = v_{2,2}
-        try lapack.lacpy(
-            order,
-            .{ .full = {} },
+        // Compute `T₂₁ = V₂₂`.
+        linalg.lapack.lacpy(
+            layout,
+            .full,
             l,
             k - l,
-            v + utils.index(order, k - l, n - k, ldv),
+            v + utils.index(layout, k - l, n - k, ldv),
             ldv,
-            t + utils.index(order, k - l, 0, ldt),
+            t + utils.index(layout, k - l, 0, ldt),
             ldt,
-            ctx,
-        );
+        ) catch unreachable;
 
-        // t_{2,1} = t_{2,1}*v_{1,2}'
-        try blas.trmm(
-            order,
+        // `T₂₁ = T₂₁ V₁₂ᴴ`.
+        linalg.blas.trmm(
+            layout,
             .right,
             .lower,
             .conj_trans,
@@ -668,40 +742,37 @@ pub fn larft(
             l,
             k - l,
             1,
-            v + utils.index(order, 0, n - k, ldv),
+            v + utils.index(layout, 0, n - k, ldv),
             ldv,
-            t + utils.index(order, k - l, 0, ldt),
+            t + utils.index(layout, k - l, 0, ldt),
             ldt,
-            ctx,
-        );
+        ) catch unreachable;
 
-        // t_{2,1} = v_{2,1}*v_{1,1}' + t_{2,1}
-        // note: we assume k <= n, and gemm will do nothing if n=k
-        try blas.gemm(
-            order,
+        // `T₂₁ = V₂₁ V₁₁ᴴ + T₂₁`. We assume `k ≤ n`, and gemm will do nothing
+        // if `n = k`.
+        linalg.blas.gemm(
+            layout,
             .no_trans,
             .conj_trans,
             l,
             k - l,
             n - k,
             1,
-            v + utils.index(order, k - l, 0, ldv),
+            v + utils.index(layout, k - l, 0, ldv),
             ldv,
             v,
             ldv,
             1,
-            t + utils.index(order, k - l, 0, ldt),
+            t + utils.index(layout, k - l, 0, ldt),
             ldt,
-            ctx,
-        );
+        ) catch unreachable;
 
-        // At this point, we have that t_{2,1} = v_2*v_1'
-        // all that is left is to pre and post multiply by -t_{2,2} and t_{1,1}
-        // respectively.
+        // At this point, we have that `T₂₁ = V₂ V₁ᴴ`. All that is left to do is
+        // to pre- and post-multiply by `-T₂₂` and `T₁₁` respectively.
 
-        // t_{2,1} = -t_{2,2}*t_{2,1}
-        try blas.trmm(
-            order,
+        // `T₂₁ = -T₂₂ T₂₁`.
+        linalg.blas.trmm(
+            layout,
             .left,
             .lower,
             .no_trans,
@@ -709,16 +780,15 @@ pub fn larft(
             l,
             k - l,
             -1,
-            t + utils.index(order, k - l, k - l, ldt),
+            t + utils.index(layout, k - l, k - l, ldt),
             ldt,
-            t + utils.index(order, k - l, 0, ldt),
+            t + utils.index(layout, k - l, 0, ldt),
             ldt,
-            ctx,
-        );
+        ) catch unreachable;
 
-        // t_{2,1} = t_{2,1}*t_{1,1}
-        try blas.trmm(
-            order,
+        // `T₂₁ = T₂₁ T₁₁`.
+        linalg.blas.trmm(
+            layout,
             .right,
             .lower,
             .no_trans,
@@ -728,9 +798,8 @@ pub fn larft(
             1,
             t,
             ldt,
-            t + utils.index(order, k - l, 0, ldt),
+            t + utils.index(layout, k - l, 0, ldt),
             ldt,
-            ctx,
-        );
+        ) catch unreachable;
     }
 }

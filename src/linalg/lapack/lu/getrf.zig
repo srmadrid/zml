@@ -8,7 +8,7 @@ const utils = @import("../utils.zig");
 /// Computes the LU factorization of a general matrix, defined as:
 ///
 /// ```zig
-/// A = P * L * U,
+/// A = P L U,
 /// ```
 ///
 /// where `A` is an `m × n` matrix, `P` is an `m × m` permutation matrix, `L` is
@@ -112,7 +112,7 @@ fn k_getrf(
                 ipiv[i] += j;
             }
 
-            // Apply interchanges to columns 0..j.
+            // Apply interchanges to columns `0..j`.
             linalg.lapack.laswp(
                 layout,
                 j,
@@ -125,7 +125,7 @@ fn k_getrf(
             ) catch unreachable;
 
             if (j + jb < n) {
-                // Apply interchanges to columns j + jb..n.
+                // Apply interchanges to columns `j + jb..n`.
                 linalg.lapack.laswp(
                     layout,
                     n - j - jb,
@@ -137,7 +137,7 @@ fn k_getrf(
                     1,
                 ) catch unreachable;
 
-                // Compute block row of U.
+                // Compute block row of `U`.
                 linalg.blas.trsm(
                     layout,
                     .left,

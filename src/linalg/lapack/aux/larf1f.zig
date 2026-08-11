@@ -9,7 +9,7 @@ const utils = @import("../utils.zig");
 /// the left or the right. `H` is represented in the form:
 ///
 /// ```zig
-/// H = 𝕀 - τ * v * vᴴ,
+/// H = 𝕀 - τ v vᴴ,
 /// ```
 ///
 /// where tau is a `τ` numeric and `v` is a vector.
@@ -79,13 +79,14 @@ pub fn larf1f(
     var lastv: usize = 1;
     var lastc: usize = 0;
     if (numeric.ne(tau, 0)) {
-        // Set up variables for scanning v. lastv begins pointing to the end of v up to v[0].
+        // Set up variables for scanning `v`. lastv begins pointing to the end
+        // of `v` up to `v[0]`.
         lastv = if (side == .left)
             m
         else
             n;
 
-        // Look for the last non-zero row in v.
+        // Look for the last non-zero row in `v`.
         var i: usize = (lastv - 1) * incv;
         while (lastv > 1 and numeric.eq(v[i], 0)) {
             lastv -= 1;
@@ -93,10 +94,10 @@ pub fn larf1f(
         }
 
         if (side == .left)
-            // Scan for the last non-zero column in c[0..lastv, ..].
+            // Scan for the last non-zero column in `C[0..lastv, ..]`.
             lastc = linalg.lapack.ilalc(layout, lastv, n, c, ldc) catch unreachable
         else
-            // Scan for the last non-zero row in c[.., 0..lastv].
+            // Scan for the last non-zero row in `C[.., 0..lastv]`.
             lastc = linalg.lapack.ilalr(layout, m, lastv, c, ldc) catch unreachable;
     }
 
@@ -104,9 +105,9 @@ pub fn larf1f(
         return;
 
     if (side == .left) {
-        // Form  H * C.
+        // Form `H C`.
         if (lastv == 1) {
-            // c[0, 0..lastc - 1] = (1 - tau) * c[0, 0..lastc - 1]
+            // `C[0, 0..lastc - 1] = (1 - tau) C[0, 0..lastc - 1]`.
             linalg.blas.scal(
                 lastc,
                 numeric.sub(1, tau),
@@ -114,7 +115,7 @@ pub fn larf1f(
                 utils.row_ld(layout, ldc),
             ) catch unreachable;
         } else {
-            // w[0..lastc - 1, 0] = c[1..lastv - 1, 0..lastc - 1]ᴴ * v[1..lastv - 1, 0]
+            // `w[0..lastc - 1] = C[1..lastv - 1, 0..lastc - 1]ᴴ v[1..lastv - 1]`.
             linalg.blas.gemv(
                 layout,
                 .conj_trans,
@@ -130,7 +131,7 @@ pub fn larf1f(
                 1,
             ) catch unreachable;
 
-            // w[0..lastc - 1, 0] += v[0, 0] * c[0, 0..lastc - 1]ᴴ
+            // `w[0..lastc - 1] += v[0] * C[0, 0..lastc - 1]ᴴ`.
             for (0..lastc) |i| {
                 numeric.addInto(
                     &work[i],
@@ -139,7 +140,7 @@ pub fn larf1f(
                 );
             }
 
-            // c[0, 0..lastc - 1] -= tau * w[0..lastc - 1, 0]ᴴ
+            // `C[0, 0..lastc - 1] -= tau w[0..lastc - 1]ᴴ`.
             for (0..lastc) |i| {
                 numeric.subInto(
                     &c[utils.index(layout, 0, i, ldc)],
@@ -148,7 +149,7 @@ pub fn larf1f(
                 );
             }
 
-            // c[1..lastv - 1, 0..lastc - 1] -= tau * v[1..lastv - 1, 0] * w[0..lastc - 1, 0]ᴴ
+            // `C[1..lastv - 1, 0..lastc - 1] -= tau v[1..lastv - 1] w[0..lastc - 1]ᴴ`.
             linalg.blas.gerc(
                 layout,
                 lastv - 1,
@@ -163,9 +164,9 @@ pub fn larf1f(
             ) catch unreachable;
         }
     } else {
-        // Form  C * H.
+        // Form `C H`.
         if (lastv == 1) {
-            // c[0..lastc - 1, 0] = (1 - tau) * c[0..lastc - 1, 0]
+            // `C[0..lastc - 1, 0] = (1 - tau) C[0..lastc - 1, 0]`.
             linalg.blas.scal(
                 lastc,
                 numeric.sub(1, tau),
@@ -173,7 +174,7 @@ pub fn larf1f(
                 utils.col_ld(layout, ldc),
             ) catch unreachable;
         } else {
-            // w[0..lastc - 1, 0] = c[0..lastc - 1, 1..lastv - 1] * v[1..lastv - 1, 0]
+            // `w[0..lastc - 1] = C[0..lastc - 1, 1..lastv - 1] v[1..lastv - 1]`.
             linalg.blas.gemv(
                 layout,
                 .no_trans,
@@ -189,7 +190,7 @@ pub fn larf1f(
                 1,
             ) catch unreachable;
 
-            // w[0..lastc - 1, 0] += v[0, 0] * c[0..lastc - 1, 0]
+            // `w[0..lastc - 1] += v[0] C[0..lastc - 1, 0]`.
             linalg.blas.axpy(
                 lastc,
                 1,
@@ -199,7 +200,7 @@ pub fn larf1f(
                 1,
             ) catch unreachable;
 
-            // c[0..lastc - 1, 0] -= tau * v[0, 0] * w[0..lastc - 1, 0]
+            // `C[0..lastc - 1, 0] -= tau v[0] w[0..lastc - 1]`.
             linalg.blas.axpy(
                 lastc,
                 numeric.neg(tau),
@@ -209,7 +210,7 @@ pub fn larf1f(
                 utils.col_ld(layout, ldc),
             ) catch unreachable;
 
-            // c[0..lastc - 1, 1..lastv - 1] += -tau * w[0..lastc - 1, 0] * v[1..lastv - 1]ᴴ
+            // `C[0..lastc - 1, 1..lastv - 1] += -tau w[0..lastc - 1] * v[1..lastv - 1]ᴴ`.
             linalg.blas.gerc(
                 layout,
                 lastc,

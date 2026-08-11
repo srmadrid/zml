@@ -7,25 +7,25 @@ const meta = @import("../../../meta.zig");
 /// matrix, defined as:
 ///
 /// ```zig
-/// A * X = B,
+/// A X = B,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-/// Aᵀ * X = B,
+/// Aᵀ X = B,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-/// conj(A) * X = B,
+/// conj(A) X = B,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-/// Aᴴ * X = B,
+/// Aᴴ X = B,
 /// ```
 ///
 /// where `A` is the LU factorization of a general `n × n` matrix `A`, as
@@ -95,7 +95,7 @@ pub fn getrs(
         return;
 
     if (transa == .no_trans or transa == .conj_no_trans) {
-        // Solve  A * X = B  or  conj(A) * X = B.
+        // Solve `A X = B` or `conj(A) X = B`.
 
         // Apply row interchanges to the right hand sides.
         linalg.lapack.laswp(
@@ -109,7 +109,7 @@ pub fn getrs(
             1,
         ) catch unreachable;
 
-        // Solve  L * X = B  or  conj(L) * X = B, overwriting B with X.
+        // Solve `L X = B` or `conj(L) X = B`, overwriting `B` with `X`.
         linalg.blas.trsm(
             layout,
             .left,
@@ -125,7 +125,7 @@ pub fn getrs(
             ldb,
         ) catch unreachable;
 
-        // Solve  U * X = B  or  conj(U) * X = B, overwriting B with X.
+        // Solve `U X = B` or `conj(U) X = B`, overwriting `B` with `X`.
         linalg.blas.trsm(
             layout,
             .left,
@@ -141,9 +141,9 @@ pub fn getrs(
             ldb,
         ) catch unreachable;
     } else {
-        // Solve  Aᵀ * X = B  or  Aᴴ * X = B.
+        // Solve `Aᵀ X` = B` or `Aᴴ X = B`.
 
-        // Solve  Uᵀ * X = B  or  Uᴴ * X = B, overwriting B with X.
+        // Solve `Uᵀ X = B` or `Uᴴ X = B`, overwriting `B` with `X`.
         linalg.blas.trsm(
             layout,
             .left,
@@ -159,7 +159,7 @@ pub fn getrs(
             ldb,
         ) catch unreachable;
 
-        // Solve  Lᵀ * X = B  or  Lᴴ * X = B, overwriting B with X.
+        // Solve `Lᵀ X = B` or `Lᴴ X = B`, overwriting `B` with `X`.
         linalg.blas.trsm(
             layout,
             .left,

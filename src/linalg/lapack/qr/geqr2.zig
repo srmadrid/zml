@@ -8,7 +8,7 @@ const utils = @import("../utils.zig");
 /// Computes the QR factorization of a general matrix, defined as:
 ///
 /// ```zig
-/// A = Q * R,
+/// A = Q R,
 /// ```
 ///
 /// where `A` is an `m × n` matrix, `Q` is an `m × m` unitary matrix, and `R` is
@@ -18,13 +18,13 @@ const utils = @import("../utils.zig");
 /// represented as a product of `min(m, n)` elementary reflectors:
 ///
 /// ```zig
-/// Q = H₁ * H₂ * … * Hₖ,
+/// Q = H₁ H₂ ⋯ Hₖ,
 /// ```
 ///
 /// where `k = min(m, n)`. Each `Hᵢ` has the form
 ///
 /// ```zig
-/// Hᵢ = 𝕀 − τ * v * vᴴ,
+/// Hᵢ = 𝕀 − τ v vᴴ,
 /// ```
 ///
 /// where `τ` is a numeric stored in `tau[i]`, and `v` is a vector with
@@ -78,7 +78,7 @@ pub fn geqr2(
         return linalg.lapack.Error.InvalidArgument;
 
     for (0..int.min(m, n)) |i| {
-        // Generate elementary reflector Hᵢ to annihilate A[i + 1..m, i].
+        // Generate elementary reflector `Hᵢ` to annihilate `A[i + 1..m, i]`.
         linalg.lapack.larfg(
             m - i,
             &a[utils.index(layout, i, i, lda)],
@@ -88,7 +88,7 @@ pub fn geqr2(
         ) catch unreachable;
 
         if (i < n - 1) {
-            // Apply Hᵢ to A[i..m, i + 1..n] from the left.
+            // Apply `Hᵢ` to `A[i..m, i + 1..n]` from the left.
             linalg.lapack.larf1f(
                 layout,
                 .left,

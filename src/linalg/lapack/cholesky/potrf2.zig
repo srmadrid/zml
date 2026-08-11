@@ -9,25 +9,25 @@ const utils = @import("../utils.zig");
 /// positive definite matrix, defined as:
 ///
 /// ```zig
-/// A = Uᵀ * U,
+/// A = Uᵀ U,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-/// A = L * Lᵀ,
+/// A = L Lᵀ,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-/// A = Uᴴ * U,
+/// A = Uᴴ U,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-/// A = L * Lᴴ,
+/// A = L Lᴴ,
 /// ```
 ///
 /// where `A` is an `n × n` symmetric or Hermitian positive difinite matrix, `U`
@@ -38,10 +38,10 @@ const utils = @import("../utils.zig");
 /// four submatrices:
 ///
 /// ```zig
-///     ┌          ┐
-///     │ A₁₁  A₁₂ │
-/// A = │ A₂₁  A₂₂ │
-///     └          ┘
+///     ┌           ┐
+///     │ A₁₁   A₁₂ │
+/// A = │ A₂₁   A₂₂ │
+///     └           ┘
 /// ```
 ///
 /// where `A₁₁` is `n₁ × n₁` and `A₂₂` is `n₂ × n₂` with `n₁ = n / 2`, and
@@ -113,7 +113,7 @@ fn k_potrf2(
         const n1 = int.div(n, 2);
         const n2 = n - n1;
 
-        // Factor A₁₁.
+        // Factor `A₁₁`.
         var iinfo = k_potrf2(
             layout,
             uplo,
@@ -126,9 +126,9 @@ fn k_potrf2(
             return iinfo;
 
         if (uplo == .upper) {
-            // Compute the Cholesky factorization  A = Uᵀ * U  or  A = Uᴴ * U.
+            // Compute the Cholesky factorization `A = Uᵀ U` or `A = Uᴴ U`.
 
-            // Update and scale A₁₂.
+            // Update and scale `A₁₂`.
             linalg.blas.trsm(
                 layout,
                 .left,
@@ -144,7 +144,7 @@ fn k_potrf2(
                 lda,
             ) catch unreachable;
 
-            // Update and factor A₂₂.
+            // Update and factor `A₂₂`.
             linalg.blas.herk(
                 layout,
                 uplo,
@@ -170,9 +170,9 @@ fn k_potrf2(
             if (iinfo != int.highest(usize))
                 return iinfo + n1;
         } else {
-            // Compute the Cholesky factorization  A = L * Lᵀ  or  A = L * Lᴴ.
+            // Compute the Cholesky factorization `A = L Lᵀ` or `A = L Lᴴ`.
 
-            // Update and scale A₂₁.
+            // Update and scale `A₂₁`.
             linalg.blas.trsm(
                 layout,
                 .right,
@@ -188,7 +188,7 @@ fn k_potrf2(
                 lda,
             ) catch unreachable;
 
-            // Update and factor A₂₂.
+            // Update and factor `A₂₂`.
             linalg.blas.herk(
                 layout,
                 uplo,
