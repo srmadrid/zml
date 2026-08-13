@@ -26,9 +26,6 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
 
         // Type signature
         pub const is_numeric = true;
-        pub const is_dyadic = true;
-        pub const is_real_type = true;
-        pub const is_signed = true;
 
         pub const Accumulator = blk: {
             if (mantissa_bits <= 16)

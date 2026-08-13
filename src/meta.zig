@@ -17,10 +17,8 @@ pub const IterationOrder = enum {
     right_to_left,
 };
 
-/// `meta.NumericType` is an enum that represents the different numeric types
-/// supported by the library. It is used to categorize types based on their
-/// properties and capabilities, such as whether they are ints, floats, complex
-/// numbers, etc.
+/// `meta.NumericType` represents the different numeric types supported by the
+/// library. It is used to categorize types based on their properties.
 ///
 /// ## Values
 /// * `bool`: Represents the boolean type (`bool`).
@@ -202,16 +200,22 @@ pub inline fn numericType(comptime N: type) NumericType {
         .int, .comptime_int => return .int,
         .float, .comptime_float => return .float,
         .@"struct", .@"union" => {
-            if (comptime !@hasDecl(N, "is_numeric") or !N.is_numeric)
-                @compileError("zsl.meta.numericType: " ++ @typeName(N) ++ " is not a supported numeric type");
+            comptime if (!hasBoolDecl(N, "is_numeric"))
+                @compileError("zsl.meta.numericType: " ++ @typeName(N) ++ " must declare 'is_numeric = true' to be detected as a numeric type");
 
-            if (comptime @hasDecl(N, "is_dyadic") and N.is_dyadic)
+            comptime if (@hasDecl(N, "Mantissa") and @hasDecl(N, "Exponent") and
+                @typeInfo(N.Mantissa) == .int and @typeInfo(N.Mantissa).int.signedness == .unsigned and
+                @typeInfo(N.Exponent) == .int and @typeInfo(N.Exponent).int.signedness == .signed and
+                N == @import("dyadic.zig").Dyadic(@typeInfo(N.Mantissa).int.bits, @typeInfo(N.Exponent).int.bits))
                 return .dyadic;
 
-            if (comptime (@hasDecl(N, "is_complex") and N.is_complex) or
-                N == std.math.Complex(f16) or N == std.math.Complex(f32) or N == std.math.Complex(f64) or
-                N == std.math.Complex(f80) or N == std.math.Complex(f128) or N == std.math.Complex(comptime_float))
-                return .complex;
+            comptime if (@hasField(N, "re") and @hasField(N, "im")) {
+                const Re = @TypeOf(@field(@as(N, undefined), "re"));
+                const Im = @TypeOf(@field(@as(N, undefined), "im"));
+
+                if (Re == Im and isNumeric(Re))
+                    return .complex;
+            };
 
             return .custom;
         },
@@ -660,6 +664,17 @@ pub fn Child(comptime T: type) type {
         },
         else => return T,
     }
+}
+
+pub fn hasBoolDecl(comptime T: type, comptime name: []const u8) bool {
+    comptime if (!@hasDecl(T, name))
+        return false;
+
+    const DeclType = @TypeOf(@field(T, name));
+    if (DeclType != bool)
+        @compileError("zsl.meta.hasBoolDecl: declaration '" ++ name ++ "' in " ++ @typeName(T) ++ " must be of bool type, got " ++ @typeName(DeclType));
+
+    return @field(T, name);
 }
 
 /// Returns the return type of a function when called with the given input

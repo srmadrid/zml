@@ -28,15 +28,15 @@ pub fn isSupportedType(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a one-item pointer, `false` otherwise.
 pub fn isPointer(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .pointer => |info| {
+    return switch (comptime @typeInfo(T)) {
+        .pointer => |info| blk: {
             if (info.size != .one and
-                info.size != .c) return false;
+                info.size != .c) break :blk false;
 
-            return true;
+            break :blk true;
         },
-        else => return false,
-    }
+        else => false,
+    };
 }
 
 /// Checks if the input type is a many-item pointer.
@@ -47,15 +47,15 @@ pub fn isPointer(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a many-item pointer, `false` otherwise.
 pub fn isManyItemPointer(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .pointer => |info| {
+    return switch (comptime @typeInfo(T)) {
+        .pointer => |info| blk: {
             if (info.size != .many and
-                info.size != .c) return false;
+                info.size != .c) break :blk false;
 
-            return true;
+            break :blk true;
         },
-        else => return false,
-    }
+        else => false,
+    };
 }
 
 /// Checks if the input type is a constant pointer. Works for one-item pointers,
@@ -68,16 +68,13 @@ pub fn isManyItemPointer(comptime T: type) bool {
 /// `bool`: `true` if the type is a constant one-item pointer, `false`
 /// otherwise.
 pub fn isConstPointer(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .pointer => |info| {
-            if (info.is_const) {
-                return true;
-            } else {
-                return false;
-            }
-        },
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .pointer => |info| if (info.is_const)
+            true
+        else
+            false,
+        else => false,
+    };
 }
 
 /// Checks if the input type is a slice.
@@ -88,14 +85,15 @@ pub fn isConstPointer(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a slice, `false` otherwise.
 pub fn isSlice(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .pointer => |info| {
-            if (info.size != .slice) return false;
+    return switch (comptime @typeInfo(T)) {
+        .pointer => |info| blk: {
+            if (info.size != .slice)
+                break :blk false;
 
-            return true;
+            break :blk true;
         },
-        else => return false,
-    }
+        else => false,
+    };
 }
 
 /// Checks if the input type is a simd vector.
@@ -106,10 +104,10 @@ pub fn isSlice(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a simd vector, `false` otherwise.
 pub fn isSimdVector(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .vector => return true,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .vector => true,
+        else => false,
+    };
 }
 
 /// Checks if the input type `T` is a numeric type.
@@ -120,13 +118,13 @@ pub fn isSimdVector(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a numeric type, `false` otherwise.
 pub fn isNumeric(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .bool => return true,
-        .int, .comptime_int => return true,
-        .float, .comptime_float => return true,
-        .@"struct", .@"union" => return @hasDecl(T, "is_numeric") and T.is_numeric,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .bool => true,
+        .int, .comptime_int => true,
+        .float, .comptime_float => true,
+        .@"struct", .@"union" => meta.hasBoolDecl(T, "is_numeric"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is a custom numeric type.
@@ -148,10 +146,10 @@ pub fn isCustomNumeric(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a vector, `false` otherwise.
 pub fn isVector(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_vector") and T.is_vector,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_vector"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a static vector.
@@ -162,10 +160,10 @@ pub fn isVector(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a static vector, `false` otherwise.
 pub fn isStaticVector(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_vector") and T.is_vector and @hasDecl(T, "is_static") and T.is_static,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_vector") and meta.hasBoolDecl(T, "is_static"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a dense vector.
@@ -176,10 +174,10 @@ pub fn isStaticVector(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a dense vector, `false` otherwise.
 pub fn isDenseVector(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_vector") and T.is_vector and @hasDecl(T, "is_dense") and T.is_dense,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_vector") and meta.hasBoolDecl(T, "is_dense"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a sparse vector.
@@ -190,10 +188,10 @@ pub fn isDenseVector(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a sparse vector, `false` otherwise.
 pub fn isSparseVector(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_vector") and T.is_vector and @hasDecl(T, "is_sparse") and T.is_sparse,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_vector") and meta.hasBoolDecl(T, "is_sparse"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a matrix.
@@ -204,10 +202,10 @@ pub fn isSparseVector(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a matrix, `false` otherwise.
 pub fn isMatrix(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_matrix"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is a square matrix, i.e., a matrix type that is
@@ -219,10 +217,10 @@ pub fn isMatrix(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a square matrix, `false` otherwise.
 pub fn isSquareMatrix(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return (@hasDecl(T, "is_symmetric") and T.is_symmetric) or (@hasDecl(T, "is_hermitian") and T.is_hermitian) or (@hasDecl(T, "is_permutation") and T.is_permutation),
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_symmetric") or meta.hasBoolDecl(T, "is_hermitian") or meta.hasBoolDecl(T, "is_permutation"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a general matrix.
@@ -233,10 +231,10 @@ pub fn isSquareMatrix(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a general matrix, `false` otherwise.
 pub fn isGeneralMatrix(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_general") and T.is_general,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_matrix") and meta.hasBoolDecl(T, "is_general"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a general static matrix.
@@ -247,10 +245,10 @@ pub fn isGeneralMatrix(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a general static matrix, `false` otherwise.
 pub fn isGeneralStaticMatrix(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_general") and T.is_general and @hasDecl(T, "is_static") and T.is_static,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_matrix") and meta.hasBoolDecl(T, "is_general") and meta.hasBoolDecl(T, "is_static"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a general dense matrix.
@@ -261,10 +259,10 @@ pub fn isGeneralStaticMatrix(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a general dense matrix, `false` otherwise.
 pub fn isGeneralDenseMatrix(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_general") and T.is_general and @hasDecl(T, "is_dense") and T.is_dense,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_matrix") and meta.hasBoolDecl(T, "is_general") and meta.hasBoolDecl(T, "is_dense"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a general sparse matrix.
@@ -275,10 +273,10 @@ pub fn isGeneralDenseMatrix(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a general sparse matrix, `false` otherwise.
 pub fn isGeneralSparseMatrix(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_general") and T.is_general and @hasDecl(T, "is_sparse") and T.is_sparse,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_matrix") and meta.hasBoolDecl(T, "is_general") and meta.hasBoolDecl(T, "is_sparse"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a symmetric matrix.
@@ -289,10 +287,10 @@ pub fn isGeneralSparseMatrix(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a symmetric matrix, `false` otherwise.
 pub fn isSymmetricMatrix(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_symmetric") and T.is_symmetric,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_matrix") and meta.hasBoolDecl(T, "is_symmetric"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a symmetric static matrix.
@@ -303,10 +301,10 @@ pub fn isSymmetricMatrix(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a symmetric static matrix, `false` otherwise.
 pub fn isSymmetricStaticMatrix(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_symmetric") and T.is_symmetric and @hasDecl(T, "is_static") and T.is_static,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_matrix") and meta.hasBoolDecl(T, "is_symmetric") and meta.hasBoolDecl(T, "is_static"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a symmetric dense matrix.
@@ -317,10 +315,10 @@ pub fn isSymmetricStaticMatrix(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a symmetric dense matrix, `false` otherwise.
 pub fn isSymmetricDenseMatrix(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_symmetric") and T.is_symmetric and @hasDecl(T, "is_dense") and T.is_dense,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_matrix") and meta.hasBoolDecl(T, "is_symmetric") and meta.hasBoolDecl(T, "is_dense"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a symmetric sparse matrix.
@@ -331,10 +329,10 @@ pub fn isSymmetricDenseMatrix(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a symmetric sparse matrix, `false` otherwise.
 pub fn isSymmetricSparseMatrix(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_symmetric") and T.is_symmetric and @hasDecl(T, "is_sparse") and T.is_sparse,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_matrix") and meta.hasBoolDecl(T, "is_symmetric") and meta.hasBoolDecl(T, "is_sparse"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a hermitian matrix.
@@ -345,10 +343,10 @@ pub fn isSymmetricSparseMatrix(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a hermitian matrix, `false` otherwise.
 pub fn isHermitianMatrix(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_hermitian") and T.is_hermitian,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_matrix") and meta.hasBoolDecl(T, "is_hermitian"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a hermitian static matrix.
@@ -359,10 +357,10 @@ pub fn isHermitianMatrix(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a hermitian static matrix, `false` otherwise.
 pub fn isHermitianStaticMatrix(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_hermitian") and T.is_hermitian and @hasDecl(T, "is_static") and T.is_static,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_matrix") and meta.hasBoolDecl(T, "is_hermitian") and meta.hasBoolDecl(T, "is_static"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a hermitian dense matrix.
@@ -373,10 +371,10 @@ pub fn isHermitianStaticMatrix(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a hermitian dense matrix, `false` otherwise.
 pub fn isHermitianDenseMatrix(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_hermitian") and T.is_hermitian and @hasDecl(T, "is_dense") and T.is_dense,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_matrix") and meta.hasBoolDecl(T, "is_hermitian") and meta.hasBoolDecl(T, "is_dense"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a hermitian sparse matrix.
@@ -387,10 +385,10 @@ pub fn isHermitianDenseMatrix(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a hermitian sparse matrix, `false` otherwise.
 pub fn isHermitianSparseMatrix(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_hermitian") and T.is_hermitian and @hasDecl(T, "is_sparse") and T.is_sparse,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_matrix") and meta.hasBoolDecl(T, "is_hermitian") and meta.hasBoolDecl(T, "is_sparse"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a triangular matrix.
@@ -401,10 +399,10 @@ pub fn isHermitianSparseMatrix(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a triangular matrix, `false` otherwise.
 pub fn isTriangularMatrix(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_triangular") and T.is_triangular,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_matrix") and meta.hasBoolDecl(T, "is_triangular"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a triangular static matrix.
@@ -415,10 +413,10 @@ pub fn isTriangularMatrix(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a triangular static matrix, `false` otherwise.
 pub fn isTriangularStaticMatrix(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_triangular") and T.is_triangular and @hasDecl(T, "is_static") and T.is_static,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_matrix") and meta.hasBoolDecl(T, "is_triangular") and meta.hasBoolDecl(T, "is_static"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a triangular dense matrix.
@@ -429,10 +427,10 @@ pub fn isTriangularStaticMatrix(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a triangular dense matrix, `false` otherwise.
 pub fn isTriangularDenseMatrix(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_triangular") and T.is_triangular and @hasDecl(T, "is_dense") and T.is_dense,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_matrix") and meta.hasBoolDecl(T, "is_triangular") and meta.hasBoolDecl(T, "is_dense"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a triangular sparse matrix.
@@ -443,10 +441,10 @@ pub fn isTriangularDenseMatrix(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a triangular sparse matrix, `false` otherwise.
 pub fn isTriangularSparseMatrix(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_triangular") and T.is_triangular and @hasDecl(T, "is_sparse") and T.is_sparse,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_matrix") and meta.hasBoolDecl(T, "is_triangular") and meta.hasBoolDecl(T, "is_sparse"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a diagonal matrix.
@@ -457,10 +455,10 @@ pub fn isTriangularSparseMatrix(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a diagonal matrix, `false` otherwise.
 pub fn isDiagonalMatrix(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_diagonal") and T.is_diagonal,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_matrix") and meta.hasBoolDecl(T, "is_diagonal"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a diagonal static matrix.
@@ -471,10 +469,10 @@ pub fn isDiagonalMatrix(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a diagonal static matrix, `false` otherwise.
 pub fn isDiagonalStaticMatrix(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_diagonal") and T.is_diagonal and @hasDecl(T, "is_static") and T.is_static,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_matrix") and meta.hasBoolDecl(T, "is_diagonal") and meta.hasBoolDecl(T, "is_static"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a diagonal sparse matrix.
@@ -485,10 +483,10 @@ pub fn isDiagonalStaticMatrix(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a diagonal sparse matrix, `false` otherwise.
 pub fn isDiagonalSparseMatrix(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_diagonal") and T.is_diagonal and @hasDecl(T, "is_sparse") and T.is_sparse,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_matrix") and meta.hasBoolDecl(T, "is_diagonal") and meta.hasBoolDecl(T, "is_sparse"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a permutation matrix.
@@ -499,10 +497,10 @@ pub fn isDiagonalSparseMatrix(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a permutation matrix, `false` otherwise.
 pub fn isPermutationMatrix(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_permutation") and T.is_permutation,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_matrix") and meta.hasBoolDecl(T, "is_permutation"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a permutation static matrix.
@@ -513,10 +511,10 @@ pub fn isPermutationMatrix(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a permutation static matrix, `false` otherwise.
 pub fn isPermutationStaticMatrix(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_permutation") and T.is_permutation and @hasDecl(T, "is_static") and T.is_static,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_matrix") and meta.hasBoolDecl(T, "is_permutation") and meta.hasBoolDecl(T, "is_static"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a permutation sparse matrix.
@@ -527,10 +525,10 @@ pub fn isPermutationStaticMatrix(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a permutation sparse matrix, `false` otherwise.
 pub fn isPermutationSparseMatrix(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_permutation") and T.is_permutation and @hasDecl(T, "is_sparse") and T.is_sparse,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_matrix") and meta.hasBoolDecl(T, "is_permutation") and meta.hasBoolDecl(T, "is_sparse"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a builder matrix.
@@ -541,10 +539,10 @@ pub fn isPermutationSparseMatrix(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a builder matrix, `false` otherwise.
 pub fn isBuilderMatrix(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_builder") and T.is_builder,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_matrix") and meta.hasBoolDecl(T, "is_builder"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a builder sparse matrix.
@@ -555,10 +553,10 @@ pub fn isBuilderMatrix(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a builder sparse matrix, `false` otherwise.
 pub fn isBuilderSparseMatrix(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_builder") and T.is_builder and @hasDecl(T, "is_sparse") and T.is_sparse,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_matrix") and meta.hasBoolDecl(T, "is_builder") and meta.hasBoolDecl(T, "is_sparse"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is a static matrix.
@@ -569,10 +567,10 @@ pub fn isBuilderSparseMatrix(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a static matrix, `false` otherwise.
 pub fn isStaticMatrix(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_static") and T.is_static,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_matrix") and meta.hasBoolDecl(T, "is_static"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is a dense matrix.
@@ -583,10 +581,10 @@ pub fn isStaticMatrix(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a dense matrix, `false` otherwise.
 pub fn isDenseMatrix(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_dense") and T.is_dense,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_matrix") and meta.hasBoolDecl(T, "is_dense"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is a sparse matrix.
@@ -597,10 +595,10 @@ pub fn isDenseMatrix(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a sparse matrix, `false` otherwise.
 pub fn isSparseMatrix(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_sparse") and T.is_sparse,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_matrix") and meta.hasBoolDecl(T, "is_sparse"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of an array.
@@ -611,10 +609,10 @@ pub fn isSparseMatrix(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is an array, `false` otherwise.
 pub fn isArray(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_array") and T.is_array,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_array"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a static array.
@@ -625,10 +623,10 @@ pub fn isArray(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a static array, `false` otherwise.
 pub fn isStaticArray(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_array") and T.is_array and @hasDecl(T, "is_static") and T.is_static,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_array") and meta.hasBoolDecl(T, "is_static"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a dense array.
@@ -639,10 +637,10 @@ pub fn isStaticArray(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a dense array, `false` otherwise.
 pub fn isDenseArray(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_array") and T.is_array and @hasDecl(T, "is_dense") and T.is_dense,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_array") and meta.hasBoolDecl(T, "is_dense"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a sparse array.
@@ -653,10 +651,10 @@ pub fn isDenseArray(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a sparse array, `false` otherwise.
 pub fn isSparseArray(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_array") and T.is_array and @hasDecl(T, "is_sparse") and T.is_sparse,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_array") and meta.hasBoolDecl(T, "is_sparse"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a builder sparse array.
@@ -667,10 +665,10 @@ pub fn isSparseArray(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a builder sparse array, `false` otherwise.
 pub fn isBuilderSparseArray(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_array") and T.is_array and @hasDecl(T, "is_builder") and T.is_builder and @hasDecl(T, "is_sparse") and T.is_sparse,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_array") and meta.hasBoolDecl(T, "is_builder") and meta.hasBoolDecl(T, "is_sparse"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a polynomial.
@@ -681,10 +679,10 @@ pub fn isBuilderSparseArray(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a polynomial, `false` otherwise.
 pub fn isPoly(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_poly") and T.is_poly,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_poly"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a static polynomial.
@@ -695,10 +693,10 @@ pub fn isPoly(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a static polynomial, `false` otherwise.
 pub fn isStaticPoly(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_poly") and T.is_poly and @hasDecl(T, "is_static") and T.is_static,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_poly") and meta.hasBoolDecl(T, "is_static"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a dense polynomial.
@@ -709,10 +707,10 @@ pub fn isStaticPoly(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a dense polynomial, `false` otherwise.
 pub fn isDensePoly(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_poly") and T.is_poly and @hasDecl(T, "is_dense") and T.is_dense,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_poly") and meta.hasBoolDecl(T, "is_dense"),
+        else => false,
+    };
 }
 
 /// Checks if the input type is an instance of a sparse polynomial.
@@ -723,10 +721,10 @@ pub fn isDensePoly(comptime T: type) bool {
 /// ## Returns
 /// `bool`: `true` if the type is a sparse polynomial, `false` otherwise.
 pub fn isSparsePoly(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_poly") and T.is_poly and @hasDecl(T, "is_sparse") and T.is_sparse,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => meta.hasBoolDecl(T, "is_poly") and meta.hasBoolDecl(T, "is_sparse"),
+        else => false,
+    };
 }
 
 /// Checks if the input numeric type is integral.
@@ -741,12 +739,12 @@ pub fn isIntegral(comptime N: type) bool {
     if (comptime !meta.isNumeric(N))
         @compileError("zsl.meta.isIntegral: " ++ @typeName(N) ++ " is not a supported numeric type");
 
-    switch (comptime meta.numericType(N)) {
-        .bool => return true,
-        .int => return true,
-        .float => return false,
-        else => return @hasDecl(N, "is_integral") and N.is_integral,
-    }
+    return switch (comptime meta.numericType(N)) {
+        .bool => true,
+        .int => true,
+        .float => false,
+        else => meta.hasBoolDecl(N, "is_integral"),
+    };
 }
 
 /// Checks if the input numeric type is non-integral.
@@ -776,7 +774,7 @@ pub fn isReal(comptime N: type) bool {
     if (comptime !meta.isNumeric(N))
         @compileError("zsl.meta.isReal: " ++ @typeName(N) ++ " is not a supported numeric type");
 
-    return meta.numericType(N) != .complex;
+    return !isComplex(N);
 }
 
 /// Checks if the input numeric type is complex.
@@ -791,7 +789,12 @@ pub fn isComplex(comptime N: type) bool {
     if (comptime !meta.isNumeric(N))
         @compileError("zsl.meta.isComplex: " ++ @typeName(N) ++ " is not a supported numeric type");
 
-    return meta.numericType(N) == .complex;
+    return switch (comptime meta.numericType(N)) {
+        .bool => false,
+        .int => false,
+        .float => false,
+        else => meta.hasBoolDecl(N, "is_complex"),
+    };
 }
 
 /// Checks if the input numeric type is signed.
@@ -806,17 +809,7 @@ pub fn isSigned(comptime N: type) bool {
     if (comptime !meta.isNumeric(N))
         @compileError("zsl.meta.isSigned: " ++ @typeName(N) ++ " is not a supported numeric type");
 
-    switch (comptime meta.numericType(N)) {
-        .int => {
-            switch (comptime @typeInfo(N)) {
-                .int => |info| return info.signedness == .signed,
-                .comptime_int => return true,
-                else => unreachable,
-            }
-        },
-        .float => return true,
-        else => return @hasDecl(N, "is_signed") and N.is_signed,
-    }
+    return !isUnsigned(N);
 }
 
 /// Checks if the input numeric type is unsigned.
@@ -831,16 +824,16 @@ pub fn isUnsigned(comptime N: type) bool {
     if (comptime !meta.isNumeric(N))
         @compileError("zsl.meta.isUnsigned: " ++ @typeName(N) ++ " is not a supported numeric type");
 
-    switch (comptime meta.numericType(N)) {
-        .bool => return true,
-        .int => {
+    return switch (comptime meta.numericType(N)) {
+        .bool => true,
+        .int => blk: {
             switch (comptime @typeInfo(N)) {
-                .int => |info| return info.signedness == .unsigned,
-                .comptime_int => return false,
+                .int => |info| break :blk info.signedness == .unsigned,
+                .comptime_int => break :blk false,
                 else => unreachable,
             }
         },
-        .float => return false,
-        else => return @hasDecl(N, "is_unsigned") and N.is_unsigned,
-    }
+        .float => false,
+        else => meta.hasBoolDecl(N, "is_unsigned"),
+    };
 }

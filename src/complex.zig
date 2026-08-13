@@ -22,14 +22,13 @@ pub fn Complex(comptime N: type) type {
     if (!meta.isNumeric(N) or meta.isIntegral(N))
         @compileError("zsl.Complex: N must be a non-integral numeric type, got \n\tN = " ++ @typeName(N) ++ "\n");
 
-    return extern struct {
+    return struct {
         re: N,
         im: N,
 
         // Type signature
         pub const is_numeric = true;
         pub const is_complex = true;
-        pub const is_signed = true;
 
         pub const Accumulator = Complex(meta.Accumulator(N));
         pub const Real = N;
