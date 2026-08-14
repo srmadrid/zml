@@ -19,7 +19,7 @@ pub fn matmulIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
             if (comptime meta.uploOf(O) == .upper) {
                 var i: usize = 0;
                 while (i < int.min(if (comptime meta.diagOf(O) == .non_unit) j + 1 else j, o.rows)) : (i += 1) {
-                    var sum = numeric.zero(meta.Accumulator(meta.Numeric(O)));
+                    var sum = numeric.cast(meta.Accumulator(meta.Numeric(O)), 0);
 
                     var k: usize = 0;
                     while (k < x_cols) : (k += 1) {
@@ -47,7 +47,7 @@ pub fn matmulIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
             } else {
                 var i: usize = int.min(if (comptime meta.diagOf(O) == .non_unit) j else j + 1, o.rows);
                 while (i < o.rows) : (i += 1) {
-                    var sum = numeric.zero(meta.Accumulator(meta.Numeric(O)));
+                    var sum = numeric.cast(meta.Accumulator(meta.Numeric(O)), 0);
 
                     var k: usize = 0;
                     while (k < x_cols) : (k += 1) {
@@ -82,7 +82,7 @@ pub fn matmulIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
             if (comptime meta.uploOf(O) == .upper) {
                 var j: usize = int.min(if (comptime meta.diagOf(O) == .non_unit) i else i + 1, o.cols);
                 while (j < o.cols) : (j += 1) {
-                    var sum = numeric.zero(meta.Accumulator(meta.Numeric(O)));
+                    var sum = numeric.cast(meta.Accumulator(meta.Numeric(O)), 0);
 
                     var k: usize = 0;
                     while (k < x_cols) : (k += 1) {
@@ -110,7 +110,7 @@ pub fn matmulIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
             } else {
                 var j: usize = 0;
                 while (j < int.min(if (comptime meta.diagOf(O) == .non_unit) i + 1 else i, o.cols)) : (j += 1) {
-                    var sum = numeric.zero(meta.Accumulator(meta.Numeric(O)));
+                    var sum = numeric.cast(meta.Accumulator(meta.Numeric(O)), 0);
 
                     var k: usize = 0;
                     while (k < x_cols) : (k += 1) {

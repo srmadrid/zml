@@ -9,11 +9,10 @@ const thread = @import("../../../thread.zig");
 /// Computes a vector-scalar product and adds the result to a vector:
 ///
 /// ```zig
-/// y = alpha * x + y,
+/// y = αx + y,
 /// ```
 ///
-/// where `alpha` is a numeric, and `x` and `y` are vectors each with `n`
-/// elements.
+/// where `α` is a numeric, and `x` and `y` are vectors each with `n` elements.
 ///
 /// ## Signature
 /// ```zig
@@ -22,7 +21,7 @@ const thread = @import("../../../thread.zig");
 ///
 /// ## Arguments
 /// * `n` (`usize`): Specifies the number of elements in vectors `x` and `y`.
-/// * `alpha` (`anytype`): Specifies the numeric `alpha`.
+/// * `alpha` (`anytype`): Specifies the numeric `α`.
 /// * `x` (`anytype`): Many-item pointer, size at least
 ///   `1 + (n - 1) * abs(incx)`.
 /// * `incx` (`isize`): Indexing increment for `x`. Must be different from 0.
@@ -67,11 +66,10 @@ pub fn axpy(
 /// Computes a vector-scalar product and adds the result to a vector:
 ///
 /// ```zig
-/// y = alpha * x + y,
+/// y = αx + y,
 /// ```
 ///
-/// where `alpha` is a numeric, and `x` and `y` are vectors each with `n`
-/// elements, splitting the work across the worker threads of `pool`.
+/// where `α` is a numeric, and `x` and `y` are vectors each with `n` elements.
 ///
 /// ## Signature
 /// ```zig
@@ -80,7 +78,7 @@ pub fn axpy(
 ///
 /// ## Arguments
 /// * `n` (`usize`): Specifies the number of elements in vectors `x` and `y`.
-/// * `alpha` (`anytype`): Specifies the numeric `alpha`.
+/// * `alpha` (`anytype`): Specifies the numeric `α`.
 /// * `x` (`anytype`): Many-item pointer, size at least
 ///   `1 + (n - 1) * abs(incx)`.
 /// * `incx` (`isize`): Indexing increment for `x`. Must be different from 0.

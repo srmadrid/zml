@@ -13,7 +13,7 @@ pub fn matmulIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
         while (j < o.cols) : (j += 1) {
             var i: usize = 0;
             while (i < o.rows) : (i += 1) {
-                var sum = numeric.zero(meta.Accumulator(meta.Numeric(O)));
+                var sum = numeric.cast(meta.Accumulator(meta.Numeric(O)), 0);
 
                 var k: usize = 0;
                 while (k < x_cols) : (k += 1) {
@@ -38,7 +38,7 @@ pub fn matmulIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
         while (i < o.rows) : (i += 1) {
             var j: usize = 0;
             while (j < o.cols) : (j += 1) {
-                var sum = numeric.zero(meta.Accumulator(meta.Numeric(O)));
+                var sum = numeric.cast(meta.Accumulator(meta.Numeric(O)), 0);
 
                 var k: usize = 0;
                 while (k < x_cols) : (k += 1) {

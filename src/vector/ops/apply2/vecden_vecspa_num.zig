@@ -25,7 +25,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
         var i: usize = 0;
         while (ix < x.nnz) : (ix += 1) {
             while (i < x.idx[ix]) : (i += 1) {
-                opInto(&o.data[i], numeric.zero(meta.Numeric(X)), y_eff);
+                opInto(&o.data[i], numeric.cast(meta.Numeric(X), 0), y_eff);
             }
 
             opInto(
@@ -41,7 +41,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
         }
 
         while (i < o.len) : (i += 1) {
-            opInto(&o.data[i], numeric.zero(meta.Numeric(X)), y_eff);
+            opInto(&o.data[i], numeric.cast(meta.Numeric(X), 0), y_eff);
         }
     } else {
         var io: isize = if (o.inc < 0) (-numeric.cast(isize, o.len) + 1) * o.inc else 0;
@@ -49,7 +49,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
         var i: usize = 0;
         while (ix < x.nnz) : (ix += 1) {
             while (i < x.idx[ix]) : (i += 1) {
-                opInto(&o.data[numeric.cast(usize, io)], numeric.zero(meta.Numeric(X)), y_eff);
+                opInto(&o.data[numeric.cast(usize, io)], numeric.cast(meta.Numeric(X), 0), y_eff);
 
                 io += o.inc;
             }
@@ -68,7 +68,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
         }
 
         while (i < o.len) : (i += 1) {
-            opInto(&o.data[numeric.cast(usize, io)], numeric.zero(meta.Numeric(X)), y_eff);
+            opInto(&o.data[numeric.cast(usize, io)], numeric.cast(meta.Numeric(X), 0), y_eff);
 
             io += o.inc;
         }

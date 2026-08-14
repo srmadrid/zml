@@ -47,16 +47,16 @@ pub fn Poisson(comptime Int: type, comptime Real: type) type {
         /// ## Returns
         /// `Int`: A random number of events generated based on `lambda`.
         pub fn sample(self: Poisson(Int, Real), prng: std.Random) Int {
-            var k = numeric.zero(Int);
-            var p = numeric.one(Real);
+            var k = numeric.cast(Int, 0);
+            var p = numeric.cast(Real, 1);
 
             while (numeric.gt(p, self.enl)) {
-                numeric.addInto(&k, k, numeric.one(Int));
+                numeric.addInto(&k, k, 1);
                 const u = utils.standardUniform(Real, prng);
                 numeric.mulInto(&p, p, u);
             }
 
-            return numeric.sub(k, numeric.one(Int));
+            return numeric.sub(k, 1);
         }
 
         /// Computes the Probability Mass Function (PMF) evaluated at `k`.
@@ -70,8 +70,8 @@ pub fn Poisson(comptime Int: type, comptime Real: type) type {
         /// ## Returns
         /// `Real`: The probability mass at `k` in the range [0, 1].
         pub fn pmf(self: Poisson(Int, Real), k: Int) Real {
-            if (numeric.lt(k, numeric.zero(Int)))
-                return numeric.zero(Real);
+            if (numeric.lt(k, 0))
+                return numeric.cast(Real, 0);
 
             return numeric.exp(self.lpmf(k));
         }
@@ -87,12 +87,12 @@ pub fn Poisson(comptime Int: type, comptime Real: type) type {
         /// ## Returns
         /// `Real`: The natural logarithm of the probability mass at `k`.
         pub fn lpmf(self: Poisson(Int, Real), k: Int) Real {
-            if (numeric.lt(k, numeric.zero(Int)))
+            if (numeric.lt(k, 0))
                 return numeric.neg(numeric.inf(Real));
 
             // lpmf(k) = k * ln(lambda) - lambda - ln(k!), with k! = lgamma(k + 1)
             const k_ln_lambda = numeric.mul(numeric.cast(Real, k), numeric.ln(self.lambda));
-            const log_factorial = numeric.lgamma(numeric.add(numeric.cast(Real, k), numeric.one(Real)));
+            const log_factorial = numeric.lgamma(numeric.add(numeric.cast(Real, k), 1));
 
             const diff = numeric.sub(k_ln_lambda, self.lambda);
             return numeric.sub(diff, log_factorial);
@@ -111,21 +111,21 @@ pub fn Poisson(comptime Int: type, comptime Real: type) type {
         /// ## Returns
         /// `Real`: The cumulative probability in the range [0, 1].
         pub fn cdf(self: Poisson(Int, Real), k: Int) Real {
-            if (numeric.lt(k, numeric.zero(Int)))
-                return numeric.zero(Real);
+            if (numeric.lt(k, 0))
+                return numeric.cast(Real, 0);
 
             var sum = self.enl; // P(X = 0) = e^-lambda
             var term = self.enl;
-            var i: Int = numeric.one(Int);
+            var i: Int = numeric.cast(Int, 1);
 
-            while (numeric.le(i, k)) : (numeric.addInto(&i, numeric.one(Int))) {
+            while (numeric.le(i, k)) : (numeric.addInto(&i, i, 1)) {
                 // P(X = i) = P(X = i - 1) * (lambda / i)
                 term = numeric.mul(term, numeric.div(self.lambda, numeric.cast(Real, i)));
                 sum = numeric.add(sum, term);
             }
 
-            if (numeric.gt(sum, numeric.one(Real)))
-                return numeric.one(Real);
+            if (numeric.gt(sum, 1))
+                return numeric.cast(Real, 1);
 
             return sum;
         }
@@ -142,18 +142,18 @@ pub fn Poisson(comptime Int: type, comptime Real: type) type {
         /// `Int`: The smallest number of occurrences whose cumulative
         /// probability meets or exceeds `p`.
         pub fn icdf(self: Poisson(Int, Real), p: Real) Int {
-            if (numeric.le(p, numeric.zero(Real)))
+            if (numeric.le(p, 0))
                 return 0;
 
-            if (numeric.ge(p, numeric.one(Real)))
+            if (numeric.ge(p, 1))
                 return numeric.highest(Int);
 
-            var k = numeric.zero(Int);
+            var k = numeric.cast(Int, 0);
             var term = self.enl; // P(X = 0)
             var sum = term;
 
             while (numeric.lt(sum, p)) {
-                numeric.addInto(&k, numeric.one(Int));
+                numeric.addInto(&k, k, 1);
                 const k_real = numeric.cast(Real, k);
                 term = numeric.mul(term, numeric.div(self.lambda, k_real));
                 sum = numeric.add(sum, term);

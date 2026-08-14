@@ -33,7 +33,7 @@ pub fn tan(z: anytype) @TypeOf(z) {
 
     const den = numeric.add(1, numeric.fma(two_E, cos_two_re, E_sq));
     const num_re = numeric.mul(two_E, sin_two_re);
-    const num_im = numeric.mul(numeric.sign(z.im), numeric.sub(numeric.one(@TypeOf(E_sq)), E_sq));
+    const num_im = numeric.mul(numeric.sign(z.im), numeric.sub(1, E_sq));
 
     return .{
         .re = numeric.div(num_re, den),

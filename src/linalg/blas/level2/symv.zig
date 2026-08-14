@@ -12,11 +12,11 @@ const numeric = @import("../../../numeric.zig");
 /// Computes a matrix-vector product with a symmetric matrix defined as:
 ///
 /// ```zig
-/// y = alpha * A * x + beta * y,
+/// y = αA x + βy,
 /// ```
 ///
-/// where `alpha` and `beta` are numerics, `x` and `y` are `n`-element vectors,
-/// and `A` is an `n`-by-`n` symmetric matrix.
+/// where `α` and `β` are numerics, `x` and `y` are `n`-element vectors, and `A`
+/// is an `n × n` symmetric matrix.
 ///
 /// ## Signature
 /// ```zig
@@ -29,7 +29,7 @@ const numeric = @import("../../../numeric.zig");
 /// * `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of
 ///   the symmetric matrix `A` is used.
 /// * `n` (`usize`): Specifies the size of the matrix `A`.
-/// * `alpha` (`anytype`): Specifies the numeric `alpha`.
+/// * `alpha` (`anytype`): Specifies the numeric `α`.
 /// * `a` (`anytype`): Many-item pointer, size at least `lda * n`.
 /// * `lda` (`usize`): Specifies the leading dimension of `a` as declared in the
 ///   calling (sub)program. Must be greater than or equal to `max(1, n)`.
@@ -103,11 +103,11 @@ fn k_symv(uplo: matrix.Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x
     const X: type = meta.Child(@TypeOf(x));
     const Y: type = meta.Child(@TypeOf(y));
 
-    // Set up the start points in x and y.
+    // Set up the start points in `x` and `y`.
     const kx: isize = if (incx < 0) (-numeric.cast(isize, n) + 1) * incx else 0;
     const ky: isize = if (incy < 0) (-numeric.cast(isize, n) + 1) * incy else 0;
 
-    // First form  y = beta * y.
+    // First form `y = βy`.
     if (numeric.ne(beta, 1))
         linalg.blas.scal(n, beta, y, incy) catch unreachable;
 
@@ -115,7 +115,7 @@ fn k_symv(uplo: matrix.Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x
         return;
 
     if (uplo == .upper) {
-        // Form  y  when upper triangle of A is stored.
+        // Form `y` when upper triangle of `A` is stored.
         const unroll = 2 * int.min(
             std.simd.suggestVectorLength(numeric.Fma(numeric.Mul(Al, X), A, Y)) orelse 2,
             std.simd.suggestVectorLength(meta.Accumulator(numeric.Mul(A, X))) orelse 2,
@@ -171,9 +171,9 @@ fn k_symv(uplo: matrix.Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x
                     // temp1 = alpha * px[j - tile_i]
                     const temp1 = numeric.mul(alpha, px[j - tile_i]);
 
-                    var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(A, X)));
+                    var temp2 = numeric.cast(meta.Accumulator(numeric.Mul(A, X)), 0);
 
-                    var sums: [unroll]meta.Accumulator(numeric.Mul(A, X)) = .{numeric.zero(meta.Accumulator(numeric.Mul(A, X)))} ** unroll;
+                    var sums: [unroll]meta.Accumulator(numeric.Mul(A, X)) = @splat(numeric.cast(meta.Accumulator(numeric.Mul(A, X)), 0));
 
                     var i: usize = 0;
                     while (i < ((j - tile_i) / unroll) * unroll) : (i += unroll) {
@@ -233,9 +233,9 @@ fn k_symv(uplo: matrix.Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x
                     // temp1 = alpha * x[jx]
                     const temp1 = numeric.mul(alpha, x[numeric.cast(usize, jx)]);
 
-                    var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(A, X)));
+                    var temp2 = numeric.cast(meta.Accumulator(numeric.Mul(A, X)), 0);
 
-                    var sums: [unroll]meta.Accumulator(numeric.Mul(A, X)) = .{numeric.zero(meta.Accumulator(numeric.Mul(A, X)))} ** unroll;
+                    var sums: [unroll]meta.Accumulator(numeric.Mul(A, X)) = @splat(numeric.cast(meta.Accumulator(numeric.Mul(A, X)), 0));
 
                     var i: usize = 0;
                     while (i + unroll <= b_len) : (i += unroll) {
@@ -307,7 +307,7 @@ fn k_symv(uplo: matrix.Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x
             }
         }
     } else {
-        // Form  y  when lower triangle of A is stored.
+        // Form `y` when lower triangle of `A` is stored.
         const unroll = 2 * int.min(
             std.simd.suggestVectorLength(numeric.Fma(numeric.Mul(Al, X), A, Y)) orelse 2,
             std.simd.suggestVectorLength(meta.Accumulator(numeric.Mul(A, X))) orelse 2,
@@ -366,7 +366,7 @@ fn k_symv(uplo: matrix.Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x
                         px[j - tile_i],
                     );
 
-                    var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(A, X)));
+                    var temp2 = numeric.cast(meta.Accumulator(numeric.Mul(A, X)), 0);
 
                     // py[j - tile_i] += temp1 * a[j + j * lda]
                     numeric.fmaInto(
@@ -376,7 +376,7 @@ fn k_symv(uplo: matrix.Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x
                         py[j - tile_i],
                     );
 
-                    var sums: [unroll]meta.Accumulator(numeric.Mul(A, X)) = .{numeric.zero(meta.Accumulator(numeric.Mul(A, X)))} ** unroll;
+                    var sums: [unroll]meta.Accumulator(numeric.Mul(A, X)) = @splat(numeric.cast(meta.Accumulator(numeric.Mul(A, X)), 0));
 
                     var i: usize = j - tile_i + 1;
                     while (i < b_len and i % unroll != 0) : (i += 1) {
@@ -453,9 +453,9 @@ fn k_symv(uplo: matrix.Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x
                         x[numeric.cast(usize, jx)],
                     );
 
-                    var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(A, X)));
+                    var temp2 = numeric.cast(meta.Accumulator(numeric.Mul(A, X)), 0);
 
-                    var sums: [unroll]meta.Accumulator(numeric.Mul(A, X)) = .{numeric.zero(meta.Accumulator(numeric.Mul(A, X)))} ** unroll;
+                    var sums: [unroll]meta.Accumulator(numeric.Mul(A, X)) = @splat(numeric.cast(meta.Accumulator(numeric.Mul(A, X)), 0));
 
                     var i: usize = 0;
                     while (i < (b_len / unroll) * unroll) : (i += unroll) {

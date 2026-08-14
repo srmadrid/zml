@@ -201,7 +201,7 @@ pub fn Sparse(N: type) type {
                     break;
             }
 
-            return numeric.zero(N);
+            return numeric.cast(N, 0);
         }
 
         /// Sets the element at the specified index, inserting it if it does not

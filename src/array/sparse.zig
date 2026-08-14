@@ -159,7 +159,7 @@ pub fn Sparse(N: type, comptime order: array.Order) type {
         /// `N`: The element at the specified index.
         pub fn getAssumeInBounds(self: array.Sparse(N, order), index: []const usize) N {
             if (self.nnz == 0)
-                return numeric.zero(N);
+                return numeric.cast(N, 0);
 
             var range_start: usize = 0;
             var range_end: usize = self._ilen[0];
@@ -189,7 +189,7 @@ pub fn Sparse(N: type, comptime order: array.Order) type {
                 }
 
                 if (!found)
-                    return numeric.zero(N);
+                    return numeric.cast(N, 0);
 
                 if (level == self.ndim - 1)
                     return if (self.flags.noconj) self.data[found_pos] else numeric.conj(self.data[found_pos]);
@@ -198,7 +198,7 @@ pub fn Sparse(N: type, comptime order: array.Order) type {
                 range_end = self.ptr[level][found_pos + 1];
             }
 
-            return numeric.zero(N);
+            return numeric.cast(N, 0);
         }
 
         /// Sets the element at the specified index.

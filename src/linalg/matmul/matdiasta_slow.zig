@@ -11,7 +11,7 @@ pub fn matmulIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
     const x_cols = if (comptime meta.isStaticMatrix(X)) X.cols else x.cols;
 
     inline for (0..(comptime int.min(O.rows, O.cols))) |i| {
-        var sum = numeric.zero(meta.Accumulator(meta.Numeric(O)));
+        var sum = numeric.cast(meta.Accumulator(meta.Numeric(O)), 0);
 
         var k: usize = 0;
         while (k < x_cols) : (k += 1) {

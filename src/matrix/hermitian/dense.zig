@@ -249,20 +249,20 @@ pub fn Dense(N: type, uplo: matrix.Uplo, layout: matrix.Layout) type {
                     while (j < size) : (j += 1) {
                         var i: usize = 0;
                         while (i < j) : (i += 1) {
-                            mat.data[i + j * mat.ld] = numeric.zero(N);
+                            mat.data[i + j * mat.ld] = numeric.cast(N, 0);
                         }
 
-                        mat.data[j + j * mat.ld] = numeric.one(N);
+                        mat.data[j + j * mat.ld] = numeric.cast(N, 1);
                     }
                 } else { // cl
                     var j: usize = 0;
                     while (j < size) : (j += 1) {
-                        mat.data[j + j * mat.ld] = numeric.one(N);
+                        mat.data[j + j * mat.ld] = numeric.cast(N, 0);
 
                         var i: usize = j + 1;
 
                         while (i < size) : (i += 1) {
-                            mat.data[i + j * mat.ld] = numeric.zero(N);
+                            mat.data[i + j * mat.ld] = numeric.cast(N, 0);
                         }
                     }
                 }
@@ -270,12 +270,12 @@ pub fn Dense(N: type, uplo: matrix.Uplo, layout: matrix.Layout) type {
                 if (comptime uplo == .upper) { // ru
                     var i: usize = 0;
                     while (i < size) : (i += 1) {
-                        mat.data[i * mat.ld + i] = numeric.one(N);
+                        mat.data[i * mat.ld + i] = numeric.cast(N, 1);
 
                         var j: usize = i + 1;
 
                         while (j < size) : (j += 1) {
-                            mat.data[i * mat.ld + j] = numeric.zero(N);
+                            mat.data[i * mat.ld + j] = numeric.cast(N, 0);
                         }
                     }
                 } else { // rl
@@ -283,10 +283,10 @@ pub fn Dense(N: type, uplo: matrix.Uplo, layout: matrix.Layout) type {
                     while (i < size) : (i += 1) {
                         var j: usize = 0;
                         while (j < i) : (j += 1) {
-                            mat.data[i * mat.ld + j] = numeric.zero(N);
+                            mat.data[i * mat.ld + j] = numeric.cast(N, 0);
                         }
 
-                        mat.data[i * mat.ld + i] = numeric.one(N);
+                        mat.data[i * mat.ld + i] = numeric.cast(N, 1);
                     }
                 }
             }

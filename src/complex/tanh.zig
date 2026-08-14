@@ -21,19 +21,19 @@ pub fn tanh(z: anytype) @TypeOf(z) {
     comptime if (!meta.isNumeric(Z) or meta.numericType(Z) != .complex)
         @compileError("zsl.complex.tanh: z must be a complex, got \n\tz: " ++ @typeName(Z) ++ "\n");
 
-    if (numeric.ge(z.re, numeric.zero(@TypeOf(z.re)))) {
-        const w = numeric.exp(numeric.mul(z, numeric.neg(numeric.two(@TypeOf(z)))));
+    if (numeric.ge(z.re, 0)) {
+        const w = numeric.exp(numeric.mul(z, -2));
 
         return numeric.div(
-            numeric.sub(numeric.one(@TypeOf(w)), w),
-            numeric.add(numeric.one(@TypeOf(w)), w),
+            numeric.sub(1, w),
+            numeric.add(1, w),
         );
     } else {
-        const w = numeric.exp(numeric.mul(z, numeric.two(@TypeOf(z))));
+        const w = numeric.exp(numeric.mul(z, 2));
 
         return numeric.div(
-            numeric.sub(w, numeric.one(@TypeOf(w))),
-            numeric.add(w, numeric.one(@TypeOf(w))),
+            numeric.sub(w, 1),
+            numeric.add(w, 1),
         );
     }
 }

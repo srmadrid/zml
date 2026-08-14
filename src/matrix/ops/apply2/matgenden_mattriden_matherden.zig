@@ -55,7 +55,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                     const ty = if (comptime meta.uploOf(Y) == .upper) y.data[y._index(i, j)] else numeric.conj(y.data[y._index(j, i)]);
                     opInto(
                         &o.data[o._index(i, j)],
-                        numeric.zero(meta.Numeric(X)),
+                        numeric.cast(meta.Numeric(X), 0),
                         if (comptime noconj_o == noconj_y)
                             ty
                         else
@@ -67,7 +67,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
             if (comptime meta.diagOf(X) == .unit)
                 opInto(
                     &o.data[o._index(j, j)],
-                    numeric.one(meta.Numeric(X)),
+                    numeric.cast(meta.Numeric(X), 1),
                     if (comptime noconj_o == noconj_y)
                         y.data[y._index(j, j)]
                     else
@@ -107,7 +107,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                     const ty = if (comptime meta.uploOf(Y) == .lower) y.data[y._index(i, j)] else numeric.conj(y.data[y._index(j, i)]);
                     opInto(
                         &o.data[o._index(i, j)],
-                        numeric.zero(meta.Numeric(X)),
+                        numeric.cast(meta.Numeric(X), 0),
                         if (comptime noconj_o == noconj_y)
                             ty
                         else
@@ -140,7 +140,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                     const ty = if (comptime meta.uploOf(Y) == .lower) y.data[y._index(i, j)] else numeric.conj(y.data[y._index(j, i)]);
                     opInto(
                         &o.data[o._index(i, j)],
-                        numeric.zero(meta.Numeric(X)),
+                        numeric.cast(meta.Numeric(X), 0),
                         if (comptime noconj_o == noconj_y)
                             ty
                         else
@@ -152,7 +152,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
             if (comptime meta.diagOf(X) == .unit)
                 opInto(
                     &o.data[o._index(i, i)],
-                    numeric.one(meta.Numeric(X)),
+                    numeric.cast(meta.Numeric(X), 1),
                     if (comptime noconj_o == noconj_y)
                         y.data[y._index(i, i)]
                     else
@@ -192,7 +192,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                     const ty = if (comptime meta.uploOf(Y) == .upper) y.data[y._index(i, j)] else numeric.conj(y.data[y._index(j, i)]);
                     opInto(
                         &o.data[o._index(i, j)],
-                        numeric.zero(meta.Numeric(X)),
+                        numeric.cast(meta.Numeric(X), 0),
                         if (comptime noconj_o == noconj_y)
                             ty
                         else

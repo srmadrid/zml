@@ -31,7 +31,7 @@ pub fn Static(max_degree_: comptime_int, N: type) type {
         };
 
         pub const zero: poly.Static(max_degree, N) = .{
-            .data = @splat(numeric.zero(N)),
+            .data = @splat(numeric.cast(N, 0)),
         };
 
         pub const init = empty;
@@ -152,7 +152,7 @@ pub fn Static(max_degree_: comptime_int, N: type) type {
             while (i > 0) {
                 i -= 1;
 
-                if (!numeric.eq(self.data[i], numeric.zero(N)))
+                if (!numeric.eq(self.data[i], numeric.cast(N, 0)))
                     return i;
             }
 

@@ -58,7 +58,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                     x.data[ix]
                 else
                     numeric.conj(x.data[ix]),
-                numeric.zero(meta.Numeric(Y)),
+                numeric.cast(meta.Numeric(Y), 0),
             );
 
             o.idx[io] = x.idx[ix];
@@ -67,7 +67,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
         } else {
             opInto(
                 &o.data[io],
-                numeric.zero(meta.Numeric(X)),
+                numeric.cast(meta.Numeric(X), 0),
                 if (comptime noconj_o == noconj_y)
                     y.data[iy]
                 else
@@ -87,7 +87,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                 x.data[ix]
             else
                 numeric.conj(x.data[ix]),
-            numeric.zero(meta.Numeric(Y)),
+            numeric.cast(meta.Numeric(Y), 0),
         );
 
         o.idx[io] = x.idx[ix];
@@ -98,7 +98,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
     while (iy < y.nnz) {
         opInto(
             &o.data[io],
-            numeric.zero(meta.Numeric(X)),
+            numeric.cast(meta.Numeric(X), 0),
             if (comptime noconj_o == noconj_y)
                 y.data[iy]
             else

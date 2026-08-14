@@ -19,7 +19,7 @@ pub fn Tape(N: type) type {
             left: usize,
             right: usize,
             val: N,
-            grad: N = numeric.zero(N),
+            grad: N = numeric.cast(N, 0),
         };
 
         pub const Numeric = N;

@@ -169,7 +169,7 @@ fn k_hemm(
                 for (0..m) |i| {
                     // temp1 = alpha * b[i + j * ldb]
                     const temp1 = numeric.mul(alpha, b[i + j * ldb]);
-                    var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(B, A)));
+                    var temp2 = numeric.cast(meta.Accumulator(numeric.Mul(B, A)), 0);
 
                     for (0..i) |k| {
                         // c[k + j * ldc] += temp1 * a[k + i * lda]
@@ -210,7 +210,7 @@ fn k_hemm(
 
                     // temp1 = alpha * b[i + j * ldb]
                     const temp1 = numeric.mul(alpha, b[i + j * ldb]);
-                    var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(B, A)));
+                    var temp2 = numeric.cast(meta.Accumulator(numeric.Mul(B, A)), 0);
 
                     for (i + 1..m) |k| {
                         // c[k + j * ldc] += temp1 * a[k + i * lda]

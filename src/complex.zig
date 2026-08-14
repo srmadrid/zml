@@ -34,11 +34,6 @@ pub fn Complex(comptime N: type) type {
         pub const Real = N;
         pub const Scalar = N;
 
-        // Constants
-        pub const zero: Complex(N) = .{ .re = numeric.zero(N), .im = numeric.zero(N) };
-        pub const one: Complex(N) = .{ .re = numeric.one(N), .im = numeric.zero(N) };
-        pub const two: Complex(N) = .{ .re = numeric.two(N), .im = numeric.zero(N) };
-
         /// Initializes a complex from any numeric value.
         ///
         /// ## Arguments
@@ -56,7 +51,7 @@ pub fn Complex(comptime N: type) type {
             switch (comptime meta.numericType(V)) {
                 .bool, .int, .float, .dyadic => return .{
                     .re = numeric.cast(N, value),
-                    .im = numeric.zero(N),
+                    .im = numeric.cast(N, 0),
                 },
                 .complex => return .{
                     .re = numeric.cast(N, value.re),
@@ -400,11 +395,11 @@ pub fn eq(x: anytype, y: anytype) bool {
 
     switch (comptime meta.numericType(X)) {
         .bool, .int, .float, .dyadic => switch (comptime meta.numericType(Y)) {
-            .complex => return numeric.eq(x, y.re) and numeric.eq(numeric.zero(meta.Scalar(Y)), y.im),
+            .complex => return numeric.eq(x, y.re) and numeric.eq(y.im, 0),
             else => unreachable,
         },
         .complex => switch (comptime meta.numericType(Y)) {
-            .bool, .int, .float, .dyadic => return numeric.eq(x.re, y) and numeric.eq(x.im, numeric.zero(meta.Scalar(X))),
+            .bool, .int, .float, .dyadic => return numeric.eq(x.re, y) and numeric.eq(x.im, 0),
             .complex => return numeric.eq(x.re, y.re) and numeric.eq(x.im, y.im),
             .custom => unreachable,
         },
@@ -439,11 +434,11 @@ pub fn ne(x: anytype, y: anytype) bool {
 
     switch (comptime meta.numericType(X)) {
         .bool, .int, .float, .dyadic => switch (comptime meta.numericType(Y)) {
-            .complex => return numeric.ne(x, y.re) or numeric.ne(numeric.zero(meta.Scalar(Y)), y.im),
+            .complex => return numeric.ne(x, y.re) or numeric.ne(y.im, 0),
             else => unreachable,
         },
         .complex => switch (comptime meta.numericType(Y)) {
-            .bool, .int, .float, .dyadic => return numeric.ne(x.re, y) or numeric.ne(x.im, numeric.zero(meta.Scalar(X))),
+            .bool, .int, .float, .dyadic => return numeric.ne(x.re, y) or numeric.ne(x.im, 0),
             .complex => return numeric.ne(x.re, y.re) or numeric.ne(x.im, y.im),
             .custom => unreachable,
         },

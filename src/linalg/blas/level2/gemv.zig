@@ -12,29 +12,29 @@ const thread = @import("../../../thread.zig");
 /// Computes a matrix-vector product with a general matrix defined as:
 ///
 /// ```zig
-/// y = alpha * A * x + beta * y,
+/// y = αA x + βy,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-/// y = alpha * Aᵀ * x + beta * y,
+/// y = αAᵀ x + βy,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-/// y = alpha * conj(A) * x + beta * y,
+/// y = αA̅ x + βy,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-/// y = alpha * Aᴴ * x + beta * y,
+/// y = αAᴴ x + βy,
 /// ```
 ///
-/// where `alpha` and `beta` are numerics, `x` and `y` are vectors, and `A` is an
-/// `m`-by-`n` matrix.
+/// where `α` and `β` are numerics, `x` and `y` are vectors, and `A` is an
+/// `m × n` matrix.
 ///
 /// ## Signature
 /// ```zig
@@ -46,13 +46,13 @@ const thread = @import("../../../thread.zig");
 ///   storage is col-major or row-major.
 /// * `transa` (`linalg.blas.Transpose`): Specifies the operation to be
 ///   performed on `A`:
-///   * `no_transpose`: `y = alpha * A * x + beta * y`
-///   * `transpose`: `y = alpha * Aᵀ * x + beta * y`
-///   * `conj_no_transpose`: `y = alpha * conj(A) * x + beta * y`
-///   * `conj_transpose`: `y = alpha * Aᴴ * x + beta * y`
+///   * `no_transpose`: `y = αA x + βy`
+///   * `transpose`: `y = αAᵀ x + βy`
+///   * `conj_no_transpose`: `y = αA̅ x + βy`
+///   * `conj_transpose`: `y = αAᴴ x + βy`
 /// * `m` (`usize`): Specifies the number of rows of the matrix `A`.
 /// * `n` (`usize`): Specifies the number of columns of the matrix `A`.
-/// * `alpha` (`anytype`): Specifies the numeric `alpha`.
+/// * `alpha` (`anytype`): Specifies the numeric `α`.
 /// * `a` (`anytype`): Many-item pointer, size at least `lda * k`, where `k` is
 ///   `n` when `layout` is `col_major`, or `m` when `layout` is `row_major`.
 /// * `lda` (`usize`): Specifies the leading dimension of `a` as declared in the
@@ -62,8 +62,8 @@ const thread = @import("../../../thread.zig");
 ///   `1 + (n - 1) * abs(incx)` when `transa` is `no_transpose` or
 ///   `conj_no_transpose`, or `1 + (m - 1) * abs(incx)` otherwise.
 /// * `incx` (`isize`): Indexing increment for `x`. Must be different from 0.
-/// * `beta` (`anytype`): Specifies the numeric `beta`. When `beta` is 0, then
-///   `y` need not be set on input.
+/// * `beta` (`anytype`): Specifies the numeric `β`. When `β` is 0, then `y`
+///   need not be set on input.
 /// * `y` (`anytype`): Mutable many-item pointer, size at least
 ///   `1 + (m - 1) * abs(incy)` when `transa` is `no_transpose` or
 ///   `conj_no_transpose`, or `1 + (n - 1) * abs(incy)` otherwise. On return,
@@ -136,25 +136,25 @@ pub fn gemv(
 /// Computes a matrix-vector product with a general matrix defined as:
 ///
 /// ```zig
-/// y = alpha * A * x + beta * y,
+/// y = αA x + βy,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-/// y = alpha * Aᵀ * x + beta * y,
+/// y = αAᵀ x + βy,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-/// y = alpha * conj(A) * x + beta * y,
+/// y = αA̅ x + βy,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-/// y = alpha * Aᴴ * x + beta * y,
+/// y = αAᴴ x + βy,
 /// ```
 ///
 /// where `alpha` and `beta` are numerics, `x` and `y` are vectors, and `A` is an
@@ -170,13 +170,13 @@ pub fn gemv(
 ///   storage is col-major or row-major.
 /// * `transa` (`linalg.blas.Transpose`): Specifies the operation to be
 ///   performed on `A`:
-///   * `no_transpose`: `y = alpha * A * x + beta * y`
-///   * `transpose`: `y = alpha * Aᵀ * x + beta * y`
-///   * `conj_no_transpose`: `y = alpha * conj(A) * x + beta * y`
-///   * `conj_transpose`: `y = alpha * Aᴴ * x + beta * y`
+///   * `no_transpose`: `y = αA x + βy`
+///   * `transpose`: `y = αAᵀ x + βy`
+///   * `conj_no_transpose`: `y = αA̅ x + βy`
+///   * `conj_transpose`: `y = αAᴴ x + βy`
 /// * `m` (`usize`): Specifies the number of rows of the matrix `A`.
 /// * `n` (`usize`): Specifies the number of columns of the matrix `A`.
-/// * `alpha` (`anytype`): Specifies the numeric `alpha`.
+/// * `alpha` (`anytype`): Specifies the numeric `α`.
 /// * `a` (`anytype`): Many-item pointer, size at least `lda * k`, where `k` is
 ///   `n` when `layout` is `col_major`, or `m` when `layout` is `row_major`.
 /// * `lda` (`usize`): Specifies the leading dimension of `a` as declared in the
@@ -186,8 +186,8 @@ pub fn gemv(
 ///   `1 + (n - 1) * abs(incx)` when `transa` is `no_transpose` or
 ///   `conj_no_transpose`, or `1 + (m - 1) * abs(incx)` otherwise.
 /// * `incx` (`isize`): Indexing increment for `x`. Must be different from 0.
-/// * `beta` (`anytype`): Specifies the numeric `beta`. When `beta` is 0, then
-///   `y` need not be set on input.
+/// * `beta` (`anytype`): Specifies the numeric `β`. When `β` is 0, then `y`
+///   need not be set on input.
 /// * `y` (`anytype`): Mutable many-item pointer, size at least
 ///   `1 + (m - 1) * abs(incy)` when `transa` is `no_transpose` or
 ///   `conj_no_transpose`, or `1 + (n - 1) * abs(incy)` otherwise. On return,
@@ -316,20 +316,20 @@ fn k_gemv(transa: linalg.blas.Transpose, m: usize, n: usize, alpha: anytype, a: 
     const X: type = meta.Child(@TypeOf(x));
     const Y: type = meta.Child(@TypeOf(y));
 
-    // Set lenx and leny, the lengths of the vectors x and y.
+    // Set `lenx` and `leny`, the lengths of the vectors `x` and `y`.
     const lenx: usize = if (transa == .no_trans or transa == .conj_no_trans) n else m;
     const leny: usize = if (transa == .no_trans or transa == .conj_no_trans) m else n;
 
-    // First form  y = beta * y.
+    // First form  y = βy.
     if (numeric.ne(beta, 1))
         linalg.blas.scal(leny, beta, y, incy) catch unreachable;
 
-    // Set up the start points in x and y.
+    // Set up the start points in `x` and `y`.
     const kx: isize = if (incx < 0) (-numeric.cast(isize, lenx) + 1) * incx else 0;
     const ky: isize = if (incy < 0) (-numeric.cast(isize, leny) + 1) * incy else 0;
 
     if (transa == .no_trans or transa == .conj_no_trans) {
-        // Form  y = alpha * A * x + y  or  y = alpha * conj(A) * x + y.
+        // Form `y = αA x + y` or `y = αA̅ x + y`.
         const unroll = 2 * (std.simd.suggestVectorLength(numeric.Fma(numeric.Mul(Al, X), A, Y)) orelse 2);
         comptime var tile_size = int.max(1, ((3 * options.l1_size) / 4) / (@sizeOf(Y) + @sizeOf(A)));
         tile_size = comptime int.max(1, tile_size -| (tile_size % unroll));
@@ -411,7 +411,7 @@ fn k_gemv(transa: linalg.blas.Transpose, m: usize, n: usize, alpha: anytype, a: 
             }
         }
     } else {
-        // Form  y = alpha * Aᵀ * x + y  or  y = alpha * Aᴴ * x + y.
+        // Form `y = αAᵀ x + y` or `y = αAᴴ x + y`.
         const unroll = 2 * (std.simd.suggestVectorLength(meta.Accumulator(numeric.Mul(A, X))) orelse 2);
         comptime var tile_size = int.max(1, ((3 * options.l1_size) / 4) / (@sizeOf(X) + @sizeOf(A)));
         tile_size -|= tile_size % unroll;
@@ -441,9 +441,9 @@ fn k_gemv(transa: linalg.blas.Transpose, m: usize, n: usize, alpha: anytype, a: 
             var jy: isize = ky;
             var j: usize = 0;
             while (j < n) : (j += 1) {
-                var temp = numeric.zero(meta.Accumulator(numeric.Mul(A, X)));
+                var temp = numeric.cast(meta.Accumulator(numeric.Mul(A, X)), 0);
 
-                var sums: [unroll]meta.Accumulator(numeric.Mul(A, X)) = .{numeric.zero(meta.Accumulator(numeric.Mul(A, X)))} ** unroll;
+                var sums: [unroll]meta.Accumulator(numeric.Mul(A, X)) = @splat(numeric.cast(meta.Accumulator(numeric.Mul(A, X)), 0));
 
                 var i: usize = 0;
                 while (i < (b_len / unroll) * unroll) : (i += unroll) {
@@ -466,7 +466,7 @@ fn k_gemv(transa: linalg.blas.Transpose, m: usize, n: usize, alpha: anytype, a: 
                 }
 
                 while (i < b_len) : (i += 1) {
-                    // temp += a[tile_i + i + j * lda] * x[i]
+                    // temp += a[tile_i + i + j * lda] x[i]
                     numeric.fmaInto(
                         &temp,
                         if (comptime noconj)

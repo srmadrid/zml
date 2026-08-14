@@ -255,8 +255,8 @@ fn k_syr2k(
         if (uplo == .upper) {
             for (0..n) |j| {
                 for (0..j + 1) |i| {
-                    var temp1 = numeric.zero(meta.Accumulator(numeric.Mul(A, B)));
-                    var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(A, B)));
+                    var temp1 = numeric.cast(meta.Accumulator(numeric.Mul(A, B)), 0);
+                    var temp2 = numeric.cast(meta.Accumulator(numeric.Mul(A, B)), 0);
 
                     for (0..k) |l| {
                         // temp1 += a[l + i * lda] * b[l + j * ldb]
@@ -292,8 +292,8 @@ fn k_syr2k(
         } else {
             for (0..n) |j| {
                 for (j..n) |i| {
-                    var temp1 = numeric.zero(meta.Accumulator(numeric.Mul(A, B)));
-                    var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(A, B)));
+                    var temp1 = numeric.cast(meta.Accumulator(numeric.Mul(A, B)), 0);
+                    var temp2 = numeric.cast(meta.Accumulator(numeric.Mul(A, B)), 0);
 
                     for (0..k) |l| {
                         // temp1 += a[l + i * lda] * b[l + j * ldb]

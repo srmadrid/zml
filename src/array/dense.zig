@@ -267,7 +267,7 @@ pub fn Dense(N: type) type {
                 arr.data[0] = start;
 
                 if (opts.retstep) |r|
-                    r.* = numeric.zero(N);
+                    r.* = numeric.cast(N, 0);
 
                 return arr;
             } else if (opts.num == 2) {

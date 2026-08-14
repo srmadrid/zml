@@ -143,15 +143,15 @@ pub fn Sparse(N: type, uplo: matrix.Uplo, diag: matrix.Diag, layout: matrix.Layo
 
             if (comptime uplo == .upper) {
                 if (r > c)
-                    return numeric.zero(N);
+                    return numeric.cast(N, 0);
             } else {
                 if (r < c)
-                    return numeric.zero(N);
+                    return numeric.cast(N, 0);
             }
 
             if (comptime diag == .unit) {
                 if (r == c)
-                    return numeric.one(N);
+                    return numeric.cast(N, 1);
             }
 
             const major = if (comptime layout == .col_major) c else r;
@@ -172,7 +172,7 @@ pub fn Sparse(N: type, uplo: matrix.Uplo, diag: matrix.Diag, layout: matrix.Layo
                 }
             }
 
-            return numeric.zero(N);
+            return numeric.cast(N, 0);
         }
 
         /// Sets the element at the specified position.

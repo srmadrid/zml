@@ -195,6 +195,8 @@ fn free(context: *anyopaque, memory: []u8, alignment: std.mem.Alignment, ra: usi
 /// ## Returns
 /// `meta.NumericType`: The corresponding `meta.NumericType` enum value.
 pub inline fn numericType(comptime N: type) NumericType {
+    @setEvalBranchQuota(10_000);
+
     switch (comptime @typeInfo(N)) {
         .bool => return .bool,
         .int, .comptime_int => return .int,

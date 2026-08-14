@@ -20,7 +20,7 @@ fn k_apply1IntoUnchecked(
     const X = @TypeOf(x);
 
     for (0..O.size) |i| {
-        opInto(&o.data[i], numeric.zero(meta.Numeric(X)));
+        opInto(&o.data[i], numeric.cast(meta.Numeric(X), 0));
     }
 
     if (x.nnz == 0)

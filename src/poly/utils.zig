@@ -28,7 +28,7 @@ pub fn format(formatter: anytype, comptime num_fmt: []const u8, degree: usize, w
         i -= 1;
 
         const val = formatter.poly.get(i) catch unreachable;
-        if (numeric.eq(val, numeric.zero(@TypeOf(val))))
+        if (numeric.eq(val, 0))
             continue;
 
         if (printed_any_terms)
@@ -47,5 +47,5 @@ pub fn format(formatter: anytype, comptime num_fmt: []const u8, degree: usize, w
     }
 
     if (!printed_any_terms)
-        try writer.print(num_fmt, .{numeric.zero(meta.Numeric(meta.Child(@TypeOf(formatter.poly))))});
+        try writer.print(num_fmt, .{numeric.cast(meta.Numeric(meta.Child(@TypeOf(formatter.poly))), 0)});
 }

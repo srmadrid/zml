@@ -41,7 +41,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                     opInto(
                         &o.data[o._index(i, j)],
                         x_eff,
-                        numeric.zero(meta.Numeric(Y)),
+                        numeric.cast(meta.Numeric(Y), 0),
                     );
                 }
             }
@@ -51,7 +51,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                     opInto(
                         &o.data[o._index(j, j)],
                         x_eff,
-                        numeric.one(meta.Numeric(Y)),
+                        numeric.cast(meta.Numeric(Y), 1),
                     )
                 else
                     opInto(
@@ -81,7 +81,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                     opInto(
                         &o.data[o._index(i, j)],
                         x_eff,
-                        numeric.zero(meta.Numeric(Y)),
+                        numeric.cast(meta.Numeric(Y), 0),
                     );
                 }
             }
@@ -106,7 +106,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                     opInto(
                         &o.data[o._index(i, j)],
                         x_eff,
-                        numeric.zero(meta.Numeric(Y)),
+                        numeric.cast(meta.Numeric(Y), 0),
                     );
                 }
             }
@@ -116,7 +116,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                     opInto(
                         &o.data[o._index(i, i)],
                         x_eff,
-                        numeric.one(meta.Numeric(Y)),
+                        numeric.cast(meta.Numeric(Y), 1),
                     )
                 else
                     opInto(
@@ -146,7 +146,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                     opInto(
                         &o.data[o._index(i, j)],
                         x_eff,
-                        numeric.zero(meta.Numeric(Y)),
+                        numeric.cast(meta.Numeric(Y), 0),
                     );
                 }
             }

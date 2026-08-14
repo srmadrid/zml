@@ -7,9 +7,6 @@ const ops = @import("numeric/ops.zig");
 pub const highest = constants.highest;
 pub const lowest = constants.lowest;
 pub const smallest = constants.smallest;
-pub const zero = constants.zero;
-pub const one = constants.one;
-pub const two = constants.two;
 
 // Utilities
 pub const Coerce = ops.Coerce;

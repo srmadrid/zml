@@ -16,25 +16,25 @@ const complex = @import("../complex.zig");
 /// ## Returns
 /// `@TypeOf(z)`: The square root of `z`.
 pub fn sqrt(z: anytype) @TypeOf(z) {
-    if (numeric.eq(z.re, numeric.zero(@TypeOf(z.re))) and
-        numeric.eq(z.im, numeric.zero(@TypeOf(z.im))))
+    if (numeric.eq(z.re, 0) and
+        numeric.eq(z.im, 0))
         return z;
 
     const a = numeric.abs(z.re);
     const b = numeric.abs(z.im);
     const r = numeric.abs(z);
 
-    const w = numeric.sqrt(numeric.div(numeric.add(r, a), numeric.two(@TypeOf(z.re))));
+    const w = numeric.sqrt(numeric.div(numeric.add(r, a), 2));
 
-    if (numeric.ge(z.re, numeric.zero(@TypeOf(z.re)))) {
+    if (numeric.ge(z.re, 0)) {
         return .{
             .re = w,
-            .im = numeric.div(z.im, numeric.mul(numeric.two(@TypeOf(z.re)), w)),
+            .im = numeric.div(z.im, numeric.mul(2, w)),
         };
     } else {
         return .{
-            .re = numeric.div(b, numeric.mul(numeric.two(@TypeOf(z.re)), w)),
-            .im = if (numeric.ge(z.im, numeric.zero(@TypeOf(z.im)))) w else numeric.neg(w),
+            .re = numeric.div(b, numeric.mul(2, w)),
+            .im = if (numeric.ge(z.im, 0)) w else numeric.neg(w),
         };
     }
 }

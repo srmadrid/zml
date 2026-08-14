@@ -9,7 +9,7 @@ pub fn norm(x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)
 
     switch (comptime order) {
         .l1, .l2, .inf, .p => {
-            var max_val = numeric.zero(R);
+            var max_val = numeric.cast(R, 0);
 
             for (0..int.min(x.rows, x.cols)) |i| {
                 numeric.maxInto(
@@ -22,7 +22,7 @@ pub fn norm(x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)
             return numeric.cast(R, max_val);
         },
         .frobenius => {
-            var sum = numeric.zero(meta.Accumulator(R));
+            var sum = numeric.cast(meta.Accumulator(R), 0);
 
             for (0..int.min(x.rows, x.cols)) |i| {
                 // sum += abs(x[i])²

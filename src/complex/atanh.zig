@@ -23,9 +23,9 @@ pub fn atanh(z: anytype) @TypeOf(z) {
 
     return numeric.div(
         numeric.sub(
-            numeric.ln(numeric.add(numeric.one(Z), z)),
-            numeric.ln(numeric.sub(numeric.one(Z), z)),
+            numeric.ln(numeric.add(1, z)),
+            numeric.ln(numeric.sub(1, z)),
         ),
-        numeric.two(Z),
+        2,
     );
 }

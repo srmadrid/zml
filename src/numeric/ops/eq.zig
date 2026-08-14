@@ -67,8 +67,8 @@ pub fn eq(x: anytype, y: anytype) bool {
             .dyadic => return dyadic.eq(x, y),
             .complex => switch (comptime meta.numericType(meta.Scalar(Y))) {
                 .bool, .int => unreachable,
-                .float => return float.eq(x, y.re) and float.eq(numeric.zero(X), y.im),
-                .dyadic => return dyadic.eq(x, y.re) and dyadic.eq(numeric.zero(X), y.im),
+                .float => return float.eq(x, y.re) and float.eq(0, y.im),
+                .dyadic => return dyadic.eq(x, y.re) and dyadic.eq(0, y.im),
                 .complex, .custom => unreachable,
             },
             .custom => unreachable,
@@ -79,8 +79,8 @@ pub fn eq(x: anytype, y: anytype) bool {
             .dyadic => return dyadic.eq(x, y),
             .complex => switch (comptime meta.numericType(meta.Scalar(Y))) {
                 .bool, .int => unreachable,
-                .float => return float.eq(x, y.re) and float.eq(numeric.zero(X), y.im),
-                .dyadic => return dyadic.eq(x, y.re) and dyadic.eq(numeric.zero(X), y.im),
+                .float => return float.eq(x, y.re) and float.eq(0, y.im),
+                .dyadic => return dyadic.eq(x, y.re) and dyadic.eq(0, y.im),
                 .complex, .custom => unreachable,
             },
             .custom => unreachable,
@@ -90,8 +90,8 @@ pub fn eq(x: anytype, y: anytype) bool {
             .dyadic => return dyadic.eq(x, y),
             .complex => switch (comptime meta.numericType(meta.Scalar(Y))) {
                 .bool, .int => unreachable,
-                .float => return float.eq(x, y.re) and float.eq(numeric.zero(X), y.im),
-                .dyadic => return dyadic.eq(x, y.re) and dyadic.eq(numeric.zero(X), y.im),
+                .float => return float.eq(x, y.re) and float.eq(0, y.im),
+                .dyadic => return dyadic.eq(x, y.re) and dyadic.eq(0, y.im),
                 .complex, .custom => unreachable,
             },
             .custom => unreachable,
@@ -100,8 +100,8 @@ pub fn eq(x: anytype, y: anytype) bool {
             .bool, .int, .float, .dyadic => return dyadic.eq(x, y),
             .complex => switch (comptime meta.numericType(meta.Scalar(Y))) {
                 .bool, .int => unreachable,
-                .float => return float.eq(x, y.re) and float.eq(numeric.zero(X), y.im),
-                .dyadic => return dyadic.eq(x, y.re) and dyadic.eq(numeric.zero(X), y.im),
+                .float => return float.eq(x, y.re) and float.eq(0, y.im),
+                .dyadic => return dyadic.eq(x, y.re) and dyadic.eq(0, y.im),
                 .complex, .custom => unreachable,
             },
             .custom => unreachable,
@@ -109,8 +109,8 @@ pub fn eq(x: anytype, y: anytype) bool {
         .complex => switch (comptime meta.numericType(meta.Scalar(X))) {
             .bool, .int => unreachable,
             .float => switch (comptime meta.numericType(Y)) {
-                .bool, .int, .float => return float.eq(x.re, y) and float.eq(x.im, numeric.zero(Y)),
-                .dyadic => return dyadic.eq(x.re, y) and dyadic.eq(x.im, numeric.zero(Y)),
+                .bool, .int, .float => return float.eq(x.re, y) and float.eq(x.im, 0),
+                .dyadic => return dyadic.eq(x.re, y) and dyadic.eq(x.im, 0),
                 .complex => switch (comptime meta.numericType(meta.Scalar(Y))) {
                     .bool, .int => unreachable,
                     .float => return float.eq(x.re, y.re) and float.eq(x.im, y.im),
@@ -120,7 +120,7 @@ pub fn eq(x: anytype, y: anytype) bool {
                 .custom => unreachable,
             },
             .dyadic => switch (comptime meta.numericType(Y)) {
-                .bool, .int, .float, .dyadic => return dyadic.eq(x.re, y) and dyadic.eq(x.im, numeric.zero(Y)),
+                .bool, .int, .float, .dyadic => return dyadic.eq(x.re, y) and dyadic.eq(x.im, 0),
                 .complex => return dyadic.eq(x.re, y.re) and dyadic.eq(x.im, y.im),
                 .custom => unreachable,
             },

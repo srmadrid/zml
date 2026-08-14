@@ -7,7 +7,7 @@ pub fn norm(x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)
     const R = linalg.Norm(X, order);
 
     switch (comptime order) {
-        .l1, .l2, .inf, .p => return numeric.one(R),
+        .l1, .l2, .inf, .p => return numeric.cast(R, 1),
         .frobenius => return numeric.cast(R, numeric.sqrt(numeric.cast(R, x.rows))),
     }
 }

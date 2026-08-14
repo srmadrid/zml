@@ -257,7 +257,7 @@ fn k_herk(
         if (uplo == .upper) {
             for (0..n) |j| {
                 for (0..j) |i| {
-                    var temp = numeric.zero(meta.Accumulator(numeric.Mul(A, A)));
+                    var temp = numeric.cast(meta.Accumulator(numeric.Mul(A, A)), 0);
 
                     for (0..k) |l| {
                         // temp += conj(a[l + i * lda]) * a[l + j * lda]
@@ -278,7 +278,7 @@ fn k_herk(
                     );
                 }
 
-                var rtemp = numeric.zero(meta.Real(A));
+                var rtemp = numeric.cast(meta.Real(A), 0);
 
                 for (0..k) |l| {
                     // rtemp += re(conj(a[l + j * lda]) * a[l + j * lda])
@@ -302,7 +302,7 @@ fn k_herk(
             }
         } else {
             for (0..n) |j| {
-                var rtemp = numeric.zero(meta.Real(A));
+                var rtemp = numeric.cast(meta.Real(A), 0);
 
                 for (0..k) |l| {
                     // rtemp += re(conj(a[l + j * lda]) * a[l + j * lda])
@@ -325,7 +325,7 @@ fn k_herk(
                 );
 
                 for (j + 1..n) |i| {
-                    var temp = numeric.zero(meta.Accumulator(numeric.Mul(A, A)));
+                    var temp = numeric.cast(meta.Accumulator(numeric.Mul(A, A)), 0);
 
                     for (0..k) |l| {
                         // temp += conj(a[l + i * lda]) * a[l + j * lda]

@@ -29,13 +29,13 @@ fn k_apply1IntoUnchecked(
 
     if (o.isContiguous(.c) or o.isContiguous(.f)) {
         for (0..o._size()) |i| {
-            opInto(&o.data[i], numeric.zero(meta.Numeric(X)));
+            opInto(&o.data[i], numeric.cast(meta.Numeric(X), 0));
         }
     } else {
         if (numeric.abs(o.strides[o.ndim - 1]) <= numeric.abs(o.strides[0]))
-            fillZeroStrided(o, opInto, numeric.zero(meta.Numeric(X)), true, 0, 0)
+            fillZeroStrided(o, opInto, numeric.cast(meta.Numeric(X), 0), true, 0, 0)
         else
-            fillZeroStrided(o, opInto, numeric.zero(meta.Numeric(X)), false, 0, 0);
+            fillZeroStrided(o, opInto, numeric.cast(meta.Numeric(X), 0), false, 0, 0);
     }
 
     if (x.nnz == 0)

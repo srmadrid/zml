@@ -59,7 +59,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                                 x.data[x._index(i, j)]
                             else
                                 numeric.conj(x.data[x._index(i, j)]),
-                            numeric.zero(meta.Numeric(Y)),
+                            numeric.cast(meta.Numeric(Y), 0),
                         );
                     }
                 }
@@ -68,7 +68,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                     while (i < int.min(j, o.rows)) : (i += 1) {
                         opInto(
                             &o.data[o._index(i, j)],
-                            numeric.zero(meta.Numeric(X)),
+                            numeric.cast(meta.Numeric(X), 0),
                             if (comptime noconj_o == noconj_y)
                                 y.data[y._index(i, j)]
                             else
@@ -77,7 +77,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                     }
                 } else {
                     while (i < int.min(j, o.rows)) : (i += 1) {
-                        opInto(&o.data[o._index(i, j)], numeric.zero(meta.Numeric(X)), numeric.zero(meta.Numeric(Y)));
+                        opInto(&o.data[o._index(i, j)], numeric.cast(meta.Numeric(X), 0), numeric.cast(meta.Numeric(Y), 0));
                     }
                 }
             }
@@ -85,11 +85,11 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
             if (j < o.rows) {
                 if (comptime meta.diagOf(X) == .unit) {
                     if (comptime meta.diagOf(Y) == .unit)
-                        opInto(&o.data[o._index(j, j)], numeric.one(meta.Numeric(X)), numeric.one(meta.Numeric(Y)))
+                        opInto(&o.data[o._index(j, j)], numeric.cast(meta.Numeric(X), 1), numeric.cast(meta.Numeric(Y), 1))
                     else
                         opInto(
                             &o.data[o._index(j, j)],
-                            numeric.one(meta.Numeric(X)),
+                            numeric.cast(meta.Numeric(X), 1),
                             if (comptime noconj_o == noconj_y)
                                 y.data[y._index(j, j)]
                             else
@@ -103,7 +103,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                                 x.data[x._index(j, j)]
                             else
                                 numeric.conj(x.data[x._index(j, j)]),
-                            numeric.one(meta.Numeric(Y)),
+                            numeric.cast(meta.Numeric(Y), 1),
                         )
                     else
                         opInto(
@@ -144,7 +144,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                                 x.data[x._index(i, j)]
                             else
                                 numeric.conj(x.data[x._index(i, j)]),
-                            numeric.zero(meta.Numeric(Y)),
+                            numeric.cast(meta.Numeric(Y), 0),
                         );
                     }
                 }
@@ -153,7 +153,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                     while (i < o.rows) : (i += 1) {
                         opInto(
                             &o.data[o._index(i, j)],
-                            numeric.zero(meta.Numeric(X)),
+                            numeric.cast(meta.Numeric(X), 0),
                             if (comptime noconj_o == noconj_y)
                                 y.data[y._index(i, j)]
                             else
@@ -162,7 +162,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                     }
                 } else {
                     while (i < o.rows) : (i += 1) {
-                        opInto(&o.data[o._index(i, j)], numeric.zero(meta.Numeric(X)), numeric.zero(meta.Numeric(Y)));
+                        opInto(&o.data[o._index(i, j)], numeric.cast(meta.Numeric(X), 0), numeric.cast(meta.Numeric(Y), 0));
                     }
                 }
             }
@@ -194,7 +194,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                                 x.data[x._index(i, j)]
                             else
                                 numeric.conj(x.data[x._index(i, j)]),
-                            numeric.zero(meta.Numeric(Y)),
+                            numeric.cast(meta.Numeric(Y), 0),
                         );
                     }
                 }
@@ -203,7 +203,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                     while (j < int.min(i, o.cols)) : (j += 1) {
                         opInto(
                             &o.data[o._index(i, j)],
-                            numeric.zero(meta.Numeric(X)),
+                            numeric.cast(meta.Numeric(X), 0),
                             if (comptime noconj_o == noconj_y)
                                 y.data[y._index(i, j)]
                             else
@@ -212,7 +212,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                     }
                 } else {
                     while (j < int.min(i, o.cols)) : (j += 1) {
-                        opInto(&o.data[o._index(i, j)], numeric.zero(meta.Numeric(X)), numeric.zero(meta.Numeric(Y)));
+                        opInto(&o.data[o._index(i, j)], numeric.cast(meta.Numeric(X), 0), numeric.cast(meta.Numeric(Y), 0));
                     }
                 }
             }
@@ -220,11 +220,11 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
             if (i < o.cols) {
                 if (comptime meta.diagOf(X) == .unit) {
                     if (comptime meta.diagOf(Y) == .unit)
-                        opInto(&o.data[o._index(i, i)], numeric.one(meta.Numeric(X)), numeric.one(meta.Numeric(Y)))
+                        opInto(&o.data[o._index(i, i)], numeric.cast(meta.Numeric(X), 1), numeric.cast(meta.Numeric(Y), 1))
                     else
                         opInto(
                             &o.data[o._index(i, i)],
-                            numeric.one(meta.Numeric(X)),
+                            numeric.cast(meta.Numeric(X), 1),
                             if (comptime noconj_o == noconj_y)
                                 y.data[y._index(i, i)]
                             else
@@ -238,7 +238,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                                 x.data[x._index(i, i)]
                             else
                                 numeric.conj(x.data[x._index(i, i)]),
-                            numeric.one(meta.Numeric(Y)),
+                            numeric.cast(meta.Numeric(Y), 1),
                         )
                     else
                         opInto(
@@ -279,7 +279,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                                 x.data[x._index(i, j)]
                             else
                                 numeric.conj(x.data[x._index(i, j)]),
-                            numeric.zero(meta.Numeric(Y)),
+                            numeric.cast(meta.Numeric(Y), 0),
                         );
                     }
                 }
@@ -288,7 +288,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                     while (j < o.cols) : (j += 1) {
                         opInto(
                             &o.data[o._index(i, j)],
-                            numeric.zero(meta.Numeric(X)),
+                            numeric.cast(meta.Numeric(X), 0),
                             if (comptime noconj_o == noconj_y)
                                 y.data[y._index(i, j)]
                             else
@@ -297,7 +297,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                     }
                 } else {
                     while (j < o.cols) : (j += 1) {
-                        opInto(&o.data[o._index(i, j)], numeric.zero(meta.Numeric(X)), numeric.zero(meta.Numeric(Y)));
+                        opInto(&o.data[o._index(i, j)], numeric.cast(meta.Numeric(X), 0), numeric.cast(meta.Numeric(Y), 0));
                     }
                 }
             }

@@ -14,7 +14,8 @@ pub fn Normalize(comptime X: type, comptime norm_order: linalg.NormOrder(meta.Nu
     return vector.Div(X, linalg.Norm(X, norm_order));
 }
 
-/// Normalizes a static vector, x/‖x‖, such that ‖x‖ = 1 according to a chosen norm.
+/// Normalizes a static vector, `x / ‖x‖`, such that `‖x‖ = 1` according to a
+/// chosen norm.
 ///
 /// ## Signature
 /// ```zig
@@ -26,7 +27,7 @@ pub fn Normalize(comptime X: type, comptime norm_order: linalg.NormOrder(meta.Nu
 /// * `order` (`comptime linalg.NormOrder(meta.Numeric(X))`): the norm order.
 ///
 /// ## Returns
-/// `linalg.Normalize(@TypeOf(x), order)`: The vector normalized, x/‖x‖.
+/// `linalg.Normalize(@TypeOf(x), order)`: The normalized vector, `x / ‖x‖`.
 pub fn normalize(x: anytype, comptime norm_order: linalg.NormOrder(meta.Numeric(@TypeOf(x)))) linalg.Normalize(@TypeOf(x), norm_order) {
     const X: type = @TypeOf(x);
 
@@ -37,8 +38,8 @@ pub fn normalize(x: anytype, comptime norm_order: linalg.NormOrder(meta.Numeric(
     return vector.div(x, linalg.norm(x, norm_order));
 }
 
-/// Normalizes a vector, x/‖x‖, such that ‖x‖ = 1 according to a chosen norm,
-/// dynamically allocating memory for the result.
+/// Normalizes a vector, `x / ‖x‖`, such that `‖x‖ = 1` according to a chosen
+/// norm, dynamically allocating memory for the result.
 ///
 /// ## Signature
 /// ```zig
@@ -52,7 +53,7 @@ pub fn normalize(x: anytype, comptime norm_order: linalg.NormOrder(meta.Numeric(
 /// * `order` (`comptime linalg.NormOrder(meta.Numeric(X))`): the norm order.
 ///
 /// ## Returns
-/// `linalg.Normalize(@TypeOf(x), order)`: The normalized vector, x/‖x‖.
+/// `linalg.Normalize(@TypeOf(x), order)`: The normalized vector, `x / ‖x‖`.
 ///
 /// ## Errors
 /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
@@ -60,8 +61,8 @@ pub fn normalizeAlloc(allocator: std.mem.Allocator, x: anytype, comptime norm_or
     return vector.divAlloc(allocator, x, linalg.norm(x, norm_order));
 }
 
-/// Normalizes a vector, x/‖x‖, such that ‖x‖ = 1 according to a chosen norm,
-/// storing the result in an output vector.
+/// Normalizes a vector, `x / ‖x‖`, such that `‖x‖ = 1` according to a chosen
+/// norm, storing the result in an output vector.
 ///
 /// Exact aliasing (in-place modification) between the output and an input is
 /// permitted.
@@ -107,9 +108,9 @@ pub fn normalizeInto(o: anytype, x: anytype, comptime norm_order: linalg.NormOrd
     return vector.divIntoUnchecked(o, x, linalg.norm(x, norm_order));
 }
 
-/// Normalizes a vector, x/‖x‖, such that ‖x‖ = 1 according to a chosen norm,
-/// storing the result in an output vector, and without performing any length
-/// checks.
+/// Normalizes a vector, `x / ‖x‖`, such that `‖x‖ = 1` according to a chosen
+/// norm, storing the result in an output vector, and without performing any
+/// length checks.
 ///
 /// Exact aliasing (in-place modification) between the output and an input is
 /// permitted.

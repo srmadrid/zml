@@ -170,7 +170,7 @@ pub fn Sparse(N: type, uplo: matrix.Uplo, layout: matrix.Layout) type {
                 }
             }
 
-            return numeric.zero(N);
+            return numeric.cast(N, 0);
         }
 
         /// Sets the element at the specified index.

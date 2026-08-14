@@ -20,7 +20,7 @@ pub fn Trace(comptime X: type) type {
     return numeric.Add(meta.Numeric(X), meta.Numeric(X));
 }
 
-/// Computes the trace of a matrix, tr(x) = ∑ᵢ xᵢᵢ.
+/// Computes the trace of a matrix, `tr(x) = ∑ᵢ xᵢᵢ`.
 ///
 /// ## Signature
 /// ```zig
@@ -31,7 +31,7 @@ pub fn Trace(comptime X: type) type {
 /// * `x` (`anytype`): The matrix.
 ///
 /// ## Returns
-/// `linalg.Trace(@TypeOf(x))`: The trace tr(x).
+/// `linalg.Trace(@TypeOf(x))`: The trace `tr(x)`.
 ///
 /// ## Errors
 /// * `linalg.Error.DimensionMismatch`: If the input is not square.
@@ -46,7 +46,7 @@ pub fn trace(x: anytype) !linalg.Trace(@TypeOf(x)) {
     return traceUnchecked(x);
 }
 
-/// Computes the trace of a matrix, tr(x) = ∑ᵢ xᵢᵢ, without performing dimension
+/// Computes the trace of a matrix, `tr(x) = ∑ᵢ xᵢᵢ`, without performing dimension
 /// checks.
 ///
 /// ## Signature
@@ -58,7 +58,7 @@ pub fn trace(x: anytype) !linalg.Trace(@TypeOf(x)) {
 /// * `x` (`anytype`): The matrix.
 ///
 /// ## Returns
-/// `linalg.Trace(@TypeOf(x))`: The trace tr(x).
+/// `linalg.Trace(@TypeOf(x))`: The trace `tr(x)`.
 pub fn traceUnchecked(x: anytype) linalg.Trace(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 

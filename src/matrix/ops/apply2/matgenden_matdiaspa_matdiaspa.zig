@@ -37,7 +37,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
         while (j < o.cols) : (j += 1) {
             var i: usize = 0;
             while (i < int.min(j, o.rows)) : (i += 1) {
-                opInto(&o.data[o._index(i, j)], numeric.zero(meta.Numeric(X)), numeric.zero(meta.Numeric(Y)));
+                opInto(&o.data[o._index(i, j)], numeric.cast(meta.Numeric(X), 0), numeric.cast(meta.Numeric(Y), 0));
             }
 
             if (j < o.rows) {
@@ -56,7 +56,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
 
             i = int.min(j + 1, o.rows);
             while (i < o.rows) : (i += 1) {
-                opInto(&o.data[o._index(i, j)], numeric.zero(meta.Numeric(X)), numeric.zero(meta.Numeric(Y)));
+                opInto(&o.data[o._index(i, j)], numeric.cast(meta.Numeric(X), 0), numeric.cast(meta.Numeric(Y), 0));
             }
         }
     } else {
@@ -64,7 +64,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
         while (i < o.rows) : (i += 1) {
             var j: usize = 0;
             while (j < int.min(i, o.cols)) : (j += 1) {
-                opInto(&o.data[o._index(i, j)], numeric.zero(meta.Numeric(X)), numeric.zero(meta.Numeric(Y)));
+                opInto(&o.data[o._index(i, j)], numeric.cast(meta.Numeric(X), 0), numeric.cast(meta.Numeric(Y), 0));
             }
 
             if (i < o.cols) {
@@ -83,7 +83,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
 
             j = int.min(i + 1, o.cols);
             while (j < o.cols) : (j += 1) {
-                opInto(&o.data[o._index(i, j)], numeric.zero(meta.Numeric(X)), numeric.zero(meta.Numeric(Y)));
+                opInto(&o.data[o._index(i, j)], numeric.cast(meta.Numeric(X), 0), numeric.cast(meta.Numeric(Y), 0));
             }
         }
     }

@@ -7,13 +7,21 @@ const autodiff = @import("../autodiff.zig");
 const stats = @import("../stats.zig");
 
 pub fn isDual(T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_dual") and T.is_dual,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"struct" => blk: {
+            comptime if (@hasField(T, "val") and @hasField(T, "eps")) {
+                const Val = @TypeOf(@field(@as(T, undefined), "val"));
+                const Eps = @TypeOf(@field(@as(T, undefined), "eps"));
+
+                if (Val == Eps and meta.isNumeric(Val))
+                    break :blk true;
+            };
+        },
+        else => false,
+    };
 }
 
-/// Represents a dual number `x + yϵ`, where `ϵ² = 0`.
+/// Represents a dual number `x + yε`, where `ε² = 0`.
 pub fn Dual(comptime N: type) type {
     if (comptime !meta.isNumeric(N))
         @compileError("zsl.autodiff.Dual: N must be a numeric type, got \n\tN: " ++ @typeName(N) ++ "\n");
@@ -24,7 +32,9 @@ pub fn Dual(comptime N: type) type {
 
         // Type signature
         pub const is_numeric = true;
-        pub const is_dual = true;
+        pub const is_integral = meta.isIntegral(N);
+        pub const is_complex = meta.isComplex(N);
+        pub const is_unsigned = meta.isUnsigned(N);
 
         pub const Accumulator = Dual(meta.Accumulator(N));
         pub const Real = Dual(meta.Real(N));
@@ -33,22 +43,6 @@ pub fn Dual(comptime N: type) type {
         pub const empty: autodiff.Dual(N) = .{
             .val = undefined,
             .eps = undefined,
-        };
-
-        // Constants
-        pub const zero: autodiff.Dual(N) = .{
-            .val = numeric.zero(N),
-            .eps = numeric.zero(N),
-        };
-
-        pub const one: autodiff.Dual(N) = .{
-            .val = numeric.one(N),
-            .eps = numeric.zero(N),
-        };
-
-        pub const two: autodiff.Dual(N) = .{
-            .val = numeric.two(N),
-            .eps = numeric.zero(N),
         };
 
         // Basic operations
@@ -142,15 +136,15 @@ pub fn Dual(comptime N: type) type {
 
         pub fn standardUniform(prng: std.Random) autodiff.Dual(N) {
             return .{
-                .val = stats.Uniform(N).sample(.{ .min = numeric.zero(N), .max = numeric.one(N) }, prng),
-                .eps = numeric.zero(N),
+                .val = stats.Uniform(N).sample(.{ .min = numeric.cast(N, 0), .max = numeric.cast(N, 1) }, prng),
+                .eps = numeric.cast(N, 0),
             };
         }
 
         pub fn fromFloat(x: anytype) autodiff.Dual(N) {
             return .{
                 .val = numeric.cast(N, x),
-                .eps = numeric.zero(N),
+                .eps = numeric.cast(N, 0),
             };
         }
 
@@ -158,7 +152,7 @@ pub fn Dual(comptime N: type) type {
             return numeric.cast(Float, self.val);
         }
 
-        pub fn toComplex(self: Dual(N), comptime Complex: type) Complex {
+        pub fn toComplex(self: autodiff.Dual(N), comptime Complex: type) Complex {
             return numeric.cast(Complex, self.val);
         }
     };
@@ -174,22 +168,22 @@ pub fn Abs(comptime X: type) type {
 pub fn abs(x: anytype) autodiff.dual.Abs(@TypeOf(x)) {
     const absx = numeric.abs(x.val);
 
-    return if (comptime !meta.isComplex(meta.Scalar(@TypeOf(x))))
+    return if (comptime meta.isReal(@TypeOf(x)))
         .{
-            // |x|
+            // `|x|`.
             .val = absx,
 
-            // sign(x) * y
+            // `sign(x) * y`.
             .eps = numeric.mul(numeric.sign(x.val), x.eps),
         }
     else
         .{
-            // |x| = √(re(x)² + im(x)²)
+            // `|x| = √(Re{x}² + Im{x}²)`.
             .val = absx,
 
-            // if (x == 0)  0  else  (re(x) * re(y) + im(x) * im(y)) / |x|
-            .eps = if (numeric.eq(x.val, numeric.zero(@TypeOf(x.val))))
-                numeric.zero(@TypeOf(x.val))
+            // `if (x == 0)  0  else  (Re{x} * Re{y} + Im{x} * Im{y}) / |x|`.
+            .eps = if (numeric.eq(x.val, 0))
+                numeric.cast(meta.Scalar(@TypeOf(x)), 0)
             else
                 numeric.div(
                     numeric.add(
@@ -209,20 +203,20 @@ pub fn Abs1(comptime X: type) type {
 }
 
 pub fn abs1(x: anytype) autodiff.dual.Abs1(@TypeOf(x)) {
-    return if (comptime !meta.isComplex(meta.Scalar(@TypeOf(x))))
+    return if (comptime meta.isReal(@TypeOf(x)))
         .{
-            // |x|
+            // `|x|`.
             .val = numeric.abs1(x.val),
 
-            // sign(x) * y
+            // `sign(x) * y`.
             .eps = numeric.mul(numeric.sign(x.val), x.eps),
         }
     else
         .{
-            // |re(x)| + |im(x)|
+            // `|Re{x}| + |Im{x}|`.
             .val = numeric.abs1(x.val),
 
-            // sign(re(x)) * re(y) + sign(im(x)) * im(y)
+            // `sign(Re{x}) * Re{y} + sign(Im{x}) * Im{y}`.
             .eps = numeric.add(
                 numeric.mul(numeric.sign(numeric.re(x.val)), numeric.re(x.eps)),
                 numeric.mul(numeric.sign(numeric.im(x.val)), numeric.im(x.eps)),
@@ -238,22 +232,22 @@ pub fn Abs2(comptime X: type) type {
 }
 
 pub fn abs2(x: anytype) autodiff.dual.Abs2(@TypeOf(x)) {
-    return if (comptime !meta.isComplex(meta.Scalar(@TypeOf(x))))
+    return if (comptime meta.isReal(@TypeOf(x)))
         .{
-            // |x|²
+            // `|x|²`.
             .val = numeric.abs2(x.val),
 
-            // 2 * x * y
-            .eps = numeric.mul(numeric.two(meta.Scalar(@TypeOf(x))), numeric.mul(x.val, x.eps)),
+            // `2 * x * y`.
+            .eps = numeric.mul(numeric.cast(meta.Scalar(@TypeOf(x)), 2), numeric.mul(x.val, x.eps)),
         }
     else
         .{
-            // |x|² = re(x)² + im(x)²
+            // `|x|² = Re{x}² + Im{x}²`.
             .val = numeric.abs2(x.val),
 
-            // 2 * (re(x) * re(y) + im(x) * im(y))
+            // `2 * (Re{x} * Re{y} + Im{x} * Im{y})`.
             .eps = numeric.mul(
-                numeric.two(meta.Scalar(@TypeOf(x))),
+                2,
                 numeric.add(
                     numeric.mul(numeric.re(x.val), numeric.re(x.eps)),
                     numeric.mul(numeric.im(x.val), numeric.im(x.eps)),
@@ -271,10 +265,10 @@ pub fn Neg(comptime X: type) type {
 
 pub fn neg(x: anytype) autodiff.dual.Neg(@TypeOf(x)) {
     return .{
-        // -x
+        // `-x`.
         .val = numeric.neg(x.val),
 
-        // -y
+        // `-y`.
         .eps = numeric.neg(x.eps),
     };
 }
@@ -288,10 +282,10 @@ pub fn Re(comptime X: type) type {
 
 pub fn re(x: anytype) autodiff.dual.Re(@TypeOf(x)) {
     return .{
-        // re(x)
+        // `Re{x}`.
         .val = numeric.re(x.val),
 
-        // re(y)
+        // `Re{y}`.
         .eps = numeric.re(x.eps),
     };
 }
@@ -305,10 +299,10 @@ pub fn Im(comptime X: type) type {
 
 pub fn im(x: anytype) autodiff.dual.Im(@TypeOf(x)) {
     return .{
-        // im(x)
+        // `Im{x}`.
         .val = numeric.im(x.val),
 
-        // im(y)
+        // `Im{y}`.
         .eps = numeric.im(x.eps),
     };
 }
@@ -322,10 +316,10 @@ pub fn Conj(comptime X: type) type {
 
 pub fn conj(x: anytype) autodiff.dual.Conj(@TypeOf(x)) {
     return .{
-        // conj(x)
+        // `x̅`.
         .val = numeric.conj(x.val),
 
-        // conj(y)
+        // `y̅`.
         .eps = numeric.conj(x.eps),
     };
 }
@@ -338,22 +332,22 @@ pub fn Sign(comptime X: type) type {
 }
 
 pub fn sign(x: anytype) autodiff.dual.Sign(@TypeOf(x)) {
-    if (comptime !meta.isComplex(meta.Scalar(@TypeOf(x)))) {
+    if (comptime meta.isReal(@TypeOf(x))) {
         return .{
-            // sign(x)
+            // `sign(x)`.
             .val = numeric.sign(x.val),
 
-            // 0
-            .eps = numeric.zero(meta.Scalar(@TypeOf(x))),
+            // `0`.
+            .eps = numeric.cast(meta.Scalar(@TypeOf(x)), 0),
         };
     } else {
-        if (numeric.eq(x.val, numeric.zero(@TypeOf(x.val)))) {
+        if (numeric.eq(x.val, numeric.cast(meta.Scalar(@TypeOf(x)), 0))) {
             return .{
-                // 0
-                .val = numeric.zero(@TypeOf(x.val)),
+                // `0`.
+                .val = numeric.cast(meta.Scalar(@TypeOf(x)), 0),
 
-                // 0
-                .eps = numeric.zero(@TypeOf(x.eps)),
+                // `0`.
+                .eps = numeric.cast(meta.Scalar(@TypeOf(x)), 0),
             };
         }
 
@@ -361,10 +355,10 @@ pub fn sign(x: anytype) autodiff.dual.Sign(@TypeOf(x)) {
         const signx = numeric.div(x.val, absx);
 
         return .{
-            // sign(x) = x / |x|
+            // `sign(x) = x / |x|`.
             .val = signx,
 
-            // (y - sign(x) * (re(x) * re(y) + im(x) * im(y)) / |x|) / |x|
+            // `(y - sign(x) * (Re{x} * Re{y} + Im{x} * Im{y}) / |x|) / |x|`.
             .eps = numeric.div(
                 numeric.sub(
                     x.eps,
@@ -558,14 +552,14 @@ pub fn Div(comptime X: type, comptime Y: type) type {
 pub fn div(x: anytype, y: anytype) autodiff.dual.Div(@TypeOf(x), @TypeOf(y)) {
     if (comptime isDual(@TypeOf(x))) {
         if (comptime isDual(@TypeOf(y))) {
-            const invy = numeric.div(numeric.one(meta.Scalar(@TypeOf(y))), y.val);
+            const invy = numeric.div(1, y.val);
 
             return .{
                 .val = numeric.mul(x.val, invy),
                 .eps = numeric.mul(numeric.fma(x.eps, y.val, numeric.neg(numeric.mul(x.val, y.eps))), numeric.mul(invy, invy)),
             };
         } else {
-            const invy = numeric.div(numeric.one(@TypeOf(y)), y.val);
+            const invy = numeric.div(1, y.val);
 
             return .{
                 .val = numeric.mul(x.val, invy),
@@ -573,7 +567,7 @@ pub fn div(x: anytype, y: anytype) autodiff.dual.Div(@TypeOf(x), @TypeOf(y)) {
             };
         }
     } else {
-        const invy = numeric.div(numeric.one(meta.Scalar(@TypeOf(y))), y.val);
+        const invy = numeric.div(1, y.val);
 
         return .{
             .val = numeric.mul(x, invy),
@@ -711,10 +705,10 @@ pub fn exp(x: anytype) autodiff.dual.Exp(@TypeOf(x)) {
     const expx = numeric.exp(x.val);
 
     return .{
-        // eˣ
+        // `eˣ`.
         .val = expx,
 
-        // y * eˣ
+        // `y * eˣ`.
         .eps = numeric.mul(x.eps, expx),
     };
 }
@@ -728,10 +722,10 @@ pub fn Ln(comptime X: type) type {
 
 pub fn ln(x: anytype) autodiff.dual.Ln(@TypeOf(x)) {
     return .{
-        // ln(x)
+        // `ln(x)`.
         .val = numeric.ln(x.val),
 
-        // y / x
+        // `y / x`.
         .eps = numeric.div(x.eps, x.val),
     };
 }
@@ -761,7 +755,7 @@ pub fn pow(x: anytype, y: anytype) autodiff.dual.Pow(@TypeOf(x), @TypeOf(y)) {
                             x.val,
                             numeric.sub(
                                 y.val,
-                                numeric.one(meta.Scalar(@TypeOf(y))),
+                                1,
                             ),
                         ),
                     ),
@@ -787,7 +781,7 @@ pub fn pow(x: anytype, y: anytype) autodiff.dual.Pow(@TypeOf(x), @TypeOf(y)) {
                             x.val,
                             numeric.sub(
                                 y,
-                                numeric.one(meta.Scalar(@TypeOf(y))),
+                                1,
                             ),
                         ),
                     ),
@@ -822,11 +816,11 @@ pub fn sqrt(x: anytype) autodiff.dual.Sqrt(@TypeOf(x)) {
     const sqrtx = numeric.sqrt(x.val);
 
     return .{
-        // √x
+        // `√x`.
         .val = sqrtx,
 
-        // y / (2 * √x)
-        .eps = numeric.div(x.eps, numeric.mul(numeric.two(@TypeOf(x.val)), sqrtx)),
+        // `y / (2 * √x)`.
+        .eps = numeric.div(x.eps, numeric.mul(2, sqrtx)),
     };
 }
 
@@ -841,11 +835,17 @@ pub fn cbrt(x: anytype) autodiff.dual.Cbrt(@TypeOf(x)) {
     const cbrtx = numeric.cbrt(x.val);
 
     return .{
-        // ∛x
+        // `∛x`.
         .val = cbrtx,
 
-        // y / (3 * ∛x²)
-        .eps = numeric.div(x.eps, numeric.mul(numeric.add(numeric.two(@TypeOf(x.val)), numeric.one(@TypeOf(x.val))), numeric.mul(cbrtx, cbrtx))),
+        // `y / (3 * ∛x²)`.
+        .eps = numeric.div(
+            x.eps,
+            numeric.mul(
+                3,
+                numeric.mul(cbrtx, cbrtx),
+            ),
+        ),
     };
 }
 
@@ -896,10 +896,10 @@ pub fn Sin(comptime X: type) type {
 
 pub fn sin(x: anytype) autodiff.dual.Sin(@TypeOf(x)) {
     return .{
-        // sin(x)
+        // `sin(x)`.
         .val = numeric.sin(x.val),
 
-        // y * cos(x)
+        // `y * cos(x)`.
         .eps = numeric.mul(x.eps, numeric.cos(x.val)),
     };
 }
@@ -913,10 +913,10 @@ pub fn Cos(comptime X: type) type {
 
 pub fn cos(x: anytype) autodiff.dual.Cos(@TypeOf(x)) {
     return .{
-        // cos(x)
+        // `cos(x)`.
         .val = numeric.cos(x.val),
 
-        // -y * sin(x)
+        // `-y * sin(x)`.
         .eps = numeric.neg(numeric.mul(x.eps, numeric.sin(x.val))),
     };
 }
@@ -932,11 +932,11 @@ pub fn tan(x: anytype) autodiff.dual.Tan(@TypeOf(x)) {
     const tanx = numeric.tan(x.val);
 
     return .{
-        // tan(x)
+        // `tan(x)`.
         .val = tanx,
 
-        // y * (1 + tan(x)²)
-        .eps = numeric.mul(x.eps, numeric.add(numeric.one(@TypeOf(x.val)), numeric.mul(tanx, tanx))),
+        // `y * (1 + tan(x)²)`.
+        .eps = numeric.mul(x.eps, numeric.add(1, numeric.mul(tanx, tanx))),
     };
 }
 
@@ -949,11 +949,11 @@ pub fn Asin(comptime X: type) type {
 
 pub fn asin(x: anytype) autodiff.dual.Asin(@TypeOf(x)) {
     return .{
-        // asin(x)
+        // `asin(x)`.
         .val = numeric.asin(x.val),
 
-        // y / √(1 - x²)
-        .eps = numeric.div(x.eps, numeric.sqrt(numeric.sub(numeric.one(@TypeOf(x.val)), numeric.mul(x.val, x.val)))),
+        // `y / √(1 - x²)`.
+        .eps = numeric.div(x.eps, numeric.sqrt(numeric.sub(1, numeric.mul(x.val, x.val)))),
     };
 }
 
@@ -966,11 +966,11 @@ pub fn Acos(comptime X: type) type {
 
 pub fn acos(x: anytype) autodiff.dual.Acos(@TypeOf(x)) {
     return .{
-        // acos(x)
+        // `acos(x)`.
         .val = numeric.acos(x.val),
 
-        // -y / √(1 - x²)
-        .eps = numeric.neg(numeric.div(x.eps, numeric.sqrt(numeric.sub(numeric.one(@TypeOf(x.val)), numeric.mul(x.val, x.val))))),
+        // `-y / √(1 - x²)`.
+        .eps = numeric.neg(numeric.div(x.eps, numeric.sqrt(numeric.sub(1, numeric.mul(x.val, x.val))))),
     };
 }
 
@@ -983,11 +983,11 @@ pub fn Atan(comptime X: type) type {
 
 pub fn atan(x: anytype) autodiff.dual.Atan(@TypeOf(x)) {
     return .{
-        // atan(x)
+        // `atan(x)`.
         .val = numeric.atan(x.val),
 
-        // y / (1 + x²)
-        .eps = numeric.div(x.eps, numeric.add(numeric.one(@TypeOf(x.val)), numeric.mul(x.val, x.val))),
+        // `y / (1 + x²)`.
+        .eps = numeric.div(x.eps, numeric.add(1, numeric.mul(x.val, x.val))),
     };
 }
 
@@ -1032,10 +1032,10 @@ pub fn Sinh(comptime X: type) type {
 
 pub fn sinh(x: anytype) autodiff.dual.Sinh(@TypeOf(x)) {
     return .{
-        // sinh(x)
+        // `sinh(x)`.
         .val = numeric.sinh(x.val),
 
-        // y * cosh(x)
+        // `y * cosh(x)`.
         .eps = numeric.mul(x.eps, numeric.cosh(x.val)),
     };
 }
@@ -1049,10 +1049,10 @@ pub fn Cosh(comptime X: type) type {
 
 pub fn cosh(x: anytype) autodiff.dual.Cosh(@TypeOf(x)) {
     return .{
-        // cosh(x)
+        // `cosh(x)`.
         .val = numeric.cosh(x.val),
 
-        // y * sinh(x)
+        // `y * sinh(x)`.
         .eps = numeric.mul(x.eps, numeric.sinh(x.val)),
     };
 }
@@ -1068,11 +1068,11 @@ pub fn tanh(x: anytype) autodiff.dual.Tanh(@TypeOf(x)) {
     const tanhx = numeric.tanh(x.val);
 
     return .{
-        // tanh(x)
+        // `tanh(x)`.
         .val = tanhx,
 
-        // y * (1 - tanh(x)²)
-        .eps = numeric.mul(x.eps, numeric.sub(numeric.one(@TypeOf(x.val)), numeric.mul(tanhx, tanhx))),
+        // `y * (1 - tanh(x)²)`.
+        .eps = numeric.mul(x.eps, numeric.sub(1, numeric.mul(tanhx, tanhx))),
     };
 }
 
@@ -1085,11 +1085,11 @@ pub fn Asinh(comptime X: type) type {
 
 pub fn asinh(x: anytype) autodiff.dual.Asinh(@TypeOf(x)) {
     return .{
-        // asinh(x)
+        // `asinh(x)`.
         .val = numeric.asinh(x.val),
 
-        // y / √(x² + 1)
-        .eps = numeric.div(x.eps, numeric.sqrt(numeric.add(numeric.mul(x.val, x.val), numeric.one(@TypeOf(x.val))))),
+        // `y / √(x² + 1)`.
+        .eps = numeric.div(x.eps, numeric.sqrt(numeric.add(numeric.mul(x.val, x.val), 1))),
     };
 }
 
@@ -1104,10 +1104,10 @@ pub fn acosh(x: anytype) autodiff.dual.Acosh(@TypeOf(x)) {
     const acoshx = numeric.acosh(x.val);
 
     return .{
-        // acosh(x)
+        // `acosh(x)`.
         .val = acoshx,
 
-        // y / sinh(acosh(x))
+        // `y / sinh(acosh(x))`.
         .eps = numeric.div(x.eps, numeric.sinh(acoshx)),
     };
 }
@@ -1121,10 +1121,10 @@ pub fn Atanh(comptime X: type) type {
 
 pub fn atanh(x: anytype) autodiff.dual.Atanh(@TypeOf(x)) {
     return .{
-        // atanh(x)
+        // `atanh(x)`.
         .val = numeric.atanh(x.val),
 
-        // y / (1 - x²)
-        .eps = numeric.div(x.eps, numeric.sub(numeric.one(@TypeOf(x.val)), numeric.mul(x.val, x.val))),
+        // `y / (1 - x²)`.
+        .eps = numeric.div(x.eps, numeric.sub(1, numeric.mul(x.val, x.val))),
     };
 }

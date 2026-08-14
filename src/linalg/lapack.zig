@@ -34,8 +34,8 @@ pub const Storage = enum {
 // key  (u8) -> value (value when N is integral)
 // eps   (E) -> numeric.eps (0)
 // sfmin (S) -> numeric.smallest (1)
-// base  (B) -> numeric.two (2)
-// prec  (P) -> numeric.eps * numeric.two (0)
+// base  (B) -> 2
+// prec  (P) -> numeric.eps * 2
 // t     (N) -> *not used*
 // rnd   (R) -> *not used*
 // emin  (M) -> *not used*

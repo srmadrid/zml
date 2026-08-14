@@ -59,7 +59,7 @@ pub fn Exponential(comptime N: type) type {
 
         fn sampleReal(rate: meta.Real(N), prng: std.Random) meta.Real(N) {
             const u = utils.standardUniform(meta.Real(N), prng);
-            const one_minus_u = numeric.sub(numeric.one(meta.Real(N)), u);
+            const one_minus_u = numeric.sub(1, u);
             return numeric.div(numeric.neg(numeric.ln(one_minus_u)), rate);
         }
 
@@ -84,8 +84,8 @@ pub fn Exponential(comptime N: type) type {
         }
 
         fn pdfReal(val: meta.Real(N), rate: meta.Real(N)) meta.Real(N) {
-            if (numeric.lt(val, numeric.zero(meta.Real(N))))
-                return numeric.zero(meta.Real(N));
+            if (numeric.lt(val, 0))
+                return numeric.cast(meta.Real(N), 0);
 
             const exp_term = numeric.exp(numeric.neg(numeric.mul(rate, val)));
             return numeric.mul(rate, exp_term);
@@ -112,7 +112,7 @@ pub fn Exponential(comptime N: type) type {
         }
 
         fn lpdfReal(val: meta.Real(N), rate: meta.Real(N)) meta.Real(N) {
-            if (numeric.lt(val, numeric.zero(meta.Real(N))))
+            if (numeric.lt(val, 0))
                 return numeric.neg(numeric.inf(meta.Real(N)));
 
             // lpdf(x) = ln(lambda) - lambda * x
@@ -142,12 +142,12 @@ pub fn Exponential(comptime N: type) type {
         }
 
         fn cdfReal(val: meta.Real(N), rate: meta.Real(N)) meta.Real(N) {
-            if (numeric.le(val, numeric.zero(meta.Real(N))))
-                return numeric.zero(meta.Real(N));
+            if (numeric.le(val, 0))
+                return numeric.cast(meta.Real(N), 0);
 
             // cdf(x) = 1 - e^(-lambda * x)
             const exp_term = numeric.exp(numeric.neg(numeric.mul(rate, val)));
-            return numeric.sub(numeric.one(meta.Real(N)), exp_term);
+            return numeric.sub(1, exp_term);
         }
 
         /// Computes the Inverse Cumulative Distribution Function (iCDF), or
@@ -172,14 +172,14 @@ pub fn Exponential(comptime N: type) type {
         }
 
         fn icdfReal(prob: meta.Real(N), rate: meta.Real(N)) meta.Real(N) {
-            if (numeric.le(prob, numeric.zero(meta.Real(N))))
-                return numeric.zero(meta.Real(N));
+            if (numeric.le(prob, 0))
+                return numeric.cast(meta.Real(N), 0);
 
-            if (numeric.ge(prob, numeric.one(meta.Real(N))))
+            if (numeric.ge(prob, 1))
                 return numeric.inf(meta.Real(N));
 
             // icdf(p) = -ln(1 - p) / lambda
-            const one_minus_p = numeric.sub(numeric.one(meta.Real(N)), prob);
+            const one_minus_p = numeric.sub(1, prob);
             return numeric.div(numeric.neg(numeric.ln(one_minus_p)), rate);
         }
     };

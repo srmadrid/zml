@@ -13,29 +13,29 @@ const thread = @import("../../../thread.zig");
 /// Computes a matrix-vector product using a triangular matrix defined as:
 ///
 /// ```zig
-/// x = A * x,
+/// x = A x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-/// x = Aᵀ * x,
+/// x = Aᵀ x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-/// x = conj(A) * x,
+/// x = A̅ x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-/// x = Aᴴ * x,
+/// x = Aᴴ x,
 /// ```
 ///
-/// where `x` is an `n`-element vector, and `A` is an `n`-by-`n` unit, or
-/// non-unit, upper or lower triangular matrix.
+/// where `x` is an `n`-element vector, and `A` is an `n × n` unit, or non-unit,
+/// upper or lower triangular matrix.
 ///
 /// ## Signature
 /// ```zig
@@ -49,10 +49,10 @@ const thread = @import("../../../thread.zig");
 ///   lower triangular matrix.
 /// * `transa` (`linalg.blas.Transpose`): Specifies the operation to be
 ///   performed on `A`:
-///   * `no_transpose`: `x = A * x`
-///   * `transpose`: `x = Aᵀ * x`
-///   * `conj_no_transpose`: `x = conj(A) * x`
-///   * `conj_transpose`: `x = Aᴴ * x`
+///   * `no_transpose`: `x = A x`
+///   * `transpose`: `x = Aᵀ x`
+///   * `conj_no_transpose`: `x = A̅ x`
+///   * `conj_transpose`: `x = Aᴴ x`
 /// * `diag` (`matrix.Diag`): Specifies whether the matrix `A` is unit
 ///   triangular.
 /// * `n` (`usize`): Specifies the size of the matrix `A`.
@@ -111,30 +111,30 @@ pub fn trmv(
 /// Computes a matrix-vector product using a triangular matrix defined as:
 ///
 /// ```zig
-/// x = A * x,
+/// x = A x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-/// x = Aᵀ * x,
+/// x = Aᵀ x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-/// x = conj(A) * x,
+/// x = A̅ x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-/// x = Aᴴ * x,
+/// x = Aᴴ x,
 /// ```
 ///
-/// where `x` is an `n`-element vector, and `A` is an `n`-by-`n` unit, or
-/// non-unit, upper or lower triangular matrix, splitting the work across the
-/// worker threads of `pool`.
+/// where `x` is an `n`-element vector, and `A` is an `n × n` unit, or non-unit,
+/// upper or lower triangular matrix, splitting the work across the worker
+/// threads of `pool`.
 ///
 /// ## Signature
 /// ```zig
@@ -148,10 +148,10 @@ pub fn trmv(
 ///   lower triangular matrix:
 /// * `transa` (`linalg.blas.Transpose`): Specifies the operation to be
 ///   performed on `A`:
-///   * `no_transpose`: `x = A * x`
-///   * `transpose`: `x = Aᵀ * x`
-///   * `conj_no_transpose`: `x = conj(A) * x`
-///   * `conj_transpose`: `x = Aᴴ * x`
+///   * `no_transpose`: `x = A x`
+///   * `transpose`: `x = Aᵀ x`
+///   * `conj_no_transpose`: `x = A̅ x`
+///   * `conj_transpose`: `x = Aᴴ x`
 /// * `diag` (`matrix.Diag`): Specifies whether the matrix `A` is unit
 ///   triangular.
 /// * `n` (`usize`): Specifies the size of the matrix `A`.
@@ -276,11 +276,11 @@ pub fn k_trmv(
     const A: type = meta.Child(@TypeOf(a));
     const X: type = meta.Child(@TypeOf(x));
 
-    // Set up the start point in x.
+    // Set up the start point in `x`.
     const kx: isize = if (incx < 0) (-numeric.cast(isize, n) + 1) * incx else 0;
 
     if (transa == .no_trans or transa == .conj_no_trans) {
-        // Form  x = A * x  or  x = conj(A) * x.
+        // Form `x = A x` or `x = A̅ x`.
         const unroll = 2 * (std.simd.suggestVectorLength(numeric.Fma(X, A, X)) orelse 2);
         comptime var tile_size = int.max(1, ((3 * options.l1_size) / 4) / (@sizeOf(X) + @sizeOf(A)));
         tile_size = comptime int.max(1, tile_size -| (tile_size % unroll));
@@ -594,7 +594,7 @@ pub fn k_trmv(
             }
         }
     } else {
-        // Form  x = Aᵀ * x  or  x = Aᴴ * x.
+        // Form `x = Aᵀ x` or `x = Aᴴ x`.
         const unroll = 2 * (std.simd.suggestVectorLength(meta.Accumulator(numeric.Mul(A, X))) orelse 2);
         comptime var tile_size = int.max(1, ((3 * options.l1_size) / 4) / (@sizeOf(meta.Accumulator(numeric.Mul(A, X))) + @sizeOf(X) + @sizeOf(A)));
         tile_size = comptime int.max(1, tile_size -| (tile_size % unroll));
@@ -608,7 +608,7 @@ pub fn k_trmv(
                 const r_end = int.min(tile_i + tile_size, n);
 
                 var local_sums: [tile_size]meta.Accumulator(numeric.Mul(A, X)) = undefined;
-                @memset(local_sums[0 .. r_end - tile_i], numeric.zero(meta.Accumulator(numeric.Mul(A, X))));
+                @memset(local_sums[0 .. r_end - tile_i], numeric.cast(meta.Accumulator(numeric.Mul(A, X)), 0));
 
                 var i_tile: usize = 0;
                 while (i_tile < tile_i) : (i_tile += tile_size) {
@@ -635,7 +635,7 @@ pub fn k_trmv(
 
                     var j: usize = tile_i;
                     while (j < r_end) : (j += 1) {
-                        var sums: [unroll]meta.Accumulator(numeric.Mul(A, X)) = .{numeric.zero(meta.Accumulator(numeric.Mul(A, X)))} ** unroll;
+                        var sums: [unroll]meta.Accumulator(numeric.Mul(A, X)) = @splat(numeric.cast(meta.Accumulator(numeric.Mul(A, X)), 0));
 
                         var i: usize = 0;
                         while (i < (i_len / unroll) * unroll) : (i += unroll) {
@@ -653,7 +653,7 @@ pub fn k_trmv(
                             }
                         }
 
-                        var temp = numeric.zero(meta.Accumulator(numeric.Mul(A, X)));
+                        var temp = numeric.cast(meta.Accumulator(numeric.Mul(A, X)), 0);
 
                         inline for (0..unroll) |u| {
                             // temp += sums[u]
@@ -714,7 +714,7 @@ pub fn k_trmv(
                         );
                     }
 
-                    var sums: [unroll]meta.Accumulator(numeric.Mul(A, X)) = .{numeric.zero(meta.Accumulator(numeric.Mul(A, X)))} ** unroll;
+                    var sums: [unroll]meta.Accumulator(numeric.Mul(A, X)) = @splat(numeric.cast(meta.Accumulator(numeric.Mul(A, X)), 0));
 
                     if (incx == 1) {
                         var i: usize = tile_i;
@@ -803,7 +803,7 @@ pub fn k_trmv(
                 const r_end = int.min(tile_i + tile_size, n);
 
                 var local_sums: [tile_size]meta.Accumulator(numeric.Mul(A, X)) = undefined;
-                @memset(local_sums[0 .. r_end - tile_i], numeric.zero(meta.Accumulator(numeric.Mul(A, X))));
+                @memset(local_sums[0 .. r_end - tile_i], numeric.cast(meta.Accumulator(numeric.Mul(A, X)), 0));
 
                 var i_tile: usize = r_end;
                 while (i_tile < n) : (i_tile += tile_size) {
@@ -830,7 +830,7 @@ pub fn k_trmv(
 
                     var j: usize = tile_i;
                     while (j < r_end) : (j += 1) {
-                        var sums: [unroll]meta.Accumulator(numeric.Mul(A, X)) = .{numeric.zero(meta.Accumulator(numeric.Mul(A, X)))} ** unroll;
+                        var sums: [unroll]meta.Accumulator(numeric.Mul(A, X)) = @splat(numeric.cast(meta.Accumulator(numeric.Mul(A, X)), 0));
 
                         var i: usize = 0;
                         while (i < (i_len / unroll) * unroll) : (i += unroll) {
@@ -848,7 +848,7 @@ pub fn k_trmv(
                             }
                         }
 
-                        var temp = numeric.zero(meta.Accumulator(numeric.Mul(A, X)));
+                        var temp = numeric.cast(meta.Accumulator(numeric.Mul(A, X)), 0);
 
                         inline for (0..unroll) |u| {
                             numeric.addInto(&temp, temp, sums[u]);
@@ -902,7 +902,7 @@ pub fn k_trmv(
                         );
                     }
 
-                    var sums: [unroll]meta.Accumulator(numeric.Mul(A, X)) = .{numeric.zero(meta.Accumulator(numeric.Mul(A, X)))} ** unroll;
+                    var sums: [unroll]meta.Accumulator(numeric.Mul(A, X)) = @splat(numeric.cast(meta.Accumulator(numeric.Mul(A, X)), 0));
 
                     if (incx == 1) {
                         var i: usize = j + 1;
@@ -1045,11 +1045,11 @@ fn k_trmv_nd(
     if (n == 0 or chunk_start >= chunk_end)
         return;
 
-    // Set up the start points in y.
+    // Set up the start points in `y`.
     const ky: isize = if (incy < 0) (-numeric.cast(isize, n) + 1) * incy else 0;
 
     if (transa == .no_trans or transa == .conj_no_trans) {
-        // Form  y = A * x  or  y = conj(A) * x.
+        // Form `y = A x` or `y = A̅ x`.
         const unroll = 2 * (std.simd.suggestVectorLength(meta.Accumulator(numeric.Mul(A, Y))) orelse 2);
         comptime var tile_size = int.max(1, ((3 * options.l1_size) / 4) / (@sizeOf(meta.Accumulator(numeric.Mul(A, X))) + @sizeOf(X) + @sizeOf(A)));
         tile_size = comptime int.max(1, tile_size -| (tile_size % unroll));
@@ -1061,7 +1061,7 @@ fn k_trmv_nd(
                 const ti_len = ti_end - tile_i;
 
                 var local_sums: [tile_size]meta.Accumulator(numeric.Mul(A, X)) = undefined;
-                @memset(local_sums[0..ti_len], numeric.zero(meta.Accumulator(numeric.Mul(A, X))));
+                @memset(local_sums[0..ti_len], numeric.cast(meta.Accumulator(numeric.Mul(A, X)), 0));
 
                 var j: usize = tile_i;
                 while (j < ti_end) : (j += 1) {
@@ -1153,7 +1153,7 @@ fn k_trmv_nd(
                 const ti_len = ti_end - tile_i;
 
                 var local_sums: [tile_size]meta.Accumulator(numeric.Mul(A, X)) = undefined;
-                @memset(local_sums[0..ti_len], numeric.zero(meta.Accumulator(numeric.Mul(A, X))));
+                @memset(local_sums[0..ti_len], numeric.cast(meta.Accumulator(numeric.Mul(A, X)), 0));
 
                 var tile_j: usize = 0;
                 while (tile_j < tile_i) : (tile_j += tile_size) {
@@ -1240,7 +1240,7 @@ fn k_trmv_nd(
             }
         }
     } else {
-        // Form  y = Aᵀ * x  or  y = Aᴴ * x.
+        // Form `y = Aᵀ x` or `y = Aᴴ x`.
         const unroll = 2 * (std.simd.suggestVectorLength(meta.Accumulator(numeric.Mul(A, Y))) orelse 2);
         comptime var tile_size = int.max(1, ((3 * options.l1_size) / 4) / (@sizeOf(meta.Accumulator(numeric.Mul(A, X))) + @sizeOf(X) + @sizeOf(A)));
         tile_size = comptime int.max(1, tile_size -| (tile_size % unroll));
@@ -1251,7 +1251,7 @@ fn k_trmv_nd(
                 const tj_end = int.min(tile_j + tile_size, chunk_end);
 
                 var local_sums: [tile_size]meta.Accumulator(numeric.Mul(A, X)) = undefined;
-                @memset(local_sums[0 .. tj_end - tile_j], numeric.zero(meta.Accumulator(numeric.Mul(A, X))));
+                @memset(local_sums[0 .. tj_end - tile_j], numeric.cast(meta.Accumulator(numeric.Mul(A, X)), 0));
 
                 var j: usize = tile_j;
                 while (j < tj_end) : (j += 1) {
@@ -1285,7 +1285,7 @@ fn k_trmv_nd(
 
                     j = tile_j;
                     while (j < tj_end) : (j += 1) {
-                        var sums: [unroll]meta.Accumulator(numeric.Mul(A, Y)) = .{numeric.zero(meta.Accumulator(numeric.Mul(A, Y)))} ** unroll;
+                        var sums: [unroll]meta.Accumulator(numeric.Mul(A, Y)) = @splat(numeric.cast(meta.Accumulator(numeric.Mul(A, Y)), 0));
 
                         var i: usize = 0;
                         while (i < (ti_len / unroll) * unroll) : (i += unroll) {
@@ -1303,7 +1303,7 @@ fn k_trmv_nd(
                             }
                         }
 
-                        var temp = numeric.zero(meta.Accumulator(numeric.Mul(A, Y)));
+                        var temp = numeric.cast(meta.Accumulator(numeric.Mul(A, Y)), 0);
 
                         inline for (0..unroll) |u| {
                             // temp += sums[u]
@@ -1338,9 +1338,9 @@ fn k_trmv_nd(
 
                 j = tile_j + 1;
                 while (j < tj_end) : (j += 1) {
-                    var sums: [unroll]meta.Accumulator(numeric.Mul(A, Y)) = .{numeric.zero(meta.Accumulator(numeric.Mul(A, Y)))} ** unroll;
+                    var sums: [unroll]meta.Accumulator(numeric.Mul(A, Y)) = @splat(numeric.cast(meta.Accumulator(numeric.Mul(A, Y)), 0));
 
-                    var temp = numeric.zero(meta.Accumulator(numeric.Mul(A, Y)));
+                    var temp = numeric.cast(meta.Accumulator(numeric.Mul(A, Y)), 0);
 
                     var i: usize = tile_j;
                     while (i < j and i % unroll != 0) : (i += 1) {
@@ -1412,7 +1412,7 @@ fn k_trmv_nd(
                 const tj_end = int.min(tile_j + tile_size, chunk_end);
 
                 var local_sums: [tile_size]meta.Accumulator(numeric.Mul(A, X)) = undefined;
-                @memset(local_sums[0 .. tj_end - tile_j], numeric.zero(meta.Accumulator(numeric.Mul(A, X))));
+                @memset(local_sums[0 .. tj_end - tile_j], numeric.cast(meta.Accumulator(numeric.Mul(A, X)), 0));
 
                 var j: usize = tile_j;
                 while (j < tj_end) : (j += 1) {
@@ -1439,9 +1439,9 @@ fn k_trmv_nd(
 
                 j = tile_j;
                 while (j + 1 < tj_end) : (j += 1) {
-                    var sums: [unroll]meta.Accumulator(numeric.Mul(A, Y)) = .{numeric.zero(meta.Accumulator(numeric.Mul(A, Y)))} ** unroll;
+                    var sums: [unroll]meta.Accumulator(numeric.Mul(A, Y)) = @splat(numeric.cast(meta.Accumulator(numeric.Mul(A, Y)), 0));
 
-                    var temp = numeric.zero(meta.Accumulator(numeric.Mul(A, Y)));
+                    var temp = numeric.cast(meta.Accumulator(numeric.Mul(A, Y)), 0);
 
                     var i: usize = j + 1;
                     while (i < tj_end and i % unroll != 0) : (i += 1) {
@@ -1511,7 +1511,7 @@ fn k_trmv_nd(
 
                     j = tile_j;
                     while (j < tj_end) : (j += 1) {
-                        var sums: [unroll]meta.Accumulator(numeric.Mul(A, Y)) = .{numeric.zero(meta.Accumulator(numeric.Mul(A, Y)))} ** unroll;
+                        var sums: [unroll]meta.Accumulator(numeric.Mul(A, Y)) = @splat(numeric.cast(meta.Accumulator(numeric.Mul(A, Y)), 0));
 
                         var i: usize = 0;
                         while (i < (ti_len / unroll) * unroll) : (i += unroll) {
@@ -1529,7 +1529,7 @@ fn k_trmv_nd(
                             }
                         }
 
-                        var temp = numeric.zero(meta.Accumulator(numeric.Mul(A, Y)));
+                        var temp = numeric.cast(meta.Accumulator(numeric.Mul(A, Y)), 0);
 
                         inline for (0..unroll) |u| {
                             // temp += sums[u]

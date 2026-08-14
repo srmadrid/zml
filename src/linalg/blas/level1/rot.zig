@@ -9,12 +9,12 @@ const thread = @import("../../../thread.zig");
 /// Applies a Givens plane rotation to the vectors `x` and `y`:
 ///
 /// ```zig
-/// x[i] = c * x[i] + s * y[i]
-/// y[i] = c * y[i] - s * x[i]
+/// xᵢ = c * xᵢ + s * yᵢ,
+/// yᵢ = c * yᵢ - s * xᵢ,
 /// ```
 ///
-/// for `i in 0..n`, where `c` is a real numeric, but `s` may be either a real
-/// or a complex numeric.
+/// where `c` is a real numeric, but `s` may be either a real or a complex
+/// numeric.
 ///
 /// ## Signature
 /// ```zig
@@ -71,13 +71,12 @@ pub fn rot(
 /// Applies a Givens plane rotation to the vectors `x` and `y`:
 ///
 /// ```zig
-/// x[i] = c * x[i] + s * y[i]
-/// y[i] = c * y[i] - s * x[i]
+/// xᵢ = c * xᵢ + s * yᵢ,
+/// yᵢ = c * yᵢ - s * xᵢ,
 /// ```
 ///
-/// for `i in 0..n`, where `c` is a real numeric, but `s` may be either a real
-/// or a complex numeric, splitting the work across the worker threads of
-/// `pool`.
+/// where `c` is a real numeric, but `s` may be either a real or a complex
+/// numeric, splitting the work across the worker threads of `pool`.
 ///
 /// ## Signature
 /// ```zig

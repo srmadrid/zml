@@ -348,23 +348,23 @@ pub fn Dense(N: type, uplo: matrix.Uplo, diag: matrix.Diag, layout: matrix.Layou
                     while (j < size) : (j += 1) {
                         var i: usize = 0;
                         while (i < j) : (i += 1) {
-                            mat.data[i + j * mat.ld] = numeric.zero(N);
+                            mat.data[i + j * mat.ld] = numeric.cast(N, 0);
                         }
 
                         if (comptime diag == .non_unit) {
-                            mat.data[j + j * mat.ld] = numeric.one(N);
+                            mat.data[j + j * mat.ld] = numeric.cast(N, 1);
                         }
                     }
                 } else { // cl
                     var j: usize = 0;
                     while (j < size) : (j += 1) {
                         if (comptime diag == .non_unit) {
-                            mat.data[j + j * mat.ld] = numeric.one(N);
+                            mat.data[j + j * mat.ld] = numeric.cast(N, 1);
                         }
 
                         var i: usize = j + 1;
                         while (i < size) : (i += 1) {
-                            mat.data[i + j * mat.ld] = numeric.zero(N);
+                            mat.data[i + j * mat.ld] = numeric.cast(N, 0);
                         }
                     }
                 }
@@ -373,12 +373,12 @@ pub fn Dense(N: type, uplo: matrix.Uplo, diag: matrix.Diag, layout: matrix.Layou
                     var i: usize = 0;
                     while (i < size) : (i += 1) {
                         if (comptime diag == .non_unit) {
-                            mat.data[i * mat.ld + i] = numeric.one(N);
+                            mat.data[i * mat.ld + i] = numeric.cast(N, 1);
                         }
 
                         var j: usize = i + 1;
                         while (j < size) : (j += 1) {
-                            mat.data[i * mat.ld + j] = numeric.zero(N);
+                            mat.data[i * mat.ld + j] = numeric.cast(N, 0);
                         }
                     }
                 } else { // rl
@@ -386,11 +386,11 @@ pub fn Dense(N: type, uplo: matrix.Uplo, diag: matrix.Diag, layout: matrix.Layou
                     while (i < size) : (i += 1) {
                         var j: usize = 0;
                         while (j < i) : (j += 1) {
-                            mat.data[i * mat.ld + j] = numeric.zero(N);
+                            mat.data[i * mat.ld + j] = numeric.cast(N, 0);
                         }
 
                         if (comptime diag == .non_unit) {
-                            mat.data[i * mat.ld + i] = numeric.one(N);
+                            mat.data[i * mat.ld + i] = numeric.cast(N, 1);
                         }
                     }
                 }
@@ -438,15 +438,15 @@ pub fn Dense(N: type, uplo: matrix.Uplo, diag: matrix.Diag, layout: matrix.Layou
 
             if (comptime uplo == .upper) {
                 if (r > c)
-                    return numeric.zero(N);
+                    return numeric.cast(N, 0);
             } else {
                 if (r < c)
-                    return numeric.zero(N);
+                    return numeric.cast(N, 0);
             }
 
             if (comptime diag == .unit) {
                 if (r == c)
-                    return numeric.one(N);
+                    return numeric.cast(N, 1);
             }
 
             return if (self.flags.noconj) self.data[self._index(r, c)] else numeric.conj(self.data[self._index(r, c)]);

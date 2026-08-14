@@ -19,7 +19,7 @@ pub fn Dot(comptime X: type, comptime Y: type) type {
     );
 }
 
-/// Computes the dot product of two vectors, x ⋅ y = xᴴ y = ∑ᵢ x̄ᵢ yᵢ.
+/// Computes the dot product of two vectors, `x ⋅ y = xᴴ y = ∑ᵢ x̄ᵢ yᵢ`.
 ///
 /// ## Signature
 /// ```zig
@@ -31,7 +31,7 @@ pub fn Dot(comptime X: type, comptime Y: type) type {
 /// * `y` (`anytype`): The right vector.
 ///
 /// ## Returns
-/// `linalg.Dot(@TypeOf(x), @TypeOf(y))`: The dot product x ⋅ y.
+/// `linalg.Dot(@TypeOf(x), @TypeOf(y))`: The dot product `x ⋅ y`.
 ///
 /// ## Errors
 /// * `linalg.Error.DimensionMismatch`: If the inputs do not have equal length.
@@ -50,7 +50,7 @@ pub fn dot(x: anytype, y: anytype) !linalg.Dot(@TypeOf(x), @TypeOf(y)) {
     return dotUnchecked(x, y);
 }
 
-/// Computes the dot product of two vectors, x ⋅ y = xᴴ y = ∑ᵢ x̄ᵢ yᵢ, without
+/// Computes the dot product of two vectors, `x ⋅ y = xᴴ y = ∑ᵢ x̄ᵢ yᵢ`, without
 /// performing dimension checks.
 ///
 /// ## Signature
@@ -63,7 +63,7 @@ pub fn dot(x: anytype, y: anytype) !linalg.Dot(@TypeOf(x), @TypeOf(y)) {
 /// * `y` (`anytype`): The right vector.
 ///
 /// ## Returns
-/// `linalg.Dot(@TypeOf(x), @TypeOf(y))`: The dot product x ⋅ y.
+/// `linalg.Dot(@TypeOf(x), @TypeOf(y))`: The dot product `x ⋅ y`.
 pub fn dotUnchecked(x: anytype, y: anytype) linalg.Dot(@TypeOf(x), @TypeOf(y)) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);

@@ -148,9 +148,9 @@ pub fn Dense(N: type) type {
             if (roots.len == 0)
                 return poly.Error.ZeroLength;
 
-            var pol: poly.Dense(N) = try .initValue(allocator, roots.len, numeric.zero(N));
+            var pol: poly.Dense(N) = try .initValue(allocator, roots.len, numeric.cast(N, 0));
 
-            pol.data[0] = numeric.one(N);
+            pol.data[0] = numeric.cast(N, 1);
 
             for (roots, 0..) |r, k| {
                 var j: usize = k + 1;
@@ -166,7 +166,7 @@ pub fn Dense(N: type) type {
 
                 numeric.subInto(
                     &pol.data[0],
-                    numeric.zero(N),
+                    numeric.cast(N, 0),
                     numeric.mul(pol.data[0], r),
                 );
             }
@@ -286,7 +286,7 @@ pub fn Dense(N: type) type {
             const new_data = try allocator.realloc(self.data[0 .. self.max_degree + 1], new_max_degree + 1);
 
             if (new_max_degree > self.max_degree)
-                @memset(new_data[self.max_degree..new_max_degree], numeric.zero(N));
+                @memset(new_data[self.max_degree..new_max_degree], numeric.cast(N, 0));
 
             self.data = new_data.ptr;
             self.max_degree = new_max_degree;
@@ -327,7 +327,7 @@ pub fn Dense(N: type) type {
             while (i > 0) {
                 i -= 1;
 
-                if (!numeric.eq(self.data[i], numeric.zero(N)))
+                if (!numeric.eq(self.data[i], numeric.cast(N, 0)))
                     return i;
             }
 
@@ -398,7 +398,7 @@ pub fn Dense(N: type) type {
         /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
         pub fn derivative(self: poly.Dense(N), allocator: std.mem.Allocator) !poly.Dense(N) {
             if (self.max_degree == 0)
-                return .initValue(allocator, 1, numeric.zero(N));
+                return .initValue(allocator, 1, numeric.cast(N, 0));
 
             var result: Dense(N) = try .init(allocator, int.max(1, self.max_degree -| 1));
 

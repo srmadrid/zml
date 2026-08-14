@@ -200,15 +200,15 @@ pub fn Dense(N: type, layout: matrix.Layout) type {
                 while (j < size) : (j += 1) {
                     var i: usize = 0;
                     while (i < j) : (i += 1) {
-                        mat.data[i + j * mat.ld] = numeric.zero(N);
+                        mat.data[i + j * mat.ld] = numeric.cast(N, 0);
                     }
 
-                    mat.data[j + j * mat.ld] = numeric.one(N);
+                    mat.data[j + j * mat.ld] = numeric.cast(N, 1);
 
                     i += 1;
 
                     while (i < size) : (i += 1) {
-                        mat.data[i + j * mat.ld] = numeric.zero(N);
+                        mat.data[i + j * mat.ld] = numeric.cast(N, 0);
                     }
                 }
             } else {
@@ -216,15 +216,15 @@ pub fn Dense(N: type, layout: matrix.Layout) type {
                 while (i < size) : (i += 1) {
                     var j: usize = 0;
                     while (j < i) : (j += 1) {
-                        mat.data[i * mat.ld + j] = numeric.zero(N);
+                        mat.data[i * mat.ld + j] = numeric.cast(N, 0);
                     }
 
-                    mat.data[i * mat.ld + j] = numeric.one(N);
+                    mat.data[i * mat.ld + j] = numeric.cast(N, 1);
 
                     j += 1;
 
                     while (j < size) : (j += 1) {
-                        mat.data[i * mat.ld + j] = numeric.zero(N);
+                        mat.data[i * mat.ld + j] = numeric.cast(N, 0);
                     }
                 }
             }

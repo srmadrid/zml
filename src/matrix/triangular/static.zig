@@ -272,15 +272,15 @@ pub fn Static(rows_: comptime_int, cols_: comptime_int, N: type, uplo: matrix.Up
 
             if (comptime uplo == .upper) {
                 if (r > c)
-                    return numeric.zero(N);
+                    return numeric.cast(N, 0);
             } else {
                 if (r < c)
-                    return numeric.zero(N);
+                    return numeric.cast(N, 0);
             }
 
             if (comptime diag == .unit) {
                 if (r == c)
-                    return numeric.one(N);
+                    return numeric.cast(N, 1);
             }
 
             return self.data[_index(r, c)];

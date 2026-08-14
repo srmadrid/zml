@@ -28,7 +28,7 @@ pub fn Apply1(comptime X: type, comptime op: anytype) type {
         .static => return array.Static(X.shape[0..X.ndim], R, X.storage_order),
         .dense => return array.Dense(R),
         .sparse => {
-            const r = comptime op(numeric.zero(meta.Numeric(X)));
+            const r = comptime op(numeric.cast(meta.Numeric(X), 0));
 
             return if (comptime numeric.eq(r, 0))
                 array.Sparse(R, X.storage_order)
@@ -331,7 +331,7 @@ pub fn apply1IntoUnchecked(o: anytype, x: anytype, comptime opInto: anytype) voi
         .sparse => switch (comptime meta.arrayType(X)) {
             .sparse => {
                 comptime var no: meta.Numeric(O) = undefined;
-                comptime opInto(&no, numeric.zero(meta.Numeric(X)));
+                comptime opInto(&no, numeric.cast(meta.Numeric(X), 0));
                 comptime if (numeric.ne(no, 0))
                     @compileError("zsl.array.apply1IntoUnchecked: opInto(&o, 0) must set o to zero when o and x are sparse arrays, got\n\to: *" ++
                         @typeName(O) ++ "x: " ++ @typeName(X) ++ "\n\topInto: " ++ @typeName(OpInto) ++ "\n");
@@ -344,7 +344,7 @@ pub fn apply1IntoUnchecked(o: anytype, x: anytype, comptime opInto: anytype) voi
         .builder_sparse => switch (comptime meta.arrayType(X)) {
             .sparse => {
                 comptime var no: meta.Numeric(O) = undefined;
-                comptime opInto(&no, numeric.zero(meta.Numeric(X)));
+                comptime opInto(&no, numeric.cast(meta.Numeric(X), 0));
                 comptime if (numeric.ne(no, 0))
                     @compileError("zsl.array.apply1IntoUnchecked: opInto(&o, 0) must set o to zero when o and x are sparse arrays, got\n\to: *" ++
                         @typeName(O) ++ "x: " ++ @typeName(X) ++ "\n\topInto: " ++ @typeName(OpInto) ++ "\n");

@@ -40,7 +40,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                 while (i < int.min(j, o.rows)) : (i += 1) {
                     opInto(
                         &o.data[o._index(i, j)],
-                        numeric.zero(meta.Numeric(X)),
+                        numeric.cast(meta.Numeric(X), 0),
                         y_eff,
                     );
                 }
@@ -50,7 +50,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                 if (comptime meta.diagOf(X) == .unit)
                     opInto(
                         &o.data[o._index(j, j)],
-                        numeric.one(meta.Numeric(X)),
+                        numeric.cast(meta.Numeric(X), 1),
                         y_eff,
                     )
                 else
@@ -80,7 +80,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                 while (i < o.rows) : (i += 1) {
                     opInto(
                         &o.data[o._index(i, j)],
-                        numeric.zero(meta.Numeric(X)),
+                        numeric.cast(meta.Numeric(X), 0),
                         y_eff,
                     );
                 }
@@ -105,7 +105,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                 while (j < int.min(i, o.cols)) : (j += 1) {
                     opInto(
                         &o.data[o._index(i, j)],
-                        numeric.zero(meta.Numeric(X)),
+                        numeric.cast(meta.Numeric(X), 0),
                         y_eff,
                     );
                 }
@@ -115,7 +115,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                 if (comptime meta.diagOf(X) == .unit)
                     opInto(
                         &o.data[o._index(i, i)],
-                        numeric.one(meta.Numeric(X)),
+                        numeric.cast(meta.Numeric(X), 1),
                         y_eff,
                     )
                 else
@@ -145,7 +145,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                 while (j < o.cols) : (j += 1) {
                     opInto(
                         &o.data[o._index(i, j)],
-                        numeric.zero(meta.Numeric(X)),
+                        numeric.cast(meta.Numeric(X), 0),
                         y_eff,
                     );
                 }

@@ -78,7 +78,7 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
                     if (value == 0)
                         return .zero;
 
-                    const UV = @Int(.unsigned, @typeInfo(V).int.bits);
+                    const UV = @Int(.unsigned, int.bitSize(value));
                     const abs_value = numeric.cast(UV, @abs(value));
 
                     const msb_pos_value: u16 = @typeInfo(UV).int.bits - 1 - @clz(abs_value);
@@ -1473,6 +1473,26 @@ pub fn ge(x: anytype, y: anytype) bool {
 
     const order_xy = dyadic.order(x, y);
     return order_xy == .eq or order_xy == .gt;
+}
+
+pub fn isNan(x: anytype) bool {
+    const X: type = @TypeOf(x);
+
+    comptime if (!meta.isNumeric(X) or meta.numericType(X) != .dyadic)
+        @compileError("zsl.dyadic.isNan: x must be a dyadic, got\n\tx: " ++
+            @typeName(X) ++ "\n");
+
+    return x.isNan();
+}
+
+pub fn abs(x: anytype) @TypeOf(x) {
+    const X: type = @TypeOf(x);
+
+    comptime if (!meta.isNumeric(X) or meta.numericType(X) != .dyadic)
+        @compileError("zsl.dyadic.abs: x must be a dyadic, got\n\tx: " ++
+            @typeName(X) ++ "\n");
+
+    return x.abs();
 }
 
 pub const sign = @import("dyadic/sign.zig").sign;

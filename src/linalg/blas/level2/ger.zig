@@ -12,11 +12,11 @@ const thread = @import("../../../thread.zig");
 /// Performs a rank-1 update of a general matrix defined as:
 ///
 /// ```zig
-/// A = alpha * x * yᵀ + A,
+/// A = αx yᵀ + A,
 /// ```
 ///
-/// where `alpha` is a scalar, `x` is an `m`-element vector, `y` is an
-/// `n`-element vector, and `A` is an `m`-by-`n` general matrix.
+/// where `α` is a scalar, `x` is an `m`-element vector, `y` is an `n`-element
+/// vector, and `A` is an `m × n` general matrix.
 ///
 /// ## Signature
 /// ```zig
@@ -28,7 +28,7 @@ const thread = @import("../../../thread.zig");
 ///   storage is col-major or row-major.
 /// * `m` (`usize`): Specifies the number of rows of the matrix `A`.
 /// * `n` (`usize`): Specifies the number of columns of the matrix `A`.
-/// * `alpha` (`anytype`): Specifies the numeric `alpha`.
+/// * `alpha` (`anytype`): Specifies the numeric `α`.
 /// * `x` (`anytype`): Many-item pointer, size at least
 ///   `1 + (m - 1) * abs(incx)`.
 /// * `incx` (`isize`): Indexing increment for `x`. Must be different from 0.
@@ -91,12 +91,12 @@ pub fn ger(
 /// Performs a rank-1 update of a general matrix defined as:
 ///
 /// ```zig
-/// A = alpha * x * yᵀ + A,
+/// A = αx yᵀ + A,
 /// ```
 ///
 /// where `alpha` is a scalar, `x` is an `m`-element vector, `y` is an
-/// `n`-element vector, and `A` is an `m`-by-`n` general matrix, splitting the
-/// work across the worker threads of `pool`.
+/// `n`-element vector, and `A` is an `m × n` general matrix, splitting the work
+/// across the worker threads of `pool`.
 ///
 /// ## Signature
 /// ```zig
@@ -108,7 +108,7 @@ pub fn ger(
 ///   storage is col-major or row-major.
 /// * `m` (`usize`): Specifies the number of rows of the matrix `A`.
 /// * `n` (`usize`): Specifies the number of columns of the matrix `A`.
-/// * `alpha` (`anytype`): Specifies the numeric `alpha`.
+/// * `alpha` (`anytype`): Specifies the numeric `α`.
 /// * `x` (`anytype`): Many-item pointer, size at least
 ///   `1 + (m - 1) * abs(incx)`.
 /// * `incx` (`isize`): Indexing increment for `x`. Must be different from 0.
@@ -232,7 +232,7 @@ fn k_ger(m: usize, n: usize, alpha: anytype, x: anytype, incx: isize, y: anytype
     const X: type = meta.Child(@TypeOf(x));
     const Y: type = meta.Child(@TypeOf(y));
 
-    // Form  A = alpha * x * yᵀ + A
+    // Form `A = αx yᵀ + A`.
     const unroll = 2 * (std.simd.suggestVectorLength(numeric.Fma(X, numeric.Mul(Al, Y), A)) orelse 2);
     comptime var tile_size = int.max(1, ((3 * options.l1_size) / 4) / (@sizeOf(X) + @sizeOf(A)));
     tile_size = comptime int.max(1, tile_size -| tile_size % unroll);

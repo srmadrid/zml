@@ -9,7 +9,7 @@ pub fn matmulIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
         const x_len = if (comptime meta.isStaticVector(X)) X.len else x.len;
 
         inline for (0..O.len) |j| {
-            var sum = numeric.zero(meta.Accumulator(meta.Numeric(O)));
+            var sum = numeric.cast(meta.Accumulator(meta.Numeric(O)), 0);
 
             var k: usize = 0;
             while (k < x_len) : (k += 1) {
@@ -27,7 +27,7 @@ pub fn matmulIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
         const x_cols = if (comptime meta.isStaticMatrix(X)) X.cols else x.cols;
 
         inline for (0..O.len) |i| {
-            var sum = numeric.zero(meta.Accumulator(meta.Numeric(O)));
+            var sum = numeric.cast(meta.Accumulator(meta.Numeric(O)), 0);
 
             for (0..x_cols) |k| {
                 numeric.fmaInto(

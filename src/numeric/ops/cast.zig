@@ -60,12 +60,12 @@ const numeric = @import("../../numeric.zig");
 /// Boolean arguments have weaker constraints. If `N` is custom, `V` is `bool`
 /// and `fromBool` is not found, the function will execute:
 /// ```zig
-/// return if (value) constants.one(N) else constants.zero(N);
+/// return if (value) numeric.cast(N, 1) else numeric.cast(N, 0);
 /// ```
 /// On the other hand, if `N` is bool, `V` is custom and `toBool` is not found,
 /// the function will execute:
 /// ```zig
-/// return numeric.ne(value, constants.zero(V));
+/// return numeric.ne(value, 0);
 /// ```
 /// In either case, `N` or `V` must adhere to the requirements of these
 /// functions.
@@ -81,16 +81,16 @@ pub fn cast(comptime N: type, value: anytype) N {
     switch (comptime meta.numericType(V)) {
         .bool => switch (comptime meta.numericType(N)) {
             .bool => unreachable,
-            .int, .float, .dyadic, .complex => return if (value) numeric.one(N) else numeric.zero(N),
+            .int, .float, .dyadic, .complex => return if (value) numeric.cast(N, 1) else numeric.cast(N, 0),
             .custom => {
                 if (comptime !meta.hasMethod(N, "fromBool", fn (V) N, &.{V}))
-                    return if (value) numeric.one(N) else numeric.zero(N);
+                    return if (value) numeric.cast(N, 1) else numeric.cast(N, 0);
 
                 return N.fromBool(value);
             },
         },
         .int => switch (comptime meta.numericType(N)) {
-            .bool => return numeric.ne(value, numeric.zero(V)),
+            .bool => return numeric.ne(value, numeric.cast(V, 0)),
             .int => return @intCast(value),
             .float => return @floatFromInt(value),
             .dyadic => return .initValue(value),
@@ -103,7 +103,7 @@ pub fn cast(comptime N: type, value: anytype) N {
             },
         },
         .float => switch (comptime meta.numericType(N)) {
-            .bool => return numeric.ne(value, numeric.zero(V)),
+            .bool => return numeric.ne(value, numeric.cast(V, 0)),
             .int => return @trunc(value),
             .float => return @floatCast(value),
             .dyadic => return .initValue(value),
@@ -116,7 +116,7 @@ pub fn cast(comptime N: type, value: anytype) N {
             },
         },
         .dyadic => switch (comptime meta.numericType(N)) {
-            .bool => return numeric.ne(value, numeric.zero(V)),
+            .bool => return numeric.ne(value, numeric.cast(V, 0)),
             .int => return value.toInt(N),
             .float => return value.toFloat(N),
             .dyadic => return .initValue(value),
@@ -129,7 +129,7 @@ pub fn cast(comptime N: type, value: anytype) N {
             },
         },
         .complex => switch (comptime meta.numericType(N)) {
-            .bool => return numeric.ne(value, numeric.zero(V)),
+            .bool => return numeric.ne(value, numeric.cast(V, 0)),
             .int => return value.toInt(N),
             .float => return value.toFloat(N),
             .dyadic => return .initValue(value),
@@ -144,7 +144,7 @@ pub fn cast(comptime N: type, value: anytype) N {
         .custom => switch (comptime meta.numericType(N)) {
             .bool => {
                 if (comptime !meta.hasMethod(V, "toBool", fn (V) N, &.{V}))
-                    return numeric.ne(value, numeric.zero(V));
+                    return numeric.ne(value, numeric.cast(V, 0));
 
                 return V.toBool(value);
             },

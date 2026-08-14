@@ -11,7 +11,7 @@ pub fn matmulIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
     if (comptime meta.layoutOf(O) == .col_major) {
         inline for (0..O.cols) |j| {
             inline for (0..O.rows) |i| {
-                var sum = numeric.zero(meta.Accumulator(meta.Numeric(O)));
+                var sum = numeric.cast(meta.Accumulator(meta.Numeric(O)), 0);
 
                 var k: usize = 0;
                 while (k < x_cols) : (k += 1) {
@@ -29,7 +29,7 @@ pub fn matmulIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
     } else {
         inline for (0..O.rows) |i| {
             inline for (0..O.cols) |j| {
-                var sum = numeric.zero(meta.Accumulator(meta.Numeric(O)));
+                var sum = numeric.cast(meta.Accumulator(meta.Numeric(O)), 0);
 
                 var k: usize = 0;
                 while (k < x_cols) : (k += 1) {

@@ -12,11 +12,11 @@ const thread = @import("../../../thread.zig");
 /// Performs a rank-1 update (conjugated) of a general matrix defined as:
 ///
 /// ```zig
-/// A = alpha * x * yᴴ + A,
+/// A = αx yᴴ + A,
 /// ```
 ///
-/// where `alpha` is a numeric, `x` is an `m`-element vector, `y` is an
-/// `n`-element vector, and `A` is an `m`-by-`n` general matrix.
+/// where `α` is a numeric, `x` is an `m`-element vector, `y` is an `n`-element
+/// vector, and `A` is an `m × n` general matrix.
 ///
 /// ## Signature
 /// ```zig
@@ -28,7 +28,7 @@ const thread = @import("../../../thread.zig");
 ///   storage is col-major or row-major.
 /// * `m` (`usize`): Specifies the number of rows of the matrix `A`.
 /// * `n` (`usize`): Specifies the number of columns of the matrix `A`.
-/// * `alpha` (`anytype`): Specifies the numeric `alpha`.
+/// * `alpha` (`anytype`): Specifies the numeric `α`.
 /// * `x` (`anytype`): Many-item pointer, size at least
 ///   `1 + (m - 1) * abs(incx)`.
 /// * `incx` (`isize`): Indexing increment for `x`. Must be different from 0.
@@ -91,12 +91,12 @@ pub fn gerc(
 /// Performs a rank-1 update (conjugated) of a general matrix defined as:
 ///
 /// ```zig
-/// A = alpha * x * yᴴ + A,
+/// A = αx yᴴ + A,
 /// ```
 ///
-/// where `alpha` is a numeric, `x` is an `m`-element vector, `y` is an
-/// `n`-element vector, and `A` is an `m`-by-`n` general matrix, splitting the
-/// work across the worker threads of `pool`.
+/// where `α` is a numeric, `x` is an `m`-element vector, `y` is an `n`-element
+/// vector, and `A` is an `m × n` general matrix, splitting the work across the
+/// worker threads of `pool`.
 ///
 /// ## Signature
 /// ```zig
@@ -108,7 +108,7 @@ pub fn gerc(
 ///   storage is col-major or row-major.
 /// * `m` (`usize`): Specifies the number of rows of the matrix `A`.
 /// * `n` (`usize`): Specifies the number of columns of the matrix `A`.
-/// * `alpha` (`anytype`): Specifies the numeric `alpha`.
+/// * `alpha` (`anytype`): Specifies the numeric `α`.
 /// * `x` (`anytype`): Many-item pointer, size at least
 ///   `1 + (m - 1) * abs(incx)`.
 /// * `incx` (`isize`): Indexing increment for `x`. Must be different from 0.
@@ -232,7 +232,7 @@ fn k_gerc(m: usize, n: usize, alpha: anytype, x: anytype, incx: isize, y: anytyp
     const X: type = meta.Child(@TypeOf(x));
     const Y: type = meta.Child(@TypeOf(y));
 
-    // Form  A = alpha * x * yᴴ + A
+    // Form `A = αx yᴴ + A`.
     const unroll = 2 * (std.simd.suggestVectorLength(numeric.Fma(if (comptime noconj) X else numeric.Conj(X), numeric.Mul(Al, if (comptime noconj) numeric.Conj(Y) else Y), A)) orelse 2);
     comptime var tile_size = int.max(1, ((3 * options.l1_size) / 4) / (@sizeOf(X) + @sizeOf(A)));
     tile_size = comptime int.max(1, tile_size -| tile_size % unroll);

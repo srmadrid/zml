@@ -108,7 +108,7 @@ pub fn Static(rows_: comptime_int, cols_: comptime_int, N: type) type {
                 return matrix.Error.PositionOutOfBounds;
 
             if (r != c)
-                return numeric.zero(N);
+                return numeric.cast(N, 0);
 
             return self.data[r];
         }

@@ -2,47 +2,44 @@ const std = @import("std");
 const zsl = @import("zsl");
 
 pub fn main(init: std.process.Init) !void {
-    _ = init;
     @setEvalBranchQuota(100_000);
 
-    const N: type = zsl.Complex(zsl.Dyadic(128, 32));
-    // const layout: zsl.matrix.Layout = .row_major;
+    const N: type = zsl.Complex(zsl.Dyadic(8192, 1024));
+    const layout: zsl.matrix.Layout = .row_major;
 
     // const arena = init.arena.allocator();
-    // const gpa = init.gpa;
+    const gpa = init.gpa;
 
-    // const io = init.io;
+    const io = init.io;
 
-    // var xoshiro = std.Random.DefaultPrng.init(@bitCast(std.Io.Clock.real.now(io).toMicroseconds()));
-    // const prng = xoshiro.random();
-    // const normal = zsl.stats.Normal(N).init(zsl.numeric.zero(N), zsl.numeric.one(N));
+    var xoshiro = std.Random.DefaultPrng.init(@bitCast(std.Io.Clock.real.now(io).toMicroseconds()));
+    const prng = xoshiro.random();
+    const uniform = zsl.stats.Uniform(N).init(zsl.numeric.cast(N, -1), zsl.numeric.cast(N, 1));
 
-    // // const m = 6;
-    // const n = 4;
+    // const m = 6;
+    const n = 50;
 
-    // var x: zsl.matrix.general.Dense(N, layout) = try .initFn(gpa, n, n, zsl.stats.Normal(N).sample, .{ normal, prng });
-    // defer x.deinit(gpa);
+    var x: zsl.matrix.general.Dense(N, layout) = try .initFn(gpa, n, n, zsl.stats.Uniform(N).sample, .{ uniform, prng });
+    defer x.deinit(gpa);
 
-    // var xxh: zsl.matrix.general.Dense(N, layout) = try zsl.linalg.matmulAlloc(gpa, x, x.adjointView());
-    // defer xxh.deinit(gpa);
+    var xxh: zsl.matrix.general.Dense(N, layout) = try zsl.linalg.matmulAlloc(gpa, x, x.adjointView());
+    defer xxh.deinit(gpa);
 
-    // const a: zsl.matrix.symmetric.Static(n, N, .lower, layout) = .initArray((try xxh.symmetricView(.lower)).data[0 .. n * n].*);
+    const a: zsl.matrix.hermitian.Dense(N, .lower, layout) = try xxh.hermitianView(.lower);
 
-    // // std.debug.print("A: {f}\n", .{a.formatter("{d:.4}")});
+    // std.debug.print("A: {f}\n", .{a.formatter("{d:.4}")});
 
-    // var utu: zsl.linalg.utu.Dense(N, layout) = try .init(gpa, n);
-    // defer utu.deinit(gpa);
-    // try zsl.linalg.utu.factorInto(&utu, a);
+    var utu: zsl.linalg.utu.Dense(N, layout) = try .init(gpa, n);
+    defer utu.deinit(gpa);
+    try zsl.linalg.utu.factorInto(&utu, a);
 
-    // var a_recreated = try zsl.linalg.matmulAlloc(gpa, utu.u().adjointView(), utu.u());
-    // defer a_recreated.deinit(gpa);
+    var a_recreated = try zsl.linalg.matmulAlloc(gpa, utu.u().adjointView(), utu.u());
+    defer a_recreated.deinit(gpa);
 
-    // const diff = try zsl.matrix.subAlloc(gpa, a, a_recreated);
-    // // defer diff.deinit(gpa);
+    var diff = try zsl.matrix.subAlloc(gpa, a, a_recreated);
+    defer diff.deinit(gpa);
 
-    // std.debug.print("‖A - Uᴴ * U‖ = {e:.4}\n", .{zsl.numeric.cast(f64, try zsl.linalg.normAlloc(gpa, diff, .frobenius))});
-
-    std.debug.print("Numeric type of N: {any}\n", .{zsl.meta.numericType(N)});
+    std.debug.print("‖A - Uᴴ * U‖ = {e:.4}\n", .{zsl.numeric.cast(f128, try zsl.linalg.normAlloc(gpa, diff, .frobenius))});
 
     // var a: zsl.matrix.general.Dense(f64, .col_major) = try .initFn(gpa, m, n, zsl.stats.Normal(f64).sample, .{ normal, prng });
     // defer a.deinit(gpa);

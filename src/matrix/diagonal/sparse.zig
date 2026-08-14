@@ -158,7 +158,7 @@ pub fn Sparse(N: type) type {
 
             var i: usize = 0;
             while (i < size) : (i += 1) {
-                mat.data[i] = numeric.one(N);
+                mat.data[i] = numeric.cast(N, 1);
             }
 
             return mat;
@@ -201,7 +201,7 @@ pub fn Sparse(N: type) type {
                 return matrix.Error.PositionOutOfBounds;
 
             if (r != c)
-                return numeric.zero(N);
+                return numeric.cast(N, 0);
 
             return if (self.flags.noconj)
                 self.data[r]

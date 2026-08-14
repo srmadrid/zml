@@ -12,11 +12,11 @@ const numeric = @import("../../../numeric.zig");
 /// Performs a rank-2 update of a symmetric matrix defined as:
 ///
 /// ```zig
-/// A = alpha * x * yᵀ + alpha * y * xᵀ + A,
+/// A = αx yᵀ + αy xᵀ + A,
 /// ```
 ///
-/// where `alpha` is a numeric, `x` and `y` are `n`-element vectors, and `A` is
-/// an `n`-by-`n` symmetric matrix.
+/// where `α` is a numeric, `x` and `y` are `n`-element vectors, and `A` is an
+/// `n × n` symmetric matrix.
 ///
 /// ## Signature
 /// ```zig
@@ -92,7 +92,7 @@ fn k_syr2(uplo: matrix.Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, 
     const X: type = meta.Child(@TypeOf(x));
     const Y: type = meta.Child(@TypeOf(y));
 
-    // Set up the start points in x and y.
+    // Set up the start points in `x` and `y`.
     const kx: isize = if (incx < 0) (-numeric.cast(isize, n) + 1) * incx else 0;
     const ky: isize = if (incy < 0) (-numeric.cast(isize, n) + 1) * incy else 0;
 

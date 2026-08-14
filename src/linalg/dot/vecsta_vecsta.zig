@@ -7,7 +7,7 @@ pub fn dotUnchecked(x: anytype, y: anytype) linalg.Dot(@TypeOf(x), @TypeOf(y)) {
     const Y = @TypeOf(y);
     const R = linalg.Dot(X, Y);
 
-    var sum = numeric.zero(meta.Accumulator(R));
+    var sum = numeric.cast(meta.Accumulator(R), 0);
 
     inline for (0..X.len) |i| {
         // sum += conj(x[i]) * y[i]

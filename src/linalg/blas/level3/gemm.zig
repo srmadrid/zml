@@ -12,12 +12,11 @@ const thread = @import("../../../thread.zig");
 /// Computes a matrix-matrix product with general matrices defined as:
 ///
 /// ```zig
-/// C = alpha * op(A) * op(B) + beta * C,
+/// C = αop(A) op(B) + βC,
 /// ```
 ///
-/// where `alpha` and `beta` are numerics, `op(X)` is `X`, `Xᵀ`, `conj(X)` or
-/// `Xᴴ`, op(A)` is an `m`-by-`k` matrix, `op(B)` is a `k`-by-`n`, and `C` is an
-/// `m`-by-`n` matrix.
+/// where `α` and `β` are numerics, `op(X)` is `X`, `Xᵀ`, `X̅` or `Xᴴ`, op(A)`
+/// is an `m × k` matrix, `op(B)` is a `k × n`, and `C` is an `m × n` matrix.
 ///
 /// ## Signature
 /// ```zig
@@ -29,16 +28,16 @@ const thread = @import("../../../thread.zig");
 ///   storage is col-major or row-major.
 /// * `transa` (`linalg.blas.Transpose`): Specifies the operation to be
 ///   performed on `A`:
-///   * `no_transpose`: `C = alpha * A * op(B) + beta * C`
-///   * `transpose`: `C = alpha * Aᵀ * op(B) + beta * C`
-///   * `conj_no_transpose`: `C = alpha * conj(A) * op(B) + beta * C`
-///   * `conj_transpose`: `C = alpha * Aᴴ * op(B) + beta * C`
+///   * `no_transpose`: `C = αA op(B) + βC`
+///   * `transpose`: `C = αAᵀ op(B) + βC`
+///   * `conj_no_transpose`: `C = αA̅ op(B) + βC`
+///   * `conj_transpose`: `C = αAᴴ op(B) + βC`
 /// * `transa` (`linalg.blas.Transpose`): Specifies the operation to be
 ///   performed on `B`:
-///   * `no_transpose`: `C = alpha * op(A) * B + beta * C`
-///   * `transpose`: `C = alpha * op(A) * Bᵀ + beta * C`
-///   * `conj_no_transpose`: `C = alpha * op(A) * conj(B) + beta * C`
-///   * `conj_transpose`: `C = alpha * op(A) * Bᴴ + beta * C`
+///   * `no_transpose`: `C = αop(A) B + βC`
+///   * `transpose`: `C = αop(A) Bᵀ + βC`
+///   * `conj_no_transpose`: `C = αop(A) B̅ + βC`
+///   * `conj_transpose`: `C = αop(A) Bᴴ + βC`
 /// * `m` (`usize`): Specifies the number of rows of the matrices `op(A)` and
 ///   `C`.
 /// * `n` (`usize`): Specifies the number of columns of the matrices `op(B)` and
@@ -247,7 +246,7 @@ fn k_gemm(
         } else {
             for (0..n) |j| {
                 for (0..m) |i| {
-                    var temp = numeric.zero(meta.Accumulator(numeric.Mul(A, B)));
+                    var temp = numeric.cast(meta.Accumulator(numeric.Mul(A, B)), 0);
 
                     for (0..k) |l| {
                         // temp += a[l + i * lda] * b[l + j * ldb]
@@ -305,7 +304,7 @@ fn k_gemm(
         } else {
             for (0..n) |j| {
                 for (0..m) |i| {
-                    var temp = numeric.zero(meta.Accumulator(numeric.Mul(A, B)));
+                    var temp = numeric.cast(meta.Accumulator(numeric.Mul(A, B)), 0);
 
                     for (0..k) |l| {
                         // temp += a[l + i * lda] * b[j + l * ldb]

@@ -12,7 +12,7 @@ pub fn matmulIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
         inline for (0..O.cols) |j| {
             if (comptime meta.uploOf(O) == .upper) {
                 inline for (0..(comptime int.min(if (meta.diagOf(O) == .non_unit) j + 1 else j, O.rows))) |i| {
-                    var sum = numeric.zero(meta.Accumulator(meta.Numeric(O)));
+                    var sum = numeric.cast(meta.Accumulator(meta.Numeric(O)), 0);
 
                     var k: usize = 0;
                     while (k < x_cols) : (k += 1) {
@@ -28,7 +28,7 @@ pub fn matmulIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
                 }
             } else {
                 inline for ((comptime int.min(if (meta.diagOf(O) == .non_unit) j else j + 1, O.rows))..O.rows) |i| {
-                    var sum = numeric.zero(meta.Accumulator(meta.Numeric(O)));
+                    var sum = numeric.cast(meta.Accumulator(meta.Numeric(O)), 0);
 
                     var k: usize = 0;
                     while (k < x_cols) : (k += 1) {
@@ -48,7 +48,7 @@ pub fn matmulIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
         inline for (0..O.rows) |i| {
             if (comptime meta.uploOf(O) == .lower) {
                 inline for (0..(comptime int.min(if (meta.diagOf(O) == .non_unit) i + 1 else i, O.cols))) |j| {
-                    var sum = numeric.zero(meta.Accumulator(meta.Numeric(O)));
+                    var sum = numeric.cast(meta.Accumulator(meta.Numeric(O)), 0);
 
                     var k: usize = 0;
                     while (k < x_cols) : (k += 1) {
@@ -64,7 +64,7 @@ pub fn matmulIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
                 }
             } else {
                 inline for ((comptime int.min(if (meta.diagOf(O) == .non_unit) i else i + 1, O.cols))..O.cols) |j| {
-                    var sum = numeric.zero(meta.Accumulator(meta.Numeric(O)));
+                    var sum = numeric.cast(meta.Accumulator(meta.Numeric(O)), 0);
 
                     var k: usize = 0;
                     while (k < x_cols) : (k += 1) {

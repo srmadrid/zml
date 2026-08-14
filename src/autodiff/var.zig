@@ -9,10 +9,35 @@ const autodiff = @import("../autodiff.zig");
 const stats = @import("../stats.zig");
 
 pub fn isVar(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"union" => return @hasDecl(T, "is_var") and T.is_var,
-        else => return false,
-    }
+    return switch (comptime @typeInfo(T)) {
+        .@"union" => blk: {
+            comptime if (@hasField(T, "constant") and @hasField(T, "tracked")) {
+                const Constant = @TypeOf(@field(@as(T, undefined), "constant"));
+                var Tracked = @TypeOf(@field(@as(T, undefined), "tracked"));
+
+                if (@typeInfo(Tracked) != .@"struct" or !@hasField(Tracked, "tape") or !@hasField(Tracked, "id") or
+                    @FieldType(Tracked, "id") != usize)
+                    break :blk false;
+
+                Tracked = @FieldType(Tracked, "tape");
+
+                if (!meta.isPointer(Tracked))
+                    break :blk false;
+
+                Tracked = meta.Child(Tracked);
+
+                if (!@hasDecl(Tracked, "Numeric"))
+                    break :blk false;
+
+                Tracked = Tracked.Numeric;
+
+                break :blk Constant == Tracked and meta.isNumeric(Constant);
+            };
+
+            break :blk false;
+        },
+        else => false,
+    };
 }
 
 pub fn Var(N: type) type {
@@ -28,16 +53,13 @@ pub fn Var(N: type) type {
 
         // Type signature
         pub const is_numeric = true;
-        pub const is_var = true;
+        pub const is_integral = meta.isIntegral(N);
+        pub const is_complex = meta.isComplex(N);
+        pub const is_unsigned = meta.isUnsigned(N);
 
         pub const Accumulator = Var(meta.Accumulator(N));
         pub const Real = Var(meta.Real(N));
         pub const Scalar = N;
-
-        // Constants
-        pub const zero: autodiff.Var(N) = .{ .constant = numeric.zero(N) };
-        pub const one: autodiff.Var(N) = .{ .constant = numeric.one(N) };
-        pub const two: autodiff.Var(N) = .{ .constant = numeric.two(N) };
 
         pub fn init(tape: *autodiff.Tape(N), value: N) Var(N) {
             const id = tape.pushAssumeCapacity(.{
@@ -143,7 +165,7 @@ pub fn Var(N: type) type {
             switch (self) {
                 .constant => return,
                 .tracked => |t| {
-                    t.tape.nodes[t.id].grad = numeric.one(N);
+                    t.tape.nodes[t.id].grad = numeric.cast(N, 1);
 
                     var i: usize = t.id + 1;
                     while (i > 0) {
@@ -157,7 +179,7 @@ pub fn Var(N: type) type {
                         switch (node.op) {
                             .@"var" => {},
                             .abs => {
-                                // d/dx |x| = x / |x| = x / node.val (x != 0)
+                                // `d/dx |x| = x / |x| = x / node.val` (`x != 0`).
                                 if (!numeric.eq(node.val, 0)) {
                                     numeric.addInto(
                                         &t.tape.nodes[node.left].grad,
@@ -167,7 +189,7 @@ pub fn Var(N: type) type {
                                 }
                             },
                             .abs1 => {
-                                // d/dx abs1(x) = sign(x)
+                                // `d/dx abs1(x) = sign(x)`.
                                 numeric.addInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
@@ -175,15 +197,15 @@ pub fn Var(N: type) type {
                                 );
                             },
                             .abs2 => {
-                                // d/dx |x|² = 2x
+                                // `d/dx |x|² = 2x`.
                                 numeric.addInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
-                                    numeric.mul(g, numeric.mul(numeric.two(N), t.tape.nodes[node.left].val)),
+                                    numeric.mul(g, numeric.mul(2, t.tape.nodes[node.left].val)),
                                 );
                             },
                             .neg => {
-                                // d/dx (-x) = -1
+                                // `d/dx (-x) = -1`.
                                 numeric.subInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
@@ -191,7 +213,7 @@ pub fn Var(N: type) type {
                                 );
                             },
                             .re => {
-                                // d/dx re(x) = re(g)
+                                // `d/dx Re{x} = Re{g}`.
                                 numeric.addInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
@@ -199,7 +221,7 @@ pub fn Var(N: type) type {
                                 );
                             },
                             .im => {
-                                // d/dx im(x) = im(g)
+                                // `d/dx Im{x} = Im{g}`.
                                 numeric.addInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
@@ -207,7 +229,7 @@ pub fn Var(N: type) type {
                                 );
                             },
                             .conj => {
-                                // d/dx conj(x) = conj(g)
+                                // `d/dx x̅ = g̅`.
                                 numeric.addInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
@@ -215,10 +237,10 @@ pub fn Var(N: type) type {
                                 );
                             },
                             .sign => {
-                                // d/dx sign(x) = 0 (almost everywhere)
+                                // `d/dx sign(x) = 0` (almost everywhere).
                             },
                             .add => {
-                                // d/dx (x + y) = 1
+                                // `d/dx (x + y) = 1`.
                                 if (node.left != int.highest(usize))
                                     numeric.addInto(
                                         &t.tape.nodes[node.left].grad,
@@ -226,7 +248,7 @@ pub fn Var(N: type) type {
                                         g,
                                     );
 
-                                // d/dy (x + y) = 1
+                                // `d/dy (x + y) = 1`.
                                 if (node.right != int.highest(usize))
                                     numeric.addInto(
                                         &t.tape.nodes[node.right].grad,
@@ -235,7 +257,7 @@ pub fn Var(N: type) type {
                                     );
                             },
                             .sub => {
-                                // d/dx (x - y) = 1
+                                // `d/dx (x - y) = 1`.
                                 if (node.left != int.highest(usize))
                                     numeric.addInto(
                                         &t.tape.nodes[node.left].grad,
@@ -243,7 +265,7 @@ pub fn Var(N: type) type {
                                         g,
                                     );
 
-                                // d/dy (x - y) = -1
+                                // `d/dy (x - y) = -1`.
                                 if (node.right != int.highest(usize))
                                     numeric.subInto(
                                         &t.tape.nodes[node.right].grad,
@@ -252,14 +274,14 @@ pub fn Var(N: type) type {
                                     );
                             },
                             .mul => {
-                                // d/dx (x * y) = y
+                                // `d/dx (x * y) = y`.
                                 numeric.addInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
                                     numeric.mul(g, t.tape.nodes[node.right].val),
                                 );
 
-                                // d/dy (x * y) = x
+                                // `d/dy (x * y) = x`.
                                 numeric.addInto(
                                     &t.tape.nodes[node.right].grad,
                                     t.tape.nodes[node.right].grad,
@@ -267,7 +289,7 @@ pub fn Var(N: type) type {
                                 );
                             },
                             .div => {
-                                // d/dx (x / y) = 1 / y
+                                // `d/dx (x / y) = 1 / y`.
                                 numeric.addInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
@@ -277,7 +299,7 @@ pub fn Var(N: type) type {
                                     ),
                                 );
 
-                                // d/dy (x / y) = -x / y²
+                                // `d/dy (x / y) = -x / y²`.
                                 numeric.subInto(
                                     &t.tape.nodes[node.right].grad,
                                     t.tape.nodes[node.right].grad,
@@ -288,14 +310,14 @@ pub fn Var(N: type) type {
                                 );
                             },
                             .max => {
-                                // d/dx max(x, y) = if x > y  1  else  0
+                                // `d/dx max(x, y) = if x > y  1  else  0`.
                                 if (numeric.gt(t.tape.nodes[node.left].val, t.tape.nodes[node.right].val))
                                     numeric.addInto(
                                         &t.tape.nodes[node.left].grad,
                                         t.tape.nodes[node.left].grad,
                                         g,
                                     )
-                                else // d/dy max(x, y) = if y >= x  1  else  0
+                                else // `d/dy max(x, y) = if y >= x  1  else  0`.
                                     numeric.addInto(
                                         &t.tape.nodes[node.right].grad,
                                         t.tape.nodes[node.right].grad,
@@ -303,14 +325,14 @@ pub fn Var(N: type) type {
                                     );
                             },
                             .min => {
-                                // d/dx min(x, y) = if x < y  1  else  0
+                                // `d/dx min(x, y) = if x < y  1  else  0`.
                                 if (numeric.lt(t.tape.nodes[node.left].val, t.tape.nodes[node.right].val))
                                     numeric.addInto(
                                         &t.tape.nodes[node.left].grad,
                                         t.tape.nodes[node.left].grad,
                                         g,
                                     )
-                                else // d/dy min(x, y) = if y <= x  1  else  0
+                                else // `d/dy min(x, y) = if y <= x  1  else  0`.
                                     numeric.addInto(
                                         &t.tape.nodes[node.right].grad,
                                         t.tape.nodes[node.right].grad,
@@ -318,7 +340,7 @@ pub fn Var(N: type) type {
                                     );
                             },
                             .exp => {
-                                // d/dx exp(x) = exp(x) = node.val
+                                // `d/dx exp(x) = exp(x) = node.val`.
                                 numeric.addInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
@@ -326,7 +348,7 @@ pub fn Var(N: type) type {
                                 );
                             },
                             .ln => {
-                                // d/dx ln(x) = 1 / x
+                                // `d/dx ln(x) = 1 / x`.
                                 numeric.addInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
@@ -334,7 +356,7 @@ pub fn Var(N: type) type {
                                 );
                             },
                             .pow => {
-                                // d/dx (x^y) = y * x^(y - 1) = (y * node.val) / x
+                                // `d/dx (x^y) = y * x^(y - 1) = (y * node.val) / x`.
                                 numeric.addInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
@@ -347,7 +369,7 @@ pub fn Var(N: type) type {
                                     ),
                                 );
 
-                                // d/dy (x^y) = x^y * ln(x) = node.val * ln(x)
+                                // `d/dy (x^y) = x^y * ln(x) = node.val * ln(x)`.
                                 numeric.addInto(
                                     &t.tape.nodes[node.right].grad,
                                     t.tape.nodes[node.right].grad,
@@ -361,26 +383,26 @@ pub fn Var(N: type) type {
                                 );
                             },
                             .sqrt => {
-                                // d/dx sqrt(x) = 1 / (2 * sqrt(x)) = 1 / (2 * node.val)
+                                // `d/dx sqrt(x) = 1 / (2 * sqrt(x)) = 1 / (2 * node.val)`.
                                 numeric.addInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
-                                    numeric.div(g, numeric.mul(numeric.two(N), node.val)),
+                                    numeric.div(g, numeric.mul(2, node.val)),
                                 );
                             },
                             .cbrt => {
-                                // d/dx cbrt(x) = 1 / (3 * cbrt(x)²) = 1 / (3 * node.val²)
+                                // `d/dx cbrt(x) = 1 / (3 * cbrt(x)²) = 1 / (3 * node.val²)`.
                                 numeric.addInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
                                     numeric.div(
                                         g,
-                                        numeric.mul(numeric.add(numeric.one(N), numeric.two(N)), numeric.mul(node.val, node.val)),
+                                        numeric.mul(3, numeric.mul(node.val, node.val)),
                                     ),
                                 );
                             },
                             .hypot => {
-                                // d/dx hypot(x, y) = x / hypot(x, y) = x / node.val
+                                // `d/dx hypot(x, y) = x / hypot(x, y) = x / node.val`.
                                 if (node.left != int.highest(usize))
                                     numeric.addInto(
                                         &t.tape.nodes[node.left].grad,
@@ -391,7 +413,7 @@ pub fn Var(N: type) type {
                                         ),
                                     );
 
-                                // d/dy hypot(x, y) = y / hypot(x, y) = y / node.val
+                                // `d/dy hypot(x, y) = y / hypot(x, y) = y / node.val`.
                                 if (node.right != int.highest(usize))
                                     numeric.addInto(
                                         &t.tape.nodes[node.right].grad,
@@ -403,7 +425,7 @@ pub fn Var(N: type) type {
                                     );
                             },
                             .sin => {
-                                // d/dx sin(x) = cos(x)
+                                // `d/dx sin(x) = cos(x)`.
                                 numeric.addInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
@@ -411,7 +433,7 @@ pub fn Var(N: type) type {
                                 );
                             },
                             .cos => {
-                                // d/dx cos(x) = -sin(x)
+                                // `d/dx cos(x) = -sin(x)`.
                                 numeric.subInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
@@ -419,15 +441,15 @@ pub fn Var(N: type) type {
                                 );
                             },
                             .tan => {
-                                // d/dx tan(x) = sec²(x) = 1 + tan²(x) = 1 + node.val²
+                                // `d/dx tan(x) = sec²(x) = 1 + tan²(x) = 1 + node.val²`.
                                 numeric.addInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
-                                    numeric.mul(g, numeric.add(numeric.one(N), numeric.mul(node.val, node.val))),
+                                    numeric.mul(g, numeric.add(1, numeric.mul(node.val, node.val))),
                                 );
                             },
                             .asin => {
-                                // d/dx asin(x) = 1 / sqrt(1 - x²)
+                                // `d/dx asin(x) = 1 / sqrt(1 - x²)`.
                                 numeric.addInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
@@ -435,7 +457,7 @@ pub fn Var(N: type) type {
                                         g,
                                         numeric.sqrt(
                                             numeric.sub(
-                                                numeric.one(N),
+                                                1,
                                                 numeric.mul(
                                                     t.tape.nodes[node.left].val,
                                                     t.tape.nodes[node.left].val,
@@ -446,7 +468,7 @@ pub fn Var(N: type) type {
                                 );
                             },
                             .acos => {
-                                // d/dx acos(x) = -1 / sqrt(1 - x²)
+                                // `d/dx acos(x) = -1 / sqrt(1 - x²)`.
                                 numeric.subInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
@@ -454,7 +476,7 @@ pub fn Var(N: type) type {
                                         g,
                                         numeric.sqrt(
                                             numeric.sub(
-                                                numeric.one(N),
+                                                1,
                                                 numeric.mul(
                                                     t.tape.nodes[node.left].val,
                                                     t.tape.nodes[node.left].val,
@@ -465,14 +487,14 @@ pub fn Var(N: type) type {
                                 );
                             },
                             .atan => {
-                                // d/dx atan(x) = 1 / (1 + x²)
+                                // `d/dx atan(x) = 1 / (1 + x²)`.
                                 numeric.addInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
                                     numeric.div(
                                         g,
                                         numeric.add(
-                                            numeric.one(N),
+                                            1,
                                             numeric.mul(
                                                 t.tape.nodes[node.left].val,
                                                 t.tape.nodes[node.left].val,
@@ -493,7 +515,7 @@ pub fn Var(N: type) type {
                                     ),
                                 );
 
-                                // d/dx atan2(x, y) = y / (x² + y²)
+                                // `d/dx atan2(x, y) = y / (x² + y²)`.
                                 numeric.addInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
@@ -506,7 +528,7 @@ pub fn Var(N: type) type {
                                     ),
                                 );
 
-                                // d/dy atan2(x, y) = -x / (x² + y²)
+                                // `d/dy atan2(x, y) = -x / (x² + y²)`.
                                 numeric.subInto(
                                     &t.tape.nodes[node.right].grad,
                                     t.tape.nodes[node.right].grad,
@@ -520,7 +542,7 @@ pub fn Var(N: type) type {
                                 );
                             },
                             .sinh => {
-                                // d/dx sinh(x) = cosh(x)
+                                // `d/dx sinh(x) = cosh(x)`.
                                 numeric.addInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
@@ -531,7 +553,7 @@ pub fn Var(N: type) type {
                                 );
                             },
                             .cosh => {
-                                // d/dx cosh(x) = sinh(x)
+                                // `d/dx cosh(x) = sinh(x)`.
                                 numeric.addInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
@@ -542,21 +564,21 @@ pub fn Var(N: type) type {
                                 );
                             },
                             .tanh => {
-                                // d/dx tanh(x) = sech²(x) = 1 - tanh²(x) = 1 - node.val²
+                                // `d/dx tanh(x) = sech²(x) = 1 - tanh²(x) = 1 - node.val²`.
                                 numeric.addInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
                                     numeric.mul(
                                         g,
                                         numeric.sub(
-                                            numeric.one(N),
+                                            1,
                                             numeric.mul(node.val, node.val),
                                         ),
                                     ),
                                 );
                             },
                             .asinh => {
-                                // d/dx asinh(x) = 1 / sqrt(x² + 1)
+                                // `d/dx asinh(x) = 1 / sqrt(x² + 1)`.
                                 numeric.addInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
@@ -568,14 +590,14 @@ pub fn Var(N: type) type {
                                                     t.tape.nodes[node.left].val,
                                                     t.tape.nodes[node.left].val,
                                                 ),
-                                                numeric.one(N),
+                                                1,
                                             ),
                                         ),
                                     ),
                                 );
                             },
                             .acosh => {
-                                // d/dx acosh(x) = 1 / sqrt(x² - 1)
+                                // `d/dx acosh(x) = 1 / sqrt(x² - 1)`.
                                 numeric.addInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
@@ -587,21 +609,21 @@ pub fn Var(N: type) type {
                                                     t.tape.nodes[node.left].val,
                                                     t.tape.nodes[node.left].val,
                                                 ),
-                                                numeric.one(N),
+                                                1,
                                             ),
                                         ),
                                     ),
                                 );
                             },
                             .atanh => {
-                                // d/dx atanh(x) = 1 / (1 - x²)
+                                // `d/dx atanh(x) = 1 / (1 - x²)`.
                                 numeric.addInto(
                                     &t.tape.nodes[node.left].grad,
                                     t.tape.nodes[node.left].grad,
                                     numeric.div(
                                         g,
                                         numeric.sub(
-                                            numeric.one(N),
+                                            1,
                                             numeric.mul(
                                                 t.tape.nodes[node.left].val,
                                                 t.tape.nodes[node.left].val,
@@ -625,7 +647,7 @@ pub fn Var(N: type) type {
 
         pub fn grad(self: Var(N)) N {
             switch (self) {
-                .constant => return numeric.zero(N),
+                .constant => return numeric.cast(N, 1),
                 .tracked => |t| return t.tape.nodes[t.id].grad,
             }
         }

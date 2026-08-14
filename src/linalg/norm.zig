@@ -92,15 +92,17 @@ pub fn NormOrder(N: type) type {
 
 /// Computes the norm of a vector or a matrix, ‖x‖. The following norm orders
 /// are supported for vectors:
-/// * ‖x‖₁ = ∑ᵢ |xᵢ|
-/// * ‖x‖₂ = √(∑ᵢ |xᵢ|²)
-/// * ‖x‖_F = √(∑ᵢ |xᵢ|²)
-/// * ‖x‖_∞ = maxᵢ |xᵢ|
-/// * ‖x‖ₚ = (∑ᵢ |xᵢ|ᵖ)¹^/ᵖ
+/// * `‖x‖₁ = ∑ᵢ |xᵢ|`.
+/// * `‖x‖₂ = √(∑ᵢ |xᵢ|²)`.
+/// * `‖x‖_F = √(∑ᵢ |xᵢ|²)`.
+/// * `‖x‖_∞ = maxᵢ |xᵢ|`.
+/// * `‖x‖ₚ = (∑ᵢ |xᵢ|ᵖ)¹^/ᵖ`.
 /// The following norm orders are supported for matrices:
-/// * ‖x‖₁ = maxⱼ ∑ᵢ |xᵢⱼ|
-/// * ‖x‖_F = √(∑ᵢ∑ⱼ |xᵢⱼ|²)
-/// * ‖x‖_∞ = maxᵢ ∑ⱼ |xᵢⱼ|
+/// * `‖x‖₁ = maxⱼ ∑ᵢ |xᵢⱼ|`.
+/// * `‖x‖₂ = maxᵢ σᵢ(x) = maxᵢ √(λᵢ(Aᴴ A))` for static, diagonal or permutation
+///   matrices.
+/// * `‖x‖_F = √(∑ᵢ∑ⱼ |xᵢⱼ|²)`.
+/// * `‖x‖_∞ = maxᵢ ∑ⱼ |xᵢⱼ|`.
 ///
 /// ## Signature
 /// ```zig
@@ -112,7 +114,7 @@ pub fn NormOrder(N: type) type {
 /// * `order` (`comptime linalg.NormOrder(meta.Numeric(X))`): the norm order.
 ///
 /// ## Returns
-/// `linalg.Norm(@TypeOf(x), order)`: The norm ‖x‖.
+/// `linalg.Norm(@TypeOf(x), order)`: The norm `‖x‖`.
 pub fn norm(x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)))) linalg.Norm(@TypeOf(x), order) {
     const X: type = @TypeOf(x);
 
@@ -151,16 +153,16 @@ pub fn norm(x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)
 
 /// Computes the norm of a vector or a matrix, ‖x‖, allocating when necessary or
 /// beneficial. The following norm orders are supported for vectors:
-/// * ‖x‖₁ = ∑ᵢ |xᵢ|
-/// * ‖x‖₂ = √(∑ᵢ |xᵢ|²)
-/// * ‖x‖_F = √(∑ᵢ |xᵢ|²)
-/// * ‖x‖_∞ = maxᵢ |xᵢ|
-/// * ‖x‖ₚ = (∑ᵢ |xᵢ|ᵖ)¹^/ᵖ
+/// * `‖x‖₁ = ∑ᵢ |xᵢ|`.
+/// * `‖x‖₂ = √(∑ᵢ |xᵢ|²)`.
+/// * `‖x‖_F = √(∑ᵢ |xᵢ|²)`.
+/// * `‖x‖_∞ = maxᵢ |xᵢ|`.
+/// * `‖x‖ₚ = (∑ᵢ |xᵢ|ᵖ)¹^/ᵖ`.
 /// The following norm orders are supported for matrices:
-/// * ‖x‖₁ = maxⱼ ∑ᵢ |xᵢⱼ|
-/// * ‖x‖₂ = maxᵢ σᵢ(x) = maxᵢ √(λᵢ(Aᴴ A))
-/// * ‖x‖_F = √(∑ᵢ∑ⱼ |xᵢⱼ|²)
-/// * ‖x‖_∞ = maxᵢ ∑ⱼ |xᵢⱼ|
+/// * `‖x‖₁ = maxⱼ ∑ᵢ |xᵢⱼ|`.
+/// * `‖x‖₂ = maxᵢ σᵢ(x) = maxᵢ √(λᵢ(Aᴴ A))`.
+/// * `‖x‖_F = √(∑ᵢ∑ⱼ |xᵢⱼ|²)`.
+/// * `‖x‖_∞ = maxᵢ ∑ⱼ |xᵢⱼ|`.
 ///
 /// ## Signature
 /// ```zig
@@ -172,7 +174,7 @@ pub fn norm(x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)
 /// * `order` (`comptime linalg.NormOrder(meta.Numeric(X))`): the norm order.
 ///
 /// ## Returns
-/// `linalg.Norm(@TypeOf(x), order)`: The norm ‖x‖.
+/// `linalg.Norm(@TypeOf(x), order)`: The norm `‖x‖`.
 ///
 /// ## Errors
 /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.

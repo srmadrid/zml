@@ -166,7 +166,7 @@ pub fn Sparse(N: type) type {
                     hi = mid;
             }
 
-            return numeric.zero(N);
+            return numeric.cast(N, 0);
         }
 
         /// Sets the element of `x^exp`, inserting it if it does not already
@@ -253,7 +253,7 @@ pub fn Sparse(N: type) type {
         /// ## Returns
         /// `N`: `p(x)`.
         pub fn eval(self: poly.Sparse(N), x: N) N {
-            var result: N = numeric.zero(N);
+            var result: N = numeric.cast(N, 0);
 
             for (0..self.nnz) |i|
                 numeric.addInto(
@@ -314,7 +314,7 @@ pub fn Sparse(N: type) type {
         /// ## Errors
         /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
         pub fn integral(self: poly.Sparse(N), allocator: std.mem.Allocator, constant: N) !poly.Sparse(N) {
-            const has_constant: usize = if (numeric.eq(constant, numeric.zero(N))) 0 else 1;
+            const has_constant: usize = if (numeric.eq(constant, numeric.cast(N))) 0 else 1;
             var result: Sparse(N) = try .init(allocator, self.nnz + has_constant);
 
             if (has_constant == 1) {
@@ -364,7 +364,7 @@ pub fn Sparse(N: type) type {
                         i -= 1;
 
                         const val = self.poly.data[i];
-                        if (numeric.eq(val, numeric.zero(@TypeOf(val))))
+                        if (numeric.eq(val, 0))
                             continue;
 
                         if (printed_any_terms)
@@ -384,7 +384,7 @@ pub fn Sparse(N: type) type {
                     }
 
                     if (!printed_any_terms)
-                        try writer.print(num_fmt, .{numeric.zero(N)});
+                        try writer.print(num_fmt, .{numeric.cast(N, 0)});
                 }
             };
         }

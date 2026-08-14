@@ -58,7 +58,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                             tx
                         else
                             numeric.conj(tx),
-                        numeric.zero(meta.Numeric(Y)),
+                        numeric.cast(meta.Numeric(Y), 0),
                     );
                 }
             }
@@ -70,7 +70,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                         x.data[x._index(j, j)]
                     else
                         numeric.conj(x.data[x._index(j, j)]),
-                    numeric.one(meta.Numeric(Y)),
+                    numeric.cast(meta.Numeric(Y), 1),
                 )
             else
                 opInto(
@@ -110,7 +110,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                             tx
                         else
                             numeric.conj(tx),
-                        numeric.zero(meta.Numeric(Y)),
+                        numeric.cast(meta.Numeric(Y), 0),
                     );
                 }
             }
@@ -143,7 +143,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                             tx
                         else
                             numeric.conj(tx),
-                        numeric.zero(meta.Numeric(Y)),
+                        numeric.cast(meta.Numeric(Y), 0),
                     );
                 }
             }
@@ -155,7 +155,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                         x.data[x._index(i, i)]
                     else
                         numeric.conj(x.data[x._index(i, i)]),
-                    numeric.one(meta.Numeric(Y)),
+                    numeric.cast(meta.Numeric(Y), 1),
                 )
             else
                 opInto(
@@ -195,7 +195,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
                             tx
                         else
                             numeric.conj(tx),
-                        numeric.zero(meta.Numeric(Y)),
+                        numeric.cast(meta.Numeric(Y), 0),
                     );
                 }
             }

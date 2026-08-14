@@ -206,7 +206,7 @@ fn k_gemmtr(
                 const start = if (uplo == .upper) 0 else j;
                 const end = if (uplo == .upper) j + 1 else n;
                 for (start..end) |i| {
-                    var temp = numeric.zero(meta.Accumulator(numeric.Mul(A, B)));
+                    var temp = numeric.cast(meta.Accumulator(numeric.Mul(A, B)), 0);
 
                     for (0..k) |l| {
                         // temp += a[l + i * lda] * b[l + j * ldb]
@@ -268,7 +268,7 @@ fn k_gemmtr(
                 const start = if (uplo == .upper) 0 else j;
                 const end = if (uplo == .upper) j + 1 else n;
                 for (start..end) |i| {
-                    var temp = numeric.zero(meta.Accumulator(numeric.Mul(A, B)));
+                    var temp = numeric.cast(meta.Accumulator(numeric.Mul(A, B)), 0);
 
                     for (0..k) |l| {
                         // temp += a[l + i * lda] * b[j + l * ldb]

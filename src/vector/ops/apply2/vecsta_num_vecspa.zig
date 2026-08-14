@@ -16,7 +16,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
     var iy: usize = 0;
     while (iy < y.nnz) : (iy += 1) {
         while (i < y.idx[iy]) : (i += 1) {
-            opInto(&o.data[i], x, numeric.zero(meta.Numeric(Y)));
+            opInto(&o.data[i], x, numeric.cast(meta.Numeric(Y), 0));
         }
 
         opInto(
@@ -32,6 +32,6 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
     }
 
     while (i < O.len) : (i += 1) {
-        opInto(&o.data[i], x, numeric.zero(meta.Numeric(Y)));
+        opInto(&o.data[i], x, numeric.cast(meta.Numeric(Y), 0));
     }
 }

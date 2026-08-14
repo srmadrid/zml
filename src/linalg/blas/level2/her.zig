@@ -12,11 +12,11 @@ const numeric = @import("../../../numeric.zig");
 /// Performs a rank-1 update of a Hermitian matrix defined as:
 ///
 /// ```zig
-/// A = alpha * x * xᴴ + A,
+/// A = αx xᴴ + A,
 /// ```
 ///
-/// where `alpha` is a real numeric, `x` is an `n`-element vector, and `A` is an
-/// `n`-by-`n` Hermitian matrix.
+/// where `α` is a real numeric, `x` is an `n`-element vector, and `A` is an
+/// `n × n` Hermitian matrix.
 ///
 /// ## Signature
 /// ```zig
@@ -29,7 +29,7 @@ const numeric = @import("../../../numeric.zig");
 /// * `uplo` (`matrix.Uplo`): Specifies whether the upper or lower triangular
 ///   part of the Hermitian matrix `A` is used.
 /// * `n` (`usize`): Specifies the size of the matrix `A`.
-/// * `alpha` (`anytype`): Specifies the numeric `alpha`.
+/// * `alpha` (`anytype`): Specifies the numeric `α`.
 /// * `x` (`anytype`): Many-item pointer, size at least
 ///   `1 + (n - 1) * abs(incx)`.
 /// * `incx` (`isize`): Indexing increment for `x`. Must be different from 0.
@@ -87,7 +87,7 @@ fn k_her(uplo: matrix.Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, a
     const A: type = meta.Child(@TypeOf(a));
     const X: type = meta.Child(@TypeOf(x));
 
-    // Set up the start point in x.
+    // Set up the start point in `x`.
     const kx: isize = if (incx < 0) (-numeric.cast(isize, n) + 1) * incx else 0;
 
     if (uplo == .upper) {

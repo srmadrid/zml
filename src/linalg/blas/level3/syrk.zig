@@ -233,7 +233,7 @@ fn k_syrk(
         if (uplo == .upper) {
             for (0..n) |j| {
                 for (0..j + 1) |i| {
-                    var temp = numeric.zero(meta.Accumulator(numeric.Mul(A, A)));
+                    var temp = numeric.cast(meta.Accumulator(numeric.Mul(A, A)), 0);
 
                     for (0..k) |l| {
                         // temp += a[l + i * lda] * a[l + j * lda]
@@ -257,7 +257,7 @@ fn k_syrk(
         } else {
             for (0..n) |j| {
                 for (j..n) |i| {
-                    var temp = numeric.zero(meta.Accumulator(numeric.Mul(A, A)));
+                    var temp = numeric.cast(meta.Accumulator(numeric.Mul(A, A)), 0);
 
                     for (0..k) |l| {
                         // temp += a[l + i * lda] * a[l + j * lda]

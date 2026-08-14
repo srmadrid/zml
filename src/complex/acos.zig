@@ -22,8 +22,8 @@ pub fn acos(z: anytype) @TypeOf(z) {
         @compileError("zsl.complex.acos: z must be a complex, got \n\tz: " ++ @typeName(Z) ++ "\n");
 
     const prod = numeric.mul(
-        numeric.sqrt(numeric.sub(numeric.one(Z), z)),
-        numeric.sqrt(numeric.add(numeric.one(Z), z)),
+        numeric.sqrt(numeric.sub(1, z)),
+        numeric.sqrt(numeric.add(1, z)),
     );
 
     const i_prod = @TypeOf(prod){

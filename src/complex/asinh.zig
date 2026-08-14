@@ -26,14 +26,14 @@ pub fn asinh(z: anytype) @TypeOf(z) {
         .im = numeric.abs(z.im),
     };
 
-    const w = numeric.fma(z_first_quad, z_first_quad, numeric.one(Z));
+    const w = numeric.fma(z_first_quad, z_first_quad, 1);
 
     const root = numeric.sqrt(w);
     const sum = numeric.add(z_first_quad, root);
     const quad_result = numeric.ln(sum);
 
     return .{
-        .re = if (numeric.lt(z.re, numeric.zero(@TypeOf(z.re)))) numeric.neg(quad_result.re) else quad_result.re,
-        .im = if (numeric.lt(z.im, numeric.zero(@TypeOf(z.im)))) numeric.neg(quad_result.im) else quad_result.im,
+        .re = if (numeric.lt(z.re, 0)) numeric.neg(quad_result.re) else quad_result.re,
+        .im = if (numeric.lt(z.im, 0)) numeric.neg(quad_result.im) else quad_result.im,
     };
 }

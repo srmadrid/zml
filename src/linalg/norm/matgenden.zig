@@ -18,10 +18,10 @@ fn k_norm(x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)))
 
     switch (comptime order) {
         .l1 => {
-            var max_col_sum = numeric.zero(R);
+            var max_col_sum = numeric.cast(R, 0);
 
             for (0..x.cols) |j| {
-                var col_sum = numeric.zero(meta.Accumulator(R));
+                var col_sum = numeric.cast(meta.Accumulator(R), 0);
 
                 for (0..x.rows) |i| {
                     // sum += abs(x[i, j])
@@ -48,7 +48,7 @@ fn k_norm(x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)))
         },
         .l2 => unreachable,
         .frobenius => {
-            var sum = numeric.zero(meta.Accumulator(R));
+            var sum = numeric.cast(meta.Accumulator(R), 0);
 
             if (comptime meta.layoutOf(X) == .col_major) {
                 for (0..x.cols) |j| {
@@ -87,10 +87,10 @@ fn k_norm(x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)))
             return numeric.cast(R, numeric.sqrt(sum));
         },
         .inf => {
-            var max_row_sum = numeric.zero(R);
+            var max_row_sum = numeric.cast(R, 0);
 
             for (0..x.rows) |i| {
-                var row_sum = numeric.zero(meta.Accumulator(R));
+                var row_sum = numeric.cast(meta.Accumulator(R), 0);
 
                 for (0..x.cols) |j| {
                     // sum += abs(x[i, j])
@@ -137,7 +137,7 @@ fn k_normAlloc(allocator: std.mem.Allocator, x: anytype, comptime order: linalg.
 
             const col_sums = try allocator.alloc(meta.Accumulator(R), x.cols);
             defer allocator.free(col_sums);
-            @memset(col_sums, numeric.zero(meta.Accumulator(R)));
+            @memset(col_sums, numeric.cast(meta.Accumulator(R), 0));
 
             for (0..x.rows) |i| {
                 for (0..x.cols) |j| {
@@ -155,7 +155,7 @@ fn k_normAlloc(allocator: std.mem.Allocator, x: anytype, comptime order: linalg.
                 }
             }
 
-            var max_col_sum = numeric.zero(R);
+            var max_col_sum = numeric.cast(R, 0);
 
             for (0..x.cols) |j| {
                 numeric.maxInto(
@@ -175,7 +175,7 @@ fn k_normAlloc(allocator: std.mem.Allocator, x: anytype, comptime order: linalg.
 
             const row_sums = try allocator.alloc(meta.Accumulator(R), x.rows);
             defer allocator.free(row_sums);
-            @memset(row_sums, numeric.zero(meta.Accumulator(R)));
+            @memset(row_sums, numeric.cast(meta.Accumulator(R), 0));
 
             for (0..x.cols) |j| {
                 for (0..x.rows) |i| {
@@ -193,7 +193,7 @@ fn k_normAlloc(allocator: std.mem.Allocator, x: anytype, comptime order: linalg.
                 }
             }
 
-            var max_row_sum = numeric.zero(R);
+            var max_row_sum = numeric.cast(R, 0);
 
             for (0..x.rows) |i| {
                 numeric.maxInto(

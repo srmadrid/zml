@@ -66,15 +66,15 @@ pub fn Static(size_: comptime_int, N: type, direction_: matrix.permutation.Direc
 
             if (comptime direction == .forward) {
                 if (self.idx[r] == c) {
-                    return numeric.one(N);
+                    return numeric.cast(N, 1);
                 } else {
-                    return numeric.zero(N);
+                    return numeric.cast(N, 0);
                 }
             } else {
                 if (self.idx[c] == r) {
-                    return numeric.one(N);
+                    return numeric.cast(N, 1);
                 } else {
-                    return numeric.zero(N);
+                    return numeric.cast(N, 0);
                 }
             }
         }
@@ -94,15 +94,15 @@ pub fn Static(size_: comptime_int, N: type, direction_: matrix.permutation.Direc
         pub fn getAssumeInBounds(self: matrix.permutation.Static(size, N, direction), r: usize, c: usize) N {
             if (comptime direction == .forward) {
                 if (self.idx[r] == c) {
-                    return numeric.one(N);
+                    return numeric.cast(N, 1);
                 } else {
-                    return numeric.zero(N);
+                    return numeric.cast(N, 0);
                 }
             } else {
                 if (self.idx[c] == r) {
-                    return numeric.one(N);
+                    return numeric.cast(N, 1);
                 } else {
-                    return numeric.zero(N);
+                    return numeric.cast(N, 0);
                 }
             }
         }

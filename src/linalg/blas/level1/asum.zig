@@ -18,7 +18,7 @@ pub fn Asum(X: type) type {
 /// vector:
 ///
 /// ```zig
-/// abs(x[0].re) + abs(x[0].im) + abs(x[1].re) + abs(x[1].im) + ... + abs(x[n - 1].re) + abs(x[n - 1].im),
+/// ∑ᵢ ‖xᵢ‖₁,
 /// ```
 ///
 /// where `x` is a vector with `n` elements.
@@ -47,7 +47,7 @@ pub fn asum(n: usize, x: anytype, incx: isize) !linalg.blas.Asum(@TypeOf(x)) {
         return linalg.blas.Error.InvalidArgument;
 
     if (n == 0)
-        return numeric.zero(linalg.blas.Asum(X));
+        return numeric.cast(linalg.blas.Asum(X), 0);
 
     return numeric.cast(linalg.blas.Asum(X), k_asum(n, x, incx));
 }
@@ -57,7 +57,7 @@ pub fn asum(n: usize, x: anytype, incx: isize) !linalg.blas.Asum(@TypeOf(x)) {
 /// vector:
 ///
 /// ```zig
-/// abs(x[0].re) + abs(x[0].im) + abs(x[1].re) + abs(x[1].im) + ... + abs(x[n - 1].re) + abs(x[n - 1].im),
+/// ∑ᵢ ‖xᵢ‖₁,
 /// ```
 ///
 /// where `x` is a vector with `n` elements, splitting the work across the
@@ -88,7 +88,7 @@ pub fn asumParallel(n: usize, x: anytype, incx: isize, pool: *thread.Pool) !lina
         return linalg.blas.Error.InvalidArgument;
 
     if (n == 0)
-        return numeric.zero(linalg.blas.Asum(X));
+        return numeric.cast(linalg.blas.Asum(X), 0);
 
     const Ctx = struct {
         n: usize,
@@ -112,7 +112,7 @@ pub fn asumParallel(n: usize, x: anytype, incx: isize, pool: *thread.Pool) !lina
         }
     };
 
-    var sums: [thread.max_workers]meta.Accumulator(linalg.blas.Asum(X)) = @splat(numeric.zero(meta.Accumulator(linalg.blas.Asum(X))));
+    var sums: [thread.max_workers]meta.Accumulator(linalg.blas.Asum(X)) = @splat(numeric.cast(meta.Accumulator(linalg.blas.Asum(X)), 0));
 
     pool.parallelFor(
         n,
@@ -125,7 +125,7 @@ pub fn asumParallel(n: usize, x: anytype, incx: isize, pool: *thread.Pool) !lina
         Ctx.kernel,
     );
 
-    var sum = numeric.zero(meta.Accumulator(linalg.blas.Asum(X)));
+    var sum = numeric.cast(meta.Accumulator(linalg.blas.Asum(X)), 0);
     for (0..int.min(pool.idCount(), thread.max_workers)) |i| {
         numeric.addInto(&sum, sum, sums[i]);
     }
@@ -138,7 +138,7 @@ fn k_asum(n: usize, x: anytype, incx: isize) meta.Accumulator(linalg.blas.Asum(@
 
     const unroll = 2 * (std.simd.suggestVectorLength(meta.Accumulator(linalg.blas.Asum(X))) orelse 2);
 
-    var sums: [unroll]meta.Accumulator(linalg.blas.Asum(X)) = .{numeric.zero(meta.Accumulator(linalg.blas.Asum(X)))} ** unroll;
+    var sums: [unroll]meta.Accumulator(linalg.blas.Asum(X)) = @splat(numeric.cast(meta.Accumulator(linalg.blas.Asum(X)), 0));
 
     if (incx == 1) {
         var i: usize = 0;
@@ -189,7 +189,7 @@ fn k_asum(n: usize, x: anytype, incx: isize) meta.Accumulator(linalg.blas.Asum(@
         }
     }
 
-    var sum = numeric.zero(meta.Accumulator(linalg.blas.Asum(X)));
+    var sum = numeric.cast(meta.Accumulator(linalg.blas.Asum(X)), 0);
     inline for (0..unroll) |u| {
         // sum += sums[u]
         numeric.addInto(&sum, sum, sums[u]);

@@ -12,11 +12,11 @@ const numeric = @import("../../../numeric.zig");
 /// Computes a matrix-vector product with a Hermitian matrix defined as:
 ///
 /// ```zig
-/// y = alpha * A * x + beta * y,
+/// y = αA x + βy,
 /// ```
 ///
-/// where `alpha` and `beta` are numerics, `x` and `y` are `n`-element vectors,
-/// and `A` is an `n`-by-`n` Hermitian matrix.
+/// where `α` and `β` are numerics, `x` and `y` are `n`-element vectors, and `A`
+/// is an `n × n` Hermitian matrix.
 ///
 /// ## Signature
 /// ```zig
@@ -29,15 +29,15 @@ const numeric = @import("../../../numeric.zig");
 /// * `uplo` (`matrix.Uplo`): Specifies whether the upper or lower triangular
 ///   part of the Hermitian matrix `A` is used.
 /// * `n` (`usize`): Specifies the size of the matrix `A`.
-/// * `alpha` (`anytype`): Specifies the numeric `alpha`.
+/// * `alpha` (`anytype`): Specifies the numeric `α`.
 /// * `a` (`anytype`): Many-item pointer, size at least `lda * n`.
 /// * `lda` (`usize`): Specifies the leading dimension of `a` as declared in the
 ///   calling (sub)program. Must be greater than or equal to `max(1, n)`.
 /// * `x` (`anytype`): Many-item pointer, size at least
 ///   `1 + (n - 1) * abs(incx)`.
 /// * `incx` (`isize`): Indexing increment for `x`. Must be different from 0.
-/// * `beta` (`anytype`): Specifies the numeric `beta`. When `beta` is 0, then
-///   `y` need not be set on input.
+/// * `beta` (`anytype`): Specifies the numeric `β`. When `β` is 0, then `y`
+///   need not be set on input.
 /// * `y` (`anytype`): Mutable many-item pointer, size at least
 ///   `1 + (n - 1) * abs(incy)`. On return, contains the result of the
 ///   operation.
@@ -107,16 +107,16 @@ fn k_hemv(uplo: matrix.Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x
     const X: type = meta.Child(@TypeOf(x));
     const Y: type = meta.Child(@TypeOf(y));
 
-    // Set up the start points in x and y.
+    // Set up the start points in `x` and `y`.
     const kx: isize = if (incx < 0) (-numeric.cast(isize, n) + 1) * incx else 0;
     const ky: isize = if (incy < 0) (-numeric.cast(isize, n) + 1) * incy else 0;
 
-    // First form  y = beta * y.
+    // First form `y = βy`.
     if (numeric.ne(beta, 1))
         linalg.blas.scal(n, beta, y, incy) catch unreachable;
 
     if (uplo == .upper) {
-        // Form  y  when upper triangle of A is stored.
+        // Form `y` when upper triangle of `A` is stored.
         const unroll = 2 * int.min(
             std.simd.suggestVectorLength(numeric.Fma(numeric.Mul(Al, X), A, Y)) orelse 2,
             std.simd.suggestVectorLength(meta.Accumulator(numeric.Mul(if (comptime noconj) A else numeric.Conj(A), X))) orelse 2,
@@ -172,9 +172,9 @@ fn k_hemv(uplo: matrix.Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x
                     // temp1 = alpha * px[j - tile_i]
                     const temp1 = numeric.mul(alpha, px[j - tile_i]);
 
-                    var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(if (comptime noconj) A else numeric.Conj(A), X)));
+                    var temp2 = numeric.cast(meta.Accumulator(numeric.Mul(if (comptime noconj) A else numeric.Conj(A), X)), 0);
 
-                    var sums: [unroll]meta.Accumulator(numeric.Mul(if (noconj) A else numeric.Conj(A), X)) = .{numeric.zero(meta.Accumulator(numeric.Mul(if (comptime noconj) A else numeric.Conj(A), X)))} ** unroll;
+                    var sums: [unroll]meta.Accumulator(numeric.Mul(if (noconj) A else numeric.Conj(A), X)) = @splat(numeric.cast(meta.Accumulator(numeric.Mul(if (comptime noconj) A else numeric.Conj(A), X)), 0));
 
                     var i: usize = 0;
                     while (i < ((j - tile_i) / unroll) * unroll) : (i += unroll) {
@@ -246,9 +246,9 @@ fn k_hemv(uplo: matrix.Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x
                     // temp1 = alpha * x[jx]
                     const temp1 = numeric.mul(alpha, x[numeric.cast(usize, jx)]);
 
-                    var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(if (comptime noconj) A else numeric.Conj(A), X)));
+                    var temp2 = numeric.cast(meta.Accumulator(numeric.Mul(if (comptime noconj) A else numeric.Conj(A), X)), 0);
 
-                    var sums: [unroll]meta.Accumulator(numeric.Mul(if (noconj) A else numeric.Conj(A), X)) = .{numeric.zero(meta.Accumulator(numeric.Mul(if (comptime noconj) A else numeric.Conj(A), X)))} ** unroll;
+                    var sums: [unroll]meta.Accumulator(numeric.Mul(if (noconj) A else numeric.Conj(A), X)) = @splat(numeric.cast(meta.Accumulator(numeric.Mul(if (comptime noconj) A else numeric.Conj(A), X)), 0));
 
                     var i: usize = 0;
                     while (i + unroll <= b_len) : (i += unroll) {
@@ -332,7 +332,7 @@ fn k_hemv(uplo: matrix.Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x
             }
         }
     } else {
-        // Form  y  when lower triangle of A is stored.
+        // Form `y` when lower triangle of `A` is stored.
         const unroll = 2 * int.min(
             std.simd.suggestVectorLength(numeric.Fma(numeric.Mul(Al, X), A, Y)) orelse 2,
             std.simd.suggestVectorLength(meta.Accumulator(numeric.Mul(if (comptime noconj) A else numeric.Conj(A), X))) orelse 2,
@@ -391,7 +391,7 @@ fn k_hemv(uplo: matrix.Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x
                         px[j - tile_i],
                     );
 
-                    var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(if (comptime noconj) A else numeric.Conj(A), X)));
+                    var temp2 = numeric.cast(meta.Accumulator(numeric.Mul(if (comptime noconj) A else numeric.Conj(A), X)), 0);
 
                     // py[j - tile_i] += temp1 * re(a[j + j * lda])
                     numeric.fmaInto(
@@ -401,7 +401,7 @@ fn k_hemv(uplo: matrix.Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x
                         py[j - tile_i],
                     );
 
-                    var sums: [unroll]meta.Accumulator(numeric.Mul(if (noconj) A else numeric.Conj(A), X)) = .{numeric.zero(meta.Accumulator(numeric.Mul(if (comptime noconj) A else numeric.Conj(A), X)))} ** unroll;
+                    var sums: [unroll]meta.Accumulator(numeric.Mul(if (noconj) A else numeric.Conj(A), X)) = @splat(numeric.cast(meta.Accumulator(numeric.Mul(if (comptime noconj) A else numeric.Conj(A), X)), 0));
 
                     var i: usize = j - tile_i + 1;
                     while (i < b_len and i % unroll != 0) : (i += 1) {
@@ -496,9 +496,9 @@ fn k_hemv(uplo: matrix.Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x
                         x[numeric.cast(usize, jx)],
                     );
 
-                    var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(if (comptime noconj) A else numeric.Conj(A), X)));
+                    var temp2 = numeric.cast(meta.Accumulator(numeric.Mul(if (comptime noconj) A else numeric.Conj(A), X)), 0);
 
-                    var sums: [unroll]meta.Accumulator(numeric.Mul(if (noconj) A else numeric.Conj(A), X)) = .{numeric.zero(meta.Accumulator(numeric.Mul(if (comptime noconj) A else numeric.Conj(A), X)))} ** unroll;
+                    var sums: [unroll]meta.Accumulator(numeric.Mul(if (noconj) A else numeric.Conj(A), X)) = @splat(numeric.cast(meta.Accumulator(numeric.Mul(if (comptime noconj) A else numeric.Conj(A), X)), 0));
 
                     var i: usize = 0;
                     while (i < (b_len / unroll) * unroll) : (i += unroll) {

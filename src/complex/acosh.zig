@@ -24,10 +24,10 @@ pub fn acosh(z: anytype) @TypeOf(z) {
     return numeric.mul(
         numeric.ln(
             numeric.add(
-                numeric.sqrt(numeric.div(numeric.add(z, numeric.one(Z)), numeric.two(Z))),
-                numeric.sqrt(numeric.div(numeric.sub(z, numeric.one(Z)), numeric.two(Z))),
+                numeric.sqrt(numeric.div(numeric.add(z, 1), 2)),
+                numeric.sqrt(numeric.div(numeric.sub(z, 1), 2)),
             ),
         ),
-        numeric.two(Z),
+        2,
     );
 }

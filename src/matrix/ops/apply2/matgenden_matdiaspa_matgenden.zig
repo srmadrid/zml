@@ -38,7 +38,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
             while (i < int.min(j, o.rows)) : (i += 1) {
                 opInto(
                     &o.data[o._index(i, j)],
-                    numeric.zero(meta.Numeric(X)),
+                    numeric.cast(meta.Numeric(X), 0),
                     if (comptime noconj_o == noconj_y)
                         y.data[y._index(i, j)]
                     else
@@ -64,7 +64,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
             while (i < o.rows) : (i += 1) {
                 opInto(
                     &o.data[o._index(i, j)],
-                    numeric.zero(meta.Numeric(X)),
+                    numeric.cast(meta.Numeric(X), 0),
                     if (comptime noconj_o == noconj_y)
                         y.data[y._index(i, j)]
                     else
@@ -79,7 +79,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
             while (j < int.min(i, o.cols)) : (j += 1) {
                 opInto(
                     &o.data[o._index(i, j)],
-                    numeric.zero(meta.Numeric(X)),
+                    numeric.cast(meta.Numeric(X), 0),
                     if (comptime noconj_o == noconj_y)
                         y.data[y._index(i, j)]
                     else
@@ -105,7 +105,7 @@ fn k_apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: an
             while (j < o.cols) : (j += 1) {
                 opInto(
                     &o.data[o._index(i, j)],
-                    numeric.zero(meta.Numeric(X)),
+                    numeric.cast(meta.Numeric(X), 0),
                     if (comptime noconj_o == noconj_y)
                         y.data[y._index(i, j)]
                     else

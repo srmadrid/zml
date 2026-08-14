@@ -9,7 +9,7 @@ const thread = @import("../../../thread.zig");
 /// Finds the (0-based) index of the element with the largest magnitude:
 ///
 /// ```zig
-/// argmax_i abs1(x[i]),   for i in 0..n
+/// argmaxᵢ ‖xᵢ‖₁.
 /// ```
 ///
 /// If multiple elements share the maximum value, the smallest index is
@@ -49,7 +49,7 @@ pub fn iamax(n: usize, x: anytype, incx: isize) !usize {
 /// Finds the (0-based) index of the element with the largest magnitude:
 ///
 /// ```zig
-/// argmax_i abs1(x[i]),   for i in 0..n
+/// argmaxᵢ ‖xᵢ‖₁,
 /// ```
 ///
 /// splitting the work across the worker threads of `pool`. If multiple elements
@@ -166,7 +166,7 @@ fn IamaxResult(N: type) type {
 
 fn k_iamax(n: usize, x: anytype, incx: isize) IamaxResult(numeric.Abs1(meta.Child(@TypeOf(x)))) {
     if (n == 0)
-        return .{ .value = numeric.zero(numeric.Abs1(meta.Child(@TypeOf(x)))), .index = 0 };
+        return .{ .value = numeric.cast(numeric.Abs1(meta.Child(@TypeOf(x))), 0), .index = 0 };
 
     var best_value = if (incx == 1)
         numeric.abs1(x[0])

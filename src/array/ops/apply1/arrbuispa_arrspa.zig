@@ -17,7 +17,7 @@ fn k_apply1IntoUnchecked(o: anytype, x: anytype, comptime opInto: anytype, compt
     if (x.ndim == 0) {
         if (x.nnz > 0) {
             var out_val: meta.Numeric(O) = undefined;
-            opInto(&out_val, if (noconj_x) x.data[0] else numeric.conj(x.data[0]));
+            opInto(&out_val, if (comptime noconj_x) x.data[0] else numeric.conj(x.data[0]));
             o.appendAssumeCapacity(&[_]usize{}, out_val);
         }
 
@@ -54,7 +54,7 @@ fn broadcastSparseLevel(
 
                 if (level == x.ndim - 1) {
                     var out_val: meta.Numeric(O) = undefined;
-                    opInto(&out_val, if (noconj_x) x.data[child_node] else numeric.conj(x.data[child_node]));
+                    opInto(&out_val, if (comptime noconj_x) x.data[child_node] else numeric.conj(x.data[child_node]));
                     o.appendAssumeCapacity(current_idx[0..o.ndim], out_val);
                 } else {
                     broadcastSparseLevel(o, x, opInto, noconj_x, level + 1, child_node, current_idx);
@@ -68,7 +68,7 @@ fn broadcastSparseLevel(
 
             if (level == x.ndim - 1) {
                 var out_val: meta.Numeric(O) = undefined;
-                opInto(&out_val, if (noconj_x) x.data[child] else numeric.conj(x.data[child]));
+                opInto(&out_val, if (comptime noconj_x) x.data[child] else numeric.conj(x.data[child]));
                 o.appendAssumeCapacity(current_idx[0..o.ndim], out_val);
             } else {
                 broadcastSparseLevel(o, x, opInto, noconj_x, level + 1, child, current_idx);

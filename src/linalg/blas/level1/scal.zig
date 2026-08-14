@@ -9,10 +9,10 @@ const thread = @import("../../../thread.zig");
 /// Computes the product of a vector by a numeric:
 ///
 /// ```zig
-/// x = alpha * x,
+/// x = αx,
 /// ```
 ///
-/// where `alpha` is a numeric, and `x` is a vector with `n` elements.
+/// where `α` is a numeric, and `x` is a vector with `n` elements.
 ///
 /// ## Signature
 /// ```zig
@@ -21,7 +21,7 @@ const thread = @import("../../../thread.zig");
 ///
 /// ## Arguments
 /// * `n` (`usize`): Specifies the number of elements in vectors `x` and `y`.
-/// * `alpha` (`anytype`): Specifies the numeric `alpha`.
+/// * `alpha` (`anytype`): Specifies the numeric `α`.
 /// * `x` (`anytype`): Many-item pointer, size at least
 ///   `1 + (n - 1) * abs(incx)`.
 /// * `incx` (`isize`): Indexing increment for `x`. Must be different from 0.
@@ -53,10 +53,10 @@ pub fn scal(n: usize, alpha: anytype, x: anytype, incx: isize) !void {
 /// Computes the product of a vector by a numeric:
 ///
 /// ```zig
-/// x = alpha * x,
+/// x = αx,
 /// ```
 ///
-/// where `alpha` is a numeric, and `x` is a vector with `n` elements, splitting
+/// where `α` is a numeric, and `x` is a vector with `n` elements, splitting
 /// the work across the worker threads of `pool`.
 ///
 /// ## Signature
@@ -66,7 +66,7 @@ pub fn scal(n: usize, alpha: anytype, x: anytype, incx: isize) !void {
 ///
 /// ## Arguments
 /// * `n` (`usize`): Specifies the number of elements in vectors `x` and `y`.
-/// * `alpha` (`anytype`): Specifies the numeric `alpha`.
+/// * `alpha` (`anytype`): Specifies the numeric `α`.
 /// * `x` (`anytype`): Many-item pointer, size at least
 ///   `1 + (n - 1) * abs(incx)`.
 /// * `incx` (`isize`): Indexing increment for `x`. Must be different from 0.
@@ -144,13 +144,13 @@ fn k_scal(n: usize, alpha: anytype, x: anytype, incx: isize) void {
             while (i < (n / unroll) * unroll) : (i += unroll) {
                 inline for (0..unroll) |u| {
                     // x[i + u] = 0
-                    x[i + u] = numeric.zero(X);
+                    x[i + u] = numeric.cast(X, 0);
                 }
             }
 
             while (i < n) : (i += 1) {
                 // x[i] = 0
-                x[i] = numeric.zero(X);
+                x[i] = numeric.cast(X, 0);
             }
         } else {
             var i: usize = 0;
@@ -181,7 +181,7 @@ fn k_scal(n: usize, alpha: anytype, x: anytype, incx: isize) void {
             while (i < (n / unroll) * unroll) : (i += unroll) {
                 inline for (0..unroll) |u| {
                     // x[ix + u * incx] = 0
-                    x[numeric.cast(usize, ix + numeric.cast(isize, u) * incx)] = numeric.zero(X);
+                    x[numeric.cast(usize, ix + numeric.cast(isize, u) * incx)] = numeric.cast(X, 0);
                 }
 
                 ix += numeric.cast(isize, unroll) * incx;
@@ -189,7 +189,7 @@ fn k_scal(n: usize, alpha: anytype, x: anytype, incx: isize) void {
 
             while (i < n) : (i += 1) {
                 // x[ix] *= alpha
-                x[numeric.cast(usize, ix)] = numeric.zero(X);
+                x[numeric.cast(usize, ix)] = numeric.cast(X, 0);
 
                 ix += incx;
             }

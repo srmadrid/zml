@@ -14,10 +14,10 @@ pub fn norm(x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)
 
     switch (comptime order) {
         .l1 => {
-            var max_col_sum = numeric.zero(R);
+            var max_col_sum = numeric.cast(R, 0);
 
             for (0..cols) |j| {
-                var col_sum = numeric.zero(meta.Accumulator(R));
+                var col_sum = numeric.cast(meta.Accumulator(R), 0);
 
                 for (0..rows) |i| {
                     // sum += abs(x[i, j])
@@ -35,7 +35,7 @@ pub fn norm(x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)
         },
         .l2 => unreachable,
         .frobenius => {
-            var sum = numeric.zero(meta.Accumulator(R));
+            var sum = numeric.cast(meta.Accumulator(R), 0);
 
             for (0..cols) |j| {
                 for (0..rows) |i| {
@@ -51,10 +51,10 @@ pub fn norm(x: anytype, comptime order: linalg.NormOrder(meta.Numeric(@TypeOf(x)
             return numeric.cast(R, numeric.sqrt(sum));
         },
         .inf => {
-            var max_row_sum = numeric.zero(R);
+            var max_row_sum = numeric.cast(R, 0);
 
             for (0..rows) |i| {
-                var row_sum = numeric.zero(meta.Accumulator(R));
+                var row_sum = numeric.cast(meta.Accumulator(R), 0);
 
                 for (0..cols) |j| {
                     // sum += abs(x[i, j])
@@ -91,7 +91,7 @@ pub fn normAlloc(allocator: std.mem.Allocator, x: anytype, comptime order: linal
             else
                 try allocator.alloc(meta.Accumulator(R), cols);
             defer if (comptime !meta.isStaticMatrix(X)) allocator.free(col_sums);
-            @memset(col_sums[0..cols], numeric.zero(meta.Accumulator(R)));
+            @memset(col_sums[0..cols], numeric.cast(meta.Accumulator(R), 0));
 
             for (0..rows) |i| {
                 for (0..cols) |j| {
@@ -104,7 +104,7 @@ pub fn normAlloc(allocator: std.mem.Allocator, x: anytype, comptime order: linal
                 }
             }
 
-            var max_col_sum = numeric.zero(R);
+            var max_col_sum = numeric.cast(R, 0);
 
             for (0..cols) |j| {
                 max_col_sum = numeric.max(max_col_sum, numeric.cast(R, col_sums[j]));
@@ -123,7 +123,7 @@ pub fn normAlloc(allocator: std.mem.Allocator, x: anytype, comptime order: linal
             else
                 try allocator.alloc(meta.Accumulator(R), rows);
             defer if (comptime !meta.isStaticMatrix(X)) allocator.free(row_sums);
-            @memset(row_sums[0..rows], numeric.zero(meta.Accumulator(R)));
+            @memset(row_sums[0..rows], numeric.cast(meta.Accumulator(R), 0));
 
             for (0..cols) |j| {
                 for (0..rows) |i| {
@@ -136,7 +136,7 @@ pub fn normAlloc(allocator: std.mem.Allocator, x: anytype, comptime order: linal
                 }
             }
 
-            var max_row_sum = numeric.zero(R);
+            var max_row_sum = numeric.cast(R, 0);
 
             for (0..rows) |i| {
                 max_row_sum = numeric.max(max_row_sum, numeric.cast(R, row_sums[i]));

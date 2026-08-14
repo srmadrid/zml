@@ -58,7 +58,7 @@ pub fn sytf2(
             const colmax = if (k > 0)
                 numeric.abs1(a[utils.index(layout, imax, k, lda)])
             else
-                numeric.zero(numeric.Abs1(meta.Numeric(A)));
+                numeric.cast(numeric.Abs1(meta.Numeric(A)), 0);
 
             var kp: usize = undefined;
             if (numeric.eq(numeric.max(absakk, colmax), 0) or numeric.isNan(absakk)) {

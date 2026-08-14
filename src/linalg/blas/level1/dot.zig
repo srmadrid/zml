@@ -17,7 +17,7 @@ pub fn Dot(X: type, Y: type) type {
 /// Computes a vector dot product:
 ///
 /// ```zig
-/// x[0] * y[0] + x[1] * y[1] + ... + x[n - 1] * y[n - 1],
+/// ∑ᵢ xᵢ yᵢ,
 /// ```
 ///
 /// where `x` and `y` are vectors.
@@ -55,7 +55,7 @@ pub fn dot(
         return linalg.blas.Error.InvalidArgument;
 
     if (n == 0)
-        return numeric.zero(linalg.blas.Dot(X, Y));
+        return numeric.cast(linalg.blas.Dot(X, Y), 0);
 
     return numeric.cast(linalg.blas.Dot(X, Y), k_dot(n, x, incx, y, incy));
 }
@@ -63,7 +63,7 @@ pub fn dot(
 /// Computes a vector dot product:
 ///
 /// ```zig
-/// x[0] * y[0] + x[1] * y[1] + ... + x[n - 1] * y[n - 1],
+/// ∑ᵢ xᵢ yᵢ,
 /// ```
 ///
 /// where `x` and `y` are vectors, splitting the work across the worker threads
@@ -104,7 +104,7 @@ pub fn dotParallel(
         return linalg.blas.Error.InvalidArgument;
 
     if (n == 0)
-        return numeric.zero(linalg.blas.Dot(X, Y));
+        return numeric.cast(linalg.blas.Dot(X, Y), 0);
 
     const Ctx = struct {
         n: usize,
@@ -135,7 +135,7 @@ pub fn dotParallel(
         }
     };
 
-    var sums: [thread.max_workers]meta.Accumulator(linalg.blas.Dot(X, Y)) = @splat(numeric.zero(meta.Accumulator(linalg.blas.Dot(X, Y))));
+    var sums: [thread.max_workers]meta.Accumulator(linalg.blas.Dot(X, Y)) = @splat(numeric.cast(meta.Accumulator(linalg.blas.Dot(X, Y)), 0));
 
     pool.parallelFor(
         n,
@@ -150,7 +150,7 @@ pub fn dotParallel(
         Ctx.kernel,
     );
 
-    var sum = numeric.zero(meta.Accumulator(linalg.blas.Dot(X, Y)));
+    var sum = numeric.cast(meta.Accumulator(linalg.blas.Dot(X, Y)), 0);
     for (0..int.min(pool.idCount(), thread.max_workers)) |i| {
         numeric.addInto(&sum, sum, sums[i]);
     }
@@ -164,7 +164,7 @@ fn k_dot(n: usize, x: anytype, incx: isize, y: anytype, incy: isize) meta.Accumu
 
     const unroll = 2 * (std.simd.suggestVectorLength(meta.Accumulator(linalg.blas.Dot(X, Y))) orelse 2);
 
-    var sums: [unroll]meta.Accumulator(linalg.blas.Dot(X, Y)) = .{numeric.zero(meta.Accumulator(linalg.blas.Dot(X, Y)))} ** unroll;
+    var sums: [unroll]meta.Accumulator(linalg.blas.Dot(X, Y)) = @splat(numeric.cast(meta.Accumulator(linalg.blas.Dot(X, Y)), 0));
 
     if (incx == 1 and incy == 1) {
         var i: usize = 0;
@@ -222,7 +222,7 @@ fn k_dot(n: usize, x: anytype, incx: isize, y: anytype, incy: isize) meta.Accumu
         }
     }
 
-    var sum = numeric.zero(meta.Accumulator(linalg.blas.Dot(X, Y)));
+    var sum = numeric.cast(meta.Accumulator(linalg.blas.Dot(X, Y)), 0);
     inline for (0..unroll) |u| {
         // sum += sums[u]
         numeric.addInto(&sum, sum, sums[u]);

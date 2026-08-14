@@ -59,15 +59,15 @@ pub fn Normal(comptime N: type) type {
             var s: meta.Real(N) = undefined;
 
             while (true) {
-                u = numeric.sub(numeric.mul(numeric.two(meta.Real(N)), utils.standardUniform(meta.Real(N), prng)), numeric.one(meta.Real(N)));
-                v = numeric.sub(numeric.mul(numeric.two(meta.Real(N)), utils.standardUniform(meta.Real(N), prng)), numeric.one(meta.Real(N)));
+                u = numeric.sub(numeric.mul(2, utils.standardUniform(meta.Real(N), prng)), 1);
+                v = numeric.sub(numeric.mul(2, utils.standardUniform(meta.Real(N), prng)), 1);
                 s = numeric.add(numeric.mul(u, u), numeric.mul(v, v));
 
-                if (numeric.gt(s, numeric.zero(meta.Real(N))) and numeric.lt(s, numeric.one(meta.Real(N))))
+                if (numeric.gt(s, 0) and numeric.lt(s, 1))
                     break;
             }
 
-            const temp = numeric.sqrt(numeric.mul(numeric.neg(numeric.two(meta.Real(N))), numeric.div(numeric.ln(s), s)));
+            const temp = numeric.sqrt(numeric.mul(-2, numeric.div(numeric.ln(s), s)));
 
             return if (comptime !meta.isComplex(N))
                 numeric.add(self.mu, numeric.mul(self.sigma, numeric.mul(u, temp)))
@@ -101,10 +101,10 @@ pub fn Normal(comptime N: type) type {
         fn pdfReal(val: meta.Real(N), mean: meta.Real(N), std_dev: meta.Real(N)) meta.Real(N) {
             const z = numeric.div(numeric.sub(val, mean), std_dev);
             const z_sq = numeric.mul(z, z);
-            const half_z_sq = numeric.mul(numeric.div(numeric.one(meta.Real(N)), numeric.two(meta.Real(N))), z_sq);
+            const half_z_sq = numeric.div(z_sq, 2);
             const exp_term = numeric.exp(numeric.neg(half_z_sq));
 
-            const sqrt_two_pi = numeric.sqrt(numeric.mul(numeric.two(meta.Real(N)), numeric.pi(meta.Real(N))));
+            const sqrt_two_pi = numeric.sqrt(numeric.mul(2, numeric.pi(meta.Real(N))));
             const norm_factor = numeric.mul(std_dev, sqrt_two_pi);
 
             return numeric.div(exp_term, norm_factor);
@@ -133,11 +133,11 @@ pub fn Normal(comptime N: type) type {
         fn lpdfReal(val: meta.Real(N), mean: meta.Real(N), std_dev: meta.Real(N)) meta.Real(N) {
             const z = numeric.div(numeric.sub(val, mean), std_dev);
             const z_sq = numeric.mul(z, z);
-            const half_z_sq = numeric.mul(numeric.div(numeric.one(meta.Real(N)), numeric.two(meta.Real(N))), z_sq);
+            const half_z_sq = numeric.div(z_sq, 2);
 
             const log_sigma = numeric.ln(std_dev);
-            const log_two_pi = numeric.ln(numeric.mul(numeric.two(meta.Real(N)), numeric.pi(meta.Real(N))));
-            const half_log_two_pi = numeric.mul(numeric.div(numeric.one(meta.Real(N)), numeric.two(meta.Real(N))), log_two_pi);
+            const log_two_pi = numeric.ln(numeric.mul(2, numeric.pi(meta.Real(N))));
+            const half_log_two_pi = numeric.div(log_two_pi, 2);
 
             const norm_term = numeric.add(log_sigma, half_log_two_pi);
             return numeric.neg(numeric.add(norm_term, half_z_sq));
@@ -167,11 +167,11 @@ pub fn Normal(comptime N: type) type {
 
         fn cdfReal(val: meta.Real(N), mean: meta.Real(N), std_dev: meta.Real(N)) meta.Real(N) {
             const diff = numeric.sub(val, mean);
-            const denom = numeric.mul(std_dev, numeric.sqrt(numeric.two(meta.Real(N))));
+            const denom = numeric.mul(std_dev, numeric.sqrt(numeric.cast(meta.Real(N), 2)));
             const erf_val = numeric.erf(numeric.div(diff, denom));
 
-            const one_plus_erf = numeric.add(numeric.one(meta.Real(N)), erf_val);
-            return numeric.mul(numeric.div(numeric.one(meta.Real(N)), numeric.two(meta.Real(N))), one_plus_erf);
+            const one_plus_erf = numeric.add(1, erf_val);
+            return numeric.div(one_plus_erf, 2);
         }
 
         /// Computes the Inverse Cumulative Distribution Function (iCDF), also
@@ -197,10 +197,10 @@ pub fn Normal(comptime N: type) type {
         }
 
         fn icdfReal(prob: meta.Real(N), mean: meta.Real(N), std_dev: meta.Real(N)) meta.Real(N) {
-            const two_p_minus_one = numeric.sub(numeric.mul(numeric.two(meta.Real(N)), prob), numeric.one(meta.Real(N)));
+            const two_p_minus_one = numeric.sub(numeric.mul(2, prob), 1);
             const erf_inv_val = numeric.erfinv(two_p_minus_one);
 
-            const sqrt_two = numeric.sqrt(numeric.two(meta.Real(N)));
+            const sqrt_two = numeric.sqrt(numeric.cast(meta.Real(N), 2));
             const scaled = numeric.mul(std_dev, numeric.mul(sqrt_two, erf_inv_val));
             return numeric.add(mean, scaled);
         }
