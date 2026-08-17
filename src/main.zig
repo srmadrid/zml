@@ -4,7 +4,7 @@ const zsl = @import("zsl");
 pub fn main(init: std.process.Init) !void {
     @setEvalBranchQuota(100_000);
 
-    const N: type = zsl.Complex(zsl.Dyadic(8192, 1024));
+    const N: type = zsl.Complex(zsl.Dyadic(256, 32));
     const layout: zsl.matrix.Layout = .row_major;
 
     // const arena = init.arena.allocator();
@@ -39,7 +39,7 @@ pub fn main(init: std.process.Init) !void {
     var diff = try zsl.matrix.subAlloc(gpa, a, a_recreated);
     defer diff.deinit(gpa);
 
-    std.debug.print("‖A - Uᴴ * U‖ = {e:.4}\n", .{zsl.numeric.cast(f128, try zsl.linalg.normAlloc(gpa, diff, .frobenius))});
+    std.debug.print("‖A - Uᴴ * U‖ = {e:.4}\n", .{zsl.numeric.cast(f64, try zsl.linalg.normAlloc(gpa, diff, .frobenius))});
 
     // var a: zsl.matrix.general.Dense(f64, .col_major) = try .initFn(gpa, m, n, zsl.stats.Normal(f64).sample, .{ normal, prng });
     // defer a.deinit(gpa);

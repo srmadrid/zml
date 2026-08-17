@@ -638,18 +638,36 @@ pub fn Var(N: type) type {
             }
         }
 
-        pub fn val(self: Var(N)) N {
+        pub fn getVal(self: Var(N)) N {
             switch (self) {
                 .constant => |c| return c,
                 .tracked => |t| return t.tape.nodes[t.id].val,
             }
         }
 
-        pub fn grad(self: Var(N)) N {
+        pub fn setVal(self: *Var(N), val: N) void {
+            switch (self.*) {
+                .constant => self.constant = val,
+                .tracked => |t| t.tape.nodes[t.id].val = val,
+            }
+        }
+
+        pub fn getGrad(self: Var(N)) N {
             switch (self) {
                 .constant => return numeric.cast(N, 1),
                 .tracked => |t| return t.tape.nodes[t.id].grad,
             }
+        }
+
+        pub fn setGrad(self: *Var(N), grad: N) void {
+            switch (self.*) {
+                .constant => {},
+                .tracked => |t| t.tape.nodes[t.id].grad = grad,
+            }
+        }
+
+        pub fn fromInt(x: anytype) autodiff.Var(N) {
+            return .{ .constant = numeric.cast(N, x) };
         }
 
         pub fn fromFloat(x: anytype) autodiff.Var(N) {

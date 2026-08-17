@@ -16,6 +16,5 @@ pub fn matmulIntoUnchecked(o: anytype, x: anytype, y: anytype) void {
         0,
         o.data,
         o.inc,
-        .{ .num_threads = 1 },
     ) catch unreachable;
 }

@@ -1,40 +1,50 @@
-const std = @import("std");
-
-const types = @import("../../types.zig");
-const ops = @import("../../ops.zig");
-const constants = @import("../../constants.zig");
-const int = @import("../../int.zig");
-const float = @import("../../float.zig");
-
-const linalg = @import("../../linalg.zig");
-const blas = @import("../blas.zig");
-const lapack = @import("../lapack.zig");
-const Order = types.Order;
-const Side = linalg.Side;
-const Transpose = linalg.Transpose;
-const Direction = lapack.Direction;
-const Storage = lapack.Storage;
-
+const int = @import("../../../int.zig");
+const linalg = @import("../../../linalg.zig");
+const matrix = @import("../../../matrix.zig");
+const meta = @import("../../../meta.zig");
+const numeric = @import("../../../numeric.zig");
 const utils = @import("../utils.zig");
 
+/// Applies a block reflector `H`, or its complex conjugate `Hᴴ`, to an `m × n`
+/// matrix `C`, from either the left or the right.
+///
+/// ## Signature
+/// ```zig
+/// linalg.lapack.larfb(layout: matrix.Layout, side: linalg.blas.Size, trans: linalg.blas.Transpose, direct: linalg.lapack.Direction, storev: linalg.lapack.Storage, m: usize, n: usize, k: usize, v: [*]const V, ldv: usize, t: [*]const T, ldt: usize, c: [*]C, ldc: usize, work: [*]W, ldwork: usize) !void
+/// ```
+///
+/// ## Arguments
+/// * `layout` (`matrix.Layout`): Specifies whether two-dimensional array
+///   storage is col-major or row-major.
+/// * `side` (`linalg.blas.Side`): Specifies whether the block reflector is
+///   applied from the left or the right:
+///   * `left`: `C = H * C`.
+///   * `right`: `C = C * H`.
+/// * `transa` (`linalg.blas.Transpose`): Specifies whether the reflector or its
+///   conjugate transpose is applied. (WHAT TO DO HERE?)
+/// * `direct` (`linalg.lapack.Direction`): Specifies how `H` is formed from a
+///   product of elementary reflectors:
+///   * `forward`: `H = H₁ H₂ ⋯ Hₖ`.
+///   * `backward`: `H = Hₖ ⋯ H₂ H₁`.
+/// * `storev` (`linal.lapack.Storage`): Specifies how the vectors which define
+///   the elementary reflectors are stored.
 pub fn larfb(
-    order: Order,
-    side: Side,
-    trans: Transpose,
-    direct: Direction,
-    storev: Storage,
-    m: i32,
-    n: i32,
-    k: i32,
+    layout: matrix.Layout,
+    side: linalg.blas.Side,
+    trans: linalg.blas.Transpose,
+    direct: linalg.lapack.Direction,
+    storev: linalg.lapack.Storage,
+    m: usize,
+    n: usize,
+    k: usize,
     v: anytype,
-    ldv: i32,
+    ldv: usize,
     t: anytype,
-    ldt: i32,
+    ldt: usize,
     c: anytype,
-    ldc: i32,
+    ldc: usize,
     work: anytype,
-    ldwork: i32,
-    ctx: anytype,
+    ldwork: usize,
 ) !void {
     if (m <= 0 or n <= 0)
         return;

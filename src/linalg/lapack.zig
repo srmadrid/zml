@@ -79,8 +79,8 @@ pub const laswp = @import("lapack/aux/laswp.zig").laswp; // Unoptimized
 // pub const lahef = @import("lapack/aux/lahef.zig").lahef;
 pub const larfg = @import("lapack/aux/larfg.zig").larfg; // Unoptimized
 pub const larf1f = @import("lapack/aux/larf1f.zig").larf1f; // Unoptimized
-pub const larft = @import("lapack/aux/larft.zig").larft;
-// pub const larfb = @import("lapack/aux/larfb.zig").larfb;
+pub const larft = @import("lapack/aux/larft.zig").larft; // Unoptimized
+// pub const larfb = @import("lapack/aux/larfb.zig").larfb; // Unoptimized
 
 pub const Error = error{
     InvalidArgument,

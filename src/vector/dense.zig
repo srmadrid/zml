@@ -5,6 +5,7 @@ const numeric = @import("../numeric.zig");
 
 const vector = @import("../vector.zig");
 const matrix = @import("../matrix.zig");
+const array = @import("../array.zig");
 
 const int = @import("../int.zig");
 
@@ -294,6 +295,21 @@ pub fn Dense(N: type) type {
                 .data = self.data,
                 .rows = rows,
                 .cols = cols,
+                .flags = .{ .owns_data = false, .noconj = self.flags.noconj },
+            };
+        }
+
+        pub fn arrayView(self: vector.Dense(N)) array.Dense(N) {
+            var shape: [array.max_dimensions]usize = undefined;
+            shape[0] = self.len;
+            var strides: [array.max_dimensions]isize = undefined;
+            strides[0] = self.inc;
+
+            return .{
+                .data = self.data,
+                .shape = shape,
+                .strides = strides,
+                .ndim = 1,
                 .flags = .{ .owns_data = false, .noconj = self.flags.noconj },
             };
         }

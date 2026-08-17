@@ -89,6 +89,14 @@ const utils = @import("../utils.zig");
 /// ```
 ///
 /// ## Arguments
+/// * `layout` (`matrix.Layout`): Specifies whether two-dimensional array
+///   storage is col-major or row-major.
+/// * `direct` (`linalg.lapack.Direction`): Specifies how `H` is formed from a
+///   product of elementary reflectors:
+///   * `forward`: `H = H₁ H₂ ⋯ Hₖ`.
+///   * `backward`: `H = Hₖ ⋯ H₂ H₁`.
+/// * `storev` (`linal.lapack.Storage`): Specifies how the vectors which define
+///   the elementary reflectors are stored.
 /// * `n` (`usize`): Specifies the size of the block reflector `H`.
 /// * `k` (`usize`): Specifies the size of the triangular factor `T` and the
 ///   number of elementary reflectors.
