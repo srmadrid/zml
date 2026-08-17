@@ -45,8 +45,14 @@ pub fn apply2IntoUnchecked(o: anytype, x: anytype, y: anytype, comptime opInto: 
             },
             .sparse => @compileError("zsl.array.apply2IntoUnchecked: not implemented yet for\n\to: " ++
                 @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n"),
-            .numeric => @compileError("zsl.array.apply2IntoUnchecked: not implemented yet for\n\to: " ++
-                @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n"),
+            .numeric => switch (comptime meta.arrayType(Y)) {
+                .static => @compileError("zsl.array.apply2IntoUnchecked: not implemented yet for\n\to: " ++
+                    @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n"),
+                .dense => return @import("apply2/arrden_num_arrden.zig").apply2IntoUnchecked(o, x, y, opInto),
+                .sparse => @compileError("zsl.array.apply2IntoUnchecked: not implemented yet for\n\to: " ++
+                    @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n"),
+                else => unreachable,
+            },
             else => unreachable,
         },
         .sparse => @compileError("zsl.array.apply2IntoUnchecked: not implemented yet for\n\to: " ++

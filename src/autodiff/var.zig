@@ -675,11 +675,11 @@ pub fn Var(N: type) type {
         }
 
         pub fn toFloat(self: autodiff.Var(N), comptime Float: type) Float {
-            return numeric.cast(Float, self.val());
+            return numeric.cast(Float, self.getVal());
         }
 
         pub fn toComplex(self: autodiff.Var(N), comptime Complex: type) Complex {
-            return numeric.cast(Complex, self.val());
+            return numeric.cast(Complex, self.getVal());
         }
     };
 }
@@ -710,7 +710,7 @@ pub fn abs(x: anytype) autodiff.@"var".Abs(@TypeOf(x)) {
                 .val = undefined,
             };
 
-            numeric.absInto(&node.val, x.val());
+            numeric.absInto(&node.val, x.getVal());
 
             return .{
                 .tracked = .{
@@ -748,7 +748,7 @@ pub fn abs1(x: anytype) autodiff.@"var".Abs1(@TypeOf(x)) {
                 .val = undefined,
             };
 
-            numeric.abs1Into(&node.val, x.val());
+            numeric.abs1Into(&node.val, x.getVal());
 
             return .{
                 .tracked = .{
@@ -786,7 +786,7 @@ pub fn abs2(x: anytype) autodiff.@"var".Abs2(@TypeOf(x)) {
                 .val = undefined,
             };
 
-            numeric.abs2Into(&node.val, x.val());
+            numeric.abs2Into(&node.val, x.getVal());
 
             return .{
                 .tracked = .{
@@ -824,7 +824,7 @@ pub fn neg(x: anytype) autodiff.@"var".Neg(@TypeOf(x)) {
                 .val = undefined,
             };
 
-            numeric.negInto(&node.val, x.val());
+            numeric.negInto(&node.val, x.getVal());
 
             return .{
                 .tracked = .{
@@ -862,7 +862,7 @@ pub fn re(x: anytype) autodiff.@"var".Re(@TypeOf(x)) {
                 .val = undefined,
             };
 
-            numeric.reInto(&node.val, x.val());
+            numeric.reInto(&node.val, x.getVal());
 
             return .{
                 .tracked = .{
@@ -900,7 +900,7 @@ pub fn im(x: anytype) autodiff.@"var".Im(@TypeOf(x)) {
                 .val = undefined,
             };
 
-            numeric.imInto(&node.val, x.val());
+            numeric.imInto(&node.val, x.getVal());
 
             return .{
                 .tracked = .{
@@ -938,7 +938,7 @@ pub fn conj(x: anytype) autodiff.@"var".Conj(@TypeOf(x)) {
                 .val = undefined,
             };
 
-            numeric.conjInto(&node.val, x.val());
+            numeric.conjInto(&node.val, x.getVal());
 
             return .{
                 .tracked = .{
@@ -976,7 +976,7 @@ pub fn sign(x: anytype) autodiff.@"var".Sign(@TypeOf(x)) {
                 .val = undefined,
             };
 
-            numeric.signInto(&node.val, x.val());
+            numeric.signInto(&node.val, x.getVal());
 
             return .{
                 .tracked = .{
@@ -1266,7 +1266,7 @@ pub fn eq(x: anytype, y: @TypeOf(x)) bool {
         @compileError("zsl.autodiff.@\"var\".eq: x and y must be vars, got\n\tx, y: " ++
             @typeName(X) ++ "\n");
 
-    return numeric.eq(x.val(), y.val());
+    return numeric.eq(x.getVal(), y.getVal());
 }
 
 pub fn ne(x: anytype, y: anytype) bool {
@@ -1276,7 +1276,7 @@ pub fn ne(x: anytype, y: anytype) bool {
         @compileError("zsl.autodiff.@\"var\".ne: x and y must be vars, got\n\tx, y: " ++
             @typeName(X) ++ "\n");
 
-    return numeric.ne(x.val(), y.val());
+    return numeric.ne(x.getVal(), y.getVal());
 }
 
 pub fn lt(x: anytype, y: anytype) bool {
@@ -1286,7 +1286,7 @@ pub fn lt(x: anytype, y: anytype) bool {
         @compileError("zsl.autodiff.@\"var\".lt: x and y must be vars, got\n\tx, y: " ++
             @typeName(X) ++ "\n");
 
-    return numeric.lt(x.val(), y.val());
+    return numeric.lt(x.getVal(), y.getVal());
 }
 
 pub fn le(x: anytype, y: anytype) bool {
@@ -1296,7 +1296,7 @@ pub fn le(x: anytype, y: anytype) bool {
         @compileError("zsl.autodiff.@\"var\".le: x and y must be vars, got\n\tx, y: " ++
             @typeName(X) ++ "\n");
 
-    return numeric.le(x.val(), y.val());
+    return numeric.le(x.getVal(), y.getVal());
 }
 
 pub fn gt(x: anytype, y: anytype) bool {
@@ -1306,7 +1306,7 @@ pub fn gt(x: anytype, y: anytype) bool {
         @compileError("zsl.autodiff.@\"var\".gt: x and y must be vars, got\n\tx, y: " ++
             @typeName(X) ++ "\n");
 
-    return numeric.gt(x.val(), y.val());
+    return numeric.gt(x.getVal(), y.getVal());
 }
 
 pub fn ge(x: anytype, y: anytype) bool {
@@ -1316,7 +1316,7 @@ pub fn ge(x: anytype, y: anytype) bool {
         @compileError("zsl.autodiff.@\"var\".ge: x and y must be vars, got\n\tx, y: " ++
             @typeName(X) ++ "\n");
 
-    return numeric.ge(x.val(), y.val());
+    return numeric.ge(x.getVal(), y.getVal());
 }
 
 pub fn Max(comptime X: type, comptime Y: type) type {
@@ -1437,7 +1437,7 @@ pub fn exp(x: anytype) autodiff.@"var".Exp(@TypeOf(x)) {
                 .val = undefined,
             };
 
-            numeric.expInto(&node.val, x.val());
+            numeric.expInto(&node.val, x.getVal());
 
             return .{
                 .tracked = .{
@@ -1475,7 +1475,7 @@ pub fn ln(x: anytype) autodiff.@"var".Ln(@TypeOf(x)) {
                 .val = undefined,
             };
 
-            numeric.lnInto(&node.val, x.val());
+            numeric.lnInto(&node.val, x.getVal());
 
             return .{
                 .tracked = .{
@@ -1559,7 +1559,7 @@ pub fn sqrt(x: anytype) autodiff.@"var".Sqrt(@TypeOf(x)) {
                 .val = undefined,
             };
 
-            numeric.sqrtInto(&node.val, x.val());
+            numeric.sqrtInto(&node.val, x.getVal());
 
             return .{
                 .tracked = .{
@@ -1597,7 +1597,7 @@ pub fn cbrt(x: anytype) autodiff.@"var".Cbrt(@TypeOf(x)) {
                 .val = undefined,
             };
 
-            numeric.cbrtInto(&node.val, x.val());
+            numeric.cbrtInto(&node.val, x.getVal());
 
             return .{
                 .tracked = .{
@@ -1681,7 +1681,7 @@ pub fn sin(x: anytype) autodiff.@"var".Sin(@TypeOf(x)) {
                 .val = undefined,
             };
 
-            numeric.sinInto(&node.val, x.val());
+            numeric.sinInto(&node.val, x.getVal());
 
             return .{
                 .tracked = .{
@@ -1719,7 +1719,7 @@ pub fn cos(x: anytype) autodiff.@"var".Cos(@TypeOf(x)) {
                 .val = undefined,
             };
 
-            numeric.cosInto(&node.val, x.val());
+            numeric.cosInto(&node.val, x.getVal());
 
             return .{
                 .tracked = .{
@@ -1757,7 +1757,7 @@ pub fn tan(x: anytype) autodiff.@"var".Tan(@TypeOf(x)) {
                 .val = undefined,
             };
 
-            numeric.tanInto(&node.val, x.val());
+            numeric.tanInto(&node.val, x.getVal());
 
             return .{
                 .tracked = .{
@@ -1795,7 +1795,7 @@ pub fn asin(x: anytype) autodiff.@"var".Asin(@TypeOf(x)) {
                 .val = undefined,
             };
 
-            numeric.asinInto(&node.val, x.val());
+            numeric.asinInto(&node.val, x.getVal());
 
             return .{
                 .tracked = .{
@@ -1833,7 +1833,7 @@ pub fn acos(x: anytype) autodiff.@"var".Acos(@TypeOf(x)) {
                 .val = undefined,
             };
 
-            numeric.acosInto(&node.val, x.val());
+            numeric.acosInto(&node.val, x.getVal());
 
             return .{
                 .tracked = .{
@@ -1871,7 +1871,7 @@ pub fn atan(x: anytype) autodiff.@"var".Atan(@TypeOf(x)) {
                 .val = undefined,
             };
 
-            numeric.atanInto(&node.val, x.val());
+            numeric.atanInto(&node.val, x.getVal());
 
             return .{
                 .tracked = .{
@@ -1955,7 +1955,7 @@ pub fn sinh(x: anytype) autodiff.@"var".Sinh(@TypeOf(x)) {
                 .val = undefined,
             };
 
-            numeric.sinhInto(&node.val, x.val());
+            numeric.sinhInto(&node.val, x.getVal());
 
             return .{
                 .tracked = .{
@@ -1993,7 +1993,7 @@ pub fn cosh(x: anytype) autodiff.@"var".Cosh(@TypeOf(x)) {
                 .val = undefined,
             };
 
-            numeric.coshInto(&node.val, x.val());
+            numeric.coshInto(&node.val, x.getVal());
 
             return .{
                 .tracked = .{
@@ -2031,7 +2031,7 @@ pub fn tanh(x: anytype) autodiff.@"var".Tanh(@TypeOf(x)) {
                 .val = undefined,
             };
 
-            numeric.tanhInto(&node.val, x.val());
+            numeric.tanhInto(&node.val, x.getVal());
 
             return .{
                 .tracked = .{
@@ -2069,7 +2069,7 @@ pub fn asinh(x: anytype) autodiff.@"var".Asinh(@TypeOf(x)) {
                 .val = undefined,
             };
 
-            numeric.asinhInto(&node.val, x.val());
+            numeric.asinhInto(&node.val, x.getVal());
 
             return .{
                 .tracked = .{
@@ -2107,7 +2107,7 @@ pub fn acosh(x: anytype) autodiff.@"var".Acosh(@TypeOf(x)) {
                 .val = undefined,
             };
 
-            numeric.acoshInto(&node.val, x.val());
+            numeric.acoshInto(&node.val, x.getVal());
 
             return .{
                 .tracked = .{
@@ -2145,7 +2145,7 @@ pub fn atanh(x: anytype) autodiff.@"var".Atanh(@TypeOf(x)) {
                 .val = undefined,
             };
 
-            numeric.atanhInto(&node.val, x.val());
+            numeric.atanhInto(&node.val, x.getVal());
 
             return .{
                 .tracked = .{
@@ -2160,7 +2160,7 @@ pub fn atanh(x: anytype) autodiff.@"var".Atanh(@TypeOf(x)) {
 // Utils
 inline fn valOf(x: anytype) if (isVar(@TypeOf(x))) meta.Scalar(@TypeOf(x)) else @TypeOf(x) {
     return if (comptime isVar(@TypeOf(x)))
-        x.val()
+        x.getVal()
     else
         x;
 }
