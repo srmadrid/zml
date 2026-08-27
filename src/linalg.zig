@@ -41,9 +41,13 @@ pub const matmulInto = @import("linalg/matmul.zig").matmulInto;
 pub const matmulIntoAlloc = @import("linalg/matmul.zig").matmulIntoAlloc;
 pub const matmulIntoUnchecked = @import("linalg/matmul.zig").matmulIntoUnchecked;
 
+// pub const Solve = @import("linalg/solve.zig").Solve;
+pub const SolveMethod = @import("linalg/solve.zig").SolveMethod;
 // solve (with SolveMethod, to choose decomposition, and optional out parameter to save it)
 // Allow vector and matrix rhs
 
+// pub const Lstsq = @import("linalg/lstsq.zig").Lstsq;
+pub const LstsqMethod = @import("linalg/lstsq.zig").LstsqMethod;
 // lstsq
 // Allow vector and matrix rhs
 

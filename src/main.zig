@@ -4,7 +4,7 @@ const zsl = @import("zsl");
 pub fn main(init: std.process.Init) !void {
     @setEvalBranchQuota(100_000);
 
-    const N: type = zsl.Complex(zsl.Dyadic(256, 32));
+    const N: type = zsl.Complex(zsl.Dyadic(64, 32));
     const layout: zsl.matrix.Layout = .row_major;
 
     // const arena = init.arena.allocator();
