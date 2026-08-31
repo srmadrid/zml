@@ -10,18 +10,96 @@ const numeric = @import("numeric.zig");
 pub const Coerce = @import("float/coerce.zig").Coerce;
 
 // Constant functions
+/// Returns the highest representable value of the given float type `Float`.
+///
+/// ## Arguments
+/// * `Float` (`type`): The float type to get the maximum value for.
+///
+/// ## Returns
+/// `Float`: The maximum representable value of type `Float`.
+pub fn highest(comptime Float: type) Float {
+    comptime if (!meta.isNumeric(Float) or meta.numericType(Float) != .float)
+        @compileError("zsl.float.highest: Float must be a float type, got \n\tFloat = " ++ @typeName(Float) ++ "\n");
+
+    return std.math.floatMax(Float);
+}
+
+/// Returns the lowest representable value of the given float type `Float`.
+///
+/// ## Arguments
+/// * `Float` (`type`): The Float type to get the lowest value for.
+///
+/// ## Returns
+/// `Float`: The minimum representable value of type `Float`.
+pub fn lowest(comptime Float: type) Float {
+    comptime if (!meta.isNumeric(Float) or meta.numericType(Float) != .float)
+        @compileError("zsl.float.lowest: Float must be a float type, got \n\tFloat = " ++ @typeName(Float) ++ "\n");
+
+    return -std.math.floatMax(Float);
+}
+
+/// Returns the smallest positive magnitude strictly greater than zero of the
+/// given float type `Float`.
+///
+/// ## Arguments
+/// * `Float` (`type`): The float type to get the minimum value for.
+///
+/// ## Returns
+/// `Float`: The minimum representable value of type `Float`.
+pub fn smallest(comptime Float: type) Float {
+    comptime if (!meta.isNumeric(Float) or meta.numericType(Float) != .float)
+        @compileError("zsl.float.smallest: Float must be a float type, got \n\tFloat = " ++ @typeName(Float) ++ "\n");
+
+    return std.math.floatMin(Float);
+}
+
 pub fn pi(comptime Float: type) Float {
     comptime if (!meta.isNumeric(Float) or meta.numericType(Float) != .float)
         @compileError("zsl.float.pi: Float must be a float type, got \n\nFloat = " ++ @typeName(Float) ++ "\n");
 
-    return 3.1415926535897932384626433832795028841971;
+    return 3.14159265358979323846264338327950288419716939937510;
+}
+
+pub fn tau(comptime Float: type) Float {
+    comptime if (!meta.isNumeric(Float) or meta.numericType(Float) != .float)
+        @compileError("zsl.float.tau: Float must be a float type, got \n\nFloat = " ++ @typeName(Float) ++ "\n");
+
+    return 6.28318530717958647692528676655900576839433879875021;
 }
 
 pub fn e(comptime Float: type) Float {
     comptime if (!meta.isNumeric(Float) or meta.numericType(Float) != .float)
         @compileError("zsl.float.e: Float must be a float type, got \n\tFloat = " ++ @typeName(Float) ++ "\n");
 
-    return 2.7182818284590452353602874713526624977572;
+    return 2.71828182845904523536028747135266249775724709369995;
+}
+
+pub fn phi(comptime Float: type) Float {
+    comptime if (!meta.isNumeric(Float) or meta.numericType(Float) != .float)
+        @compileError("zsl.float.phi: Float must be a float type, got \n\tFloat = " ++ @typeName(Float) ++ "\n");
+
+    return 1.61803398874989484820458683436563811772030917980576;
+}
+
+pub fn egamma(comptime Float: type) Float {
+    comptime if (!meta.isNumeric(Float) or meta.numericType(Float) != .float)
+        @compileError("zsl.float.egamma: Float must be a float type, got \n\tFloat = " ++ @typeName(Float) ++ "\n");
+
+    return 0.57721566490153286060651209008240243104215933593992;
+}
+
+pub fn catalan(comptime Float: type) Float {
+    comptime if (!meta.isNumeric(Float) or meta.numericType(Float) != .float)
+        @compileError("zsl.float.catalan: Float must be a float type, got \n\tFloat = " ++ @typeName(Float) ++ "\n");
+
+    return 0.91596559417721901505460351493238411077414937428167;
+}
+
+pub fn apery(comptime Float: type) Float {
+    comptime if (!meta.isNumeric(Float) or meta.numericType(Float) != .float)
+        @compileError("zsl.float.apery: Float must be a float type, got \n\tFloat = " ++ @typeName(Float) ++ "\n");
+
+    return 1.20205690315959428539973816151144999076498629234049;
 }
 
 // Basic functions
@@ -465,49 +543,6 @@ pub fn min(x: anytype, y: anytype) float.Min(@TypeOf(x), @TypeOf(y)) {
     const R: type = float.Min(@TypeOf(x), @TypeOf(y));
 
     return if (numeric.cast(R, x) < numeric.cast(R, y)) numeric.cast(R, x) else numeric.cast(R, y);
-}
-
-/// Returns the highest representable value of the given float type `Float`.
-///
-/// ## Arguments
-/// * `Float` (`type`): The float type to get the maximum value for.
-///
-/// ## Returns
-/// `Float`: The maximum representable value of type `Float`.
-pub fn highest(comptime Float: type) Float {
-    comptime if (!meta.isNumeric(Float) or meta.numericType(Float) != .float)
-        @compileError("zsl.float.highest: Float must be a float type, got \n\tFloat = " ++ @typeName(Float) ++ "\n");
-
-    return std.math.floatMax(Float);
-}
-
-/// Returns the lowest representable value of the given float type `Float`.
-///
-/// ## Arguments
-/// * `Float` (`type`): The Float type to get the lowest value for.
-///
-/// ## Returns
-/// `Float`: The minimum representable value of type `Float`.
-pub fn lowest(comptime Float: type) Float {
-    comptime if (!meta.isNumeric(Float) or meta.numericType(Float) != .float)
-        @compileError("zsl.float.lowest: Float must be a float type, got \n\tFloat = " ++ @typeName(Float) ++ "\n");
-
-    return -std.math.floatMax(Float);
-}
-
-/// Returns the smallest positive magnitude strictly greater than zero of the
-/// given float type `Float`.
-///
-/// ## Arguments
-/// * `Float` (`type`): The float type to get the minimum value for.
-///
-/// ## Returns
-/// `Float`: The minimum representable value of type `Float`.
-pub fn smallest(comptime Float: type) Float {
-    comptime if (!meta.isNumeric(Float) or meta.numericType(Float) != .float)
-        @compileError("zsl.float.smallest: Float must be a float type, got \n\tFloat = " ++ @typeName(Float) ++ "\n");
-
-    return std.math.floatMin(Float);
 }
 
 pub fn isNan(x: anytype) bool {

@@ -513,6 +513,13 @@ pub fn smallest(comptime Int: type) Int {
     return 1;
 }
 
+pub fn eps(comptime Int: type) Int {
+    comptime if (!meta.isNumeric(Int) or meta.numericType(Int) != .int)
+        @compileError("zsl.int.eps: Int must be an int type, got \n\tInt = " ++ @typeName(Int) ++ "\n");
+
+    return 0;
+}
+
 pub const abs = @import("int/abs.zig").abs;
 pub const sign = @import("int/sign.zig").sign;
 pub const Pow = @import("int/pow.zig").Pow;

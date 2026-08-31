@@ -7,6 +7,13 @@ const ops = @import("numeric/ops.zig");
 pub const highest = constants.highest;
 pub const lowest = constants.lowest;
 pub const smallest = constants.smallest;
+pub const eps = constants.eps;
+pub const inf = constants.inf;
+pub const nan = constants.nan;
+pub const pi = constants.pi;
+pub const tau = constants.tau;
+pub const e = constants.e;
+pub const phi = constants.phi;
 
 // Utilities
 pub const Coerce = ops.Coerce;
