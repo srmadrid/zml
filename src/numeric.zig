@@ -14,6 +14,9 @@ pub const pi = constants.pi;
 pub const tau = constants.tau;
 pub const e = constants.e;
 pub const phi = constants.phi;
+pub const egamma = constants.egamma;
+pub const catalan = constants.catalan;
+pub const apery = constants.apery;
 
 // Utilities
 pub const Coerce = ops.Coerce;

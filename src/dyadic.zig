@@ -982,6 +982,8 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
 
 pub const Coerce = @import("dyadic/coerce.zig").Coerce;
 
+pub const pi = @import("dyadic/pi.zig").pi;
+
 pub fn Add(comptime X: type, comptime Y: type) type {
     comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or
         !meta.numericType(X).le(.dyadic) or !meta.numericType(Y).le(.dyadic) or
