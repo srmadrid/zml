@@ -84,8 +84,8 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
                     const msb_pos_value: u16 = @typeInfo(UV).int.bits - 1 - @clz(abs_value);
                     const msb_pos_result: u16 = mantissa_bits - 1;
 
-                    var m: Mantissa = undefined;
-                    var e: WideExponent = 0;
+                    var mantissa: Mantissa = undefined;
+                    var exponent: WideExponent = 0;
                     if (msb_pos_value > msb_pos_result) {
                         var shift: u16 = msb_pos_value - msb_pos_result;
                         const shift_minus_1 = shift - 1;
@@ -107,16 +107,16 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
                             }
                         }
 
-                        m = numeric.cast(Mantissa, rounded);
-                        e +|= numeric.cast(WideExponent, shift);
+                        mantissa = numeric.cast(Mantissa, rounded);
+                        exponent +|= numeric.cast(WideExponent, shift);
                     } else {
                         const shift: u16 = msb_pos_result - msb_pos_value;
-                        m = numeric.cast(Mantissa, abs_value) << @intCast(shift);
-                        e -|= numeric.cast(WideExponent, shift);
+                        mantissa = numeric.cast(Mantissa, abs_value) << @intCast(shift);
+                        exponent -|= numeric.cast(WideExponent, shift);
                     }
 
                     // Check for overflow
-                    if (e >= int.highest(Exponent))
+                    if (exponent >= int.highest(Exponent))
                         return .{
                             .mantissa = 0,
                             .exponent = int.highest(Exponent),
@@ -124,7 +124,7 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
                         };
 
                     // Check for underflow
-                    if (e <= int.lowest(Exponent))
+                    if (exponent <= int.lowest(Exponent))
                         return .{
                             .mantissa = 0,
                             .exponent = int.lowest(Exponent),
@@ -132,8 +132,8 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
                         };
 
                     return .{
-                        .mantissa = m,
-                        .exponent = numeric.cast(Exponent, e),
+                        .mantissa = mantissa,
+                        .exponent = numeric.cast(Exponent, exponent),
                         .positive = value >= 0,
                     };
                 },
@@ -189,8 +189,8 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
                     }
 
                     const msb_pos_result: u16 = mantissa_bits - 1;
-                    var m: Mantissa = undefined;
-                    var e: ExponentRaw = raw_e;
+                    var mantissa: Mantissa = undefined;
+                    var exponent: ExponentRaw = raw_e;
 
                     if (msb_pos_value > msb_pos_result) {
                         var shift: u16 = msb_pos_value - msb_pos_result;
@@ -213,19 +213,19 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
                             }
                         }
 
-                        m = numeric.cast(Mantissa, rounded);
-                        e += shift;
+                        mantissa = numeric.cast(Mantissa, rounded);
+                        exponent += shift;
                     } else if (msb_pos_value < msb_pos_result) {
                         const shift: u16 = msb_pos_result - msb_pos_value;
                         const ShiftM = std.math.Log2Int(Mantissa);
-                        m = numeric.cast(Mantissa, raw_m) << @as(ShiftM, @intCast(shift));
-                        e -= shift;
+                        mantissa = numeric.cast(Mantissa, raw_m) << @as(ShiftM, @intCast(shift));
+                        exponent -= shift;
                     } else {
-                        m = numeric.cast(Mantissa, raw_m);
+                        mantissa = numeric.cast(Mantissa, raw_m);
                     }
 
                     // Check for overflow
-                    if (e >= int.highest(Exponent))
+                    if (exponent >= int.highest(Exponent))
                         return .{
                             .mantissa = 0,
                             .exponent = int.highest(Exponent),
@@ -233,7 +233,7 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
                         };
 
                     // Check for underflow
-                    if (e <= int.lowest(Exponent))
+                    if (exponent <= int.lowest(Exponent))
                         return .{
                             .mantissa = 0,
                             .exponent = int.lowest(Exponent),
@@ -241,8 +241,8 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
                         };
 
                     return .{
-                        .mantissa = m,
-                        .exponent = numeric.cast(Exponent, e),
+                        .mantissa = mantissa,
+                        .exponent = numeric.cast(Exponent, exponent),
                         .positive = positive,
                     };
                 },
@@ -983,6 +983,8 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
 pub const Coerce = @import("dyadic/coerce.zig").Coerce;
 
 pub const pi = @import("dyadic/pi.zig").pi;
+pub const tau = @import("dyadic/tau.zig").tau;
+pub const e = @import("dyadic/e.zig").e;
 
 pub fn Add(comptime X: type, comptime Y: type) type {
     comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or

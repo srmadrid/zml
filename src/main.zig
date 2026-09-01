@@ -41,6 +41,9 @@ pub fn main(init: std.process.Init) !void {
 
     std.debug.print("‖A - Uᴴ * U‖ = {e:.4}\n", .{zsl.numeric.cast(f64, zsl.linalg.norm(diff, .inf))});
 
+    std.debug.print("f128 e:   {d}\n", .{zsl.numeric.e(f128)});
+    std.debug.print("dyadic e: {d}\n", .{zsl.numeric.cast(f128, zsl.numeric.e(zsl.Dyadic(256, 32)))});
+
     // var a: zsl.matrix.general.Dense(f64, .col_major) = try .initFn(gpa, m, n, zsl.stats.Normal(f64).sample, .{ normal, prng });
     // defer a.deinit(gpa);
 
